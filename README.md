@@ -27,8 +27,20 @@ Add the following to the dependencies array in your `Package.swift`:
 ``` swift
 import NostrSDK
 
-// TODO
+let keys = Keys.generate();
+let client = Client(keys: keys);
 
+try client.addRelay(url: "wss://relay.damus.io");
+client.connect();
+
+let filter = Filter()
+    .pubkey(pubkey: keys.publicKey())
+    .since(timestamp: timestamp());
+let events = try client.getEventsOf(filters: [filter], timeout: nil);
+// handle events
+
+let event = try EventBuilder.newTextNote(content: "Hello ffrom Rust Nostr SDK Swift bindings", tags: []).toEvent(keys: keys);
+client.sendEvent(event: event);
 ```
 
 ## Information for Maintainers and Contributors
