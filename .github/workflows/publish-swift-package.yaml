@@ -19,7 +19,7 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/nostr
           path: build
-          ref: nostr-sdk-ffi-v${{ inputs.version }}
+          # ref: v${{ inputs.version }}
 
       - name: Checkout nostr-sdk-swift repo
         uses: actions/checkout@v3
