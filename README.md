@@ -19,7 +19,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.0.1"),
+.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.0.2"),
 ```
 
 ## 📄 Usage
@@ -35,11 +35,11 @@ client.connect();
 
 let filter = Filter()
     .pubkey(pubkey: keys.publicKey())
-    .since(timestamp: timestamp());
+    .since(timestamp: Timestamp.now());
 let events = try client.getEventsOf(filters: [filter], timeout: nil);
 // handle events
 
-let event = try EventBuilder.newTextNote(content: "Hello ffrom Rust Nostr SDK Swift bindings", tags: []).toEvent(keys: keys);
+let event = try EventBuilder.newTextNote(content: "Hello from Rust Nostr SDK Swift bindings", tags: []).toEvent(keys: keys);
 client.sendEvent(event: event);
 ```
 
