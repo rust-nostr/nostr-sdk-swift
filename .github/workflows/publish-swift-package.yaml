@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: dist
-          ssh-key: ${{ secrets.SWIFT_DEPLOY_SSH_KEY }}
+          ssh-key: ${{ secrets.NOSTR_SDK_SWIFT_DEPLOY_KEY }}
 
       - name: Build Swift bindings
         working-directory: build/bindings/nostr-sdk-ffi
