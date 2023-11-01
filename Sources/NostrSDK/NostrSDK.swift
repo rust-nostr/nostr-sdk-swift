@@ -19,13 +19,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_nostr_sdk_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_nostr_sdk_ffi_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_nostr_sdk_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_nostr_sdk_ffi_rustbuffer_free(self, $0) }
     }
 }
 
@@ -223,6 +223,7 @@ fileprivate enum UniffiInternalError: LocalizedError {
 fileprivate let CALL_SUCCESS: Int8 = 0
 fileprivate let CALL_ERROR: Int8 = 1
 fileprivate let CALL_PANIC: Int8 = 2
+fileprivate let CALL_CANCELLED: Int8 = 3
 
 fileprivate extension RustCallStatus {
     init() {
@@ -285,6 +286,9 @@ private func uniffiCheckCallStatus(
                 throw UniffiInternalError.rustPanic("Rust panic")
             }
 
+        case CALL_CANCELLED:
+                throw CancellationError()
+
         default:
             throw UniffiInternalError.unexpectedRustCallStatusCode
     }
@@ -329,6 +333,19 @@ fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
 
     public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
+    }
+}
+
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
     }
 }
 
@@ -434,7 +451,7 @@ public class ActiveSubscription: ActiveSubscriptionProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_activesubscription(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_activesubscription(pointer, $0) }
     }
 
     
@@ -447,7 +464,7 @@ public class ActiveSubscription: ActiveSubscriptionProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_activesubscription_filters(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_activesubscription_filters(self.pointer, $0
     )
 }
         )
@@ -458,7 +475,7 @@ public class ActiveSubscription: ActiveSubscriptionProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_activesubscription_id(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_activesubscription_id(self.pointer, $0
     )
 }
         )
@@ -506,7 +523,7 @@ public func FfiConverterTypeActiveSubscription_lower(_ value: ActiveSubscription
 
 
 public protocol ClientProtocol {
-    func addRelay(url: String, proxy: String?)  throws
+    func addRelay(url: String, proxy: String?)  throws -> Bool
     func clearAlreadySeenEvents()  
     func connect()  
     func connectRelay(url: String)  throws
@@ -547,20 +564,20 @@ public class Client: ClientProtocol {
     }
     public convenience init(keys: Keys)  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_client_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_client_new(
         FfiConverterTypeKeys.lower(keys),$0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_client(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_client(pointer, $0) }
     }
 
     
 
     public static func withOpts(keys: Keys, opts: Options)  -> Client {
         return Client(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_client_with_opts(
+    uniffi_nostr_sdk_ffi_fn_constructor_client_with_opts(
         FfiConverterTypeKeys.lower(keys),
         FfiConverterTypeOptions.lower(opts),$0)
 })
@@ -571,21 +588,23 @@ public class Client: ClientProtocol {
     
     
 
-    public func addRelay(url: String, proxy: String? = nil) throws {
-        try 
+    public func addRelay(url: String, proxy: String? = nil) throws -> Bool {
+        return try  FfiConverterBool.lift(
+            try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_add_relay(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_add_relay(self.pointer, 
         FfiConverterString.lower(url),
         FfiConverterOptionString.lower(proxy),$0
     )
 }
+        )
     }
 
     public func clearAlreadySeenEvents()  {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_clear_already_seen_events(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_clear_already_seen_events(self.pointer, $0
     )
 }
     }
@@ -594,7 +613,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_connect(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_connect(self.pointer, $0
     )
 }
     }
@@ -602,7 +621,7 @@ public class Client: ClientProtocol {
     public func connectRelay(url: String) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_connect_relay(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_connect_relay(self.pointer, 
         FfiConverterString.lower(url),$0
     )
 }
@@ -611,7 +630,7 @@ public class Client: ClientProtocol {
     public func disconnect() throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_disconnect(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_disconnect(self.pointer, $0
     )
 }
     }
@@ -619,7 +638,7 @@ public class Client: ClientProtocol {
     public func disconnectRelay(url: String) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_disconnect_relay(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_disconnect_relay(self.pointer, 
         FfiConverterString.lower(url),$0
     )
 }
@@ -629,7 +648,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeEventId.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_file_metadata(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_file_metadata(self.pointer, 
         FfiConverterString.lower(description),
         FfiConverterTypeFileMetadata.lower(metadata),$0
     )
@@ -641,7 +660,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterSequenceTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_get_events_of(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_get_events_of(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterOptionDuration.lower(timeout),$0
     )
@@ -653,7 +672,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_handle_notifications(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_handle_notifications(self.pointer, 
         FfiConverterCallbackInterfaceHandleNotification.lower(handler),$0
     )
 }
@@ -664,7 +683,7 @@ public class Client: ClientProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_is_running(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_is_running(self.pointer, $0
     )
 }
         )
@@ -675,7 +694,7 @@ public class Client: ClientProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_keys(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_keys(self.pointer, $0
     )
 }
         )
@@ -685,7 +704,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeRelay.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_relay(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_relay(self.pointer, 
         FfiConverterString.lower(url),$0
     )
 }
@@ -697,7 +716,7 @@ public class Client: ClientProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_relays(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_relays(self.pointer, $0
     )
 }
         )
@@ -706,7 +725,7 @@ public class Client: ClientProtocol {
     public func removeRelay(url: String) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_remove_relay(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_remove_relay(self.pointer, 
         FfiConverterString.lower(url),$0
     )
 }
@@ -716,7 +735,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_req_events_of(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_req_events_of(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterOptionDuration.lower(timeout),$0
     )
@@ -727,7 +746,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeEventId.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_send_direct_msg(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_send_direct_msg(self.pointer, 
         FfiConverterTypePublicKey.lower(receiver),
         FfiConverterString.lower(msg),
         FfiConverterOptionTypeEventId.lower(reply),$0
@@ -740,7 +759,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeEventId.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_send_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_send_event(self.pointer, 
         FfiConverterTypeEvent.lower(event),$0
     )
 }
@@ -751,7 +770,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeEventId.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_send_event_to(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_send_event_to(self.pointer, 
         FfiConverterString.lower(url),
         FfiConverterTypeEvent.lower(event),$0
     )
@@ -762,7 +781,7 @@ public class Client: ClientProtocol {
     public func sendMsg(msg: ClientMessage) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_send_msg(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_send_msg(self.pointer, 
         FfiConverterTypeClientMessage.lower(msg),$0
     )
 }
@@ -771,7 +790,7 @@ public class Client: ClientProtocol {
     public func sendMsgTo(url: String, msg: ClientMessage) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_send_msg_to(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_send_msg_to(self.pointer, 
         FfiConverterString.lower(url),
         FfiConverterTypeClientMessage.lower(msg),$0
     )
@@ -782,7 +801,7 @@ public class Client: ClientProtocol {
         return try  FfiConverterTypeEventId.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_set_metadata(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_set_metadata(self.pointer, 
         FfiConverterTypeMetadata.lower(metadata),$0
     )
 }
@@ -792,7 +811,7 @@ public class Client: ClientProtocol {
     public func shutdown() throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_shutdown(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_shutdown(self.pointer, $0
     )
 }
     }
@@ -801,7 +820,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_start(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_start(self.pointer, $0
     )
 }
     }
@@ -809,7 +828,7 @@ public class Client: ClientProtocol {
     public func stop() throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_client_stop(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_stop(self.pointer, $0
     )
 }
     }
@@ -818,7 +837,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_subscribe(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_subscribe(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),$0
     )
 }
@@ -828,7 +847,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_unsubscribe(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe(self.pointer, $0
     )
 }
     }
@@ -837,7 +856,7 @@ public class Client: ClientProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_client_update_difficulty(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_client_update_difficulty(self.pointer, 
         FfiConverterUInt8.lower(difficulty),$0
     )
 }
@@ -902,7 +921,7 @@ public class Contact: ContactProtocol {
     }
     public convenience init(pk: PublicKey, relayUrl: String? = nil, alias: String? = nil)  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_contact_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_contact_new(
         FfiConverterTypePublicKey.lower(pk),
         FfiConverterOptionString.lower(relayUrl),
         FfiConverterOptionString.lower(alias),$0)
@@ -910,7 +929,7 @@ public class Contact: ContactProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_contact(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_contact(pointer, $0) }
     }
 
     
@@ -923,7 +942,7 @@ public class Contact: ContactProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_contact_alias(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_contact_alias(self.pointer, $0
     )
 }
         )
@@ -934,7 +953,7 @@ public class Contact: ContactProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_contact_public_key(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_contact_public_key(self.pointer, $0
     )
 }
         )
@@ -945,7 +964,7 @@ public class Contact: ContactProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_contact_relay_url(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_contact_relay_url(self.pointer, $0
     )
 }
         )
@@ -1016,14 +1035,14 @@ public class Event: EventProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_event(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_event(pointer, $0) }
     }
 
     
 
     public static func fromJson(json: String) throws -> Event {
         return Event(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_event_from_json(
+    uniffi_nostr_sdk_ffi_fn_constructor_event_from_json(
         FfiConverterString.lower(json),$0)
 })
     }
@@ -1038,7 +1057,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_as_json(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_as_json(self.pointer, $0
     )
 }
         )
@@ -1049,7 +1068,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_content(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_content(self.pointer, $0
     )
 }
         )
@@ -1060,7 +1079,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_created_at(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_created_at(self.pointer, $0
     )
 }
         )
@@ -1071,7 +1090,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_id(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_id(self.pointer, $0
     )
 }
         )
@@ -1082,7 +1101,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_kind(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_kind(self.pointer, $0
     )
 }
         )
@@ -1093,7 +1112,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_pubkey(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_pubkey(self.pointer, $0
     )
 }
         )
@@ -1104,7 +1123,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_signature(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_signature(self.pointer, $0
     )
 }
         )
@@ -1115,7 +1134,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_tags(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_tags(self.pointer, $0
     )
 }
         )
@@ -1126,7 +1145,7 @@ public class Event: EventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_event_verify(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_event_verify(self.pointer, $0
     )
 }
         )
@@ -1192,7 +1211,7 @@ public class EventBuilder: EventBuilderProtocol {
     }
     public convenience init(kind: UInt64, content: String, tags: [Tag]) throws {
         self.init(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new(
         FfiConverterUInt64.lower(kind),
         FfiConverterString.lower(content),
         FfiConverterSequenceTypeTag.lower(tags),$0)
@@ -1200,14 +1219,14 @@ public class EventBuilder: EventBuilderProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_eventbuilder(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_eventbuilder(pointer, $0) }
     }
 
     
 
     public static func addRecommendedRelay(url: String) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_add_recommended_relay(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_add_recommended_relay(
         FfiConverterString.lower(url),$0)
 })
     }
@@ -1216,7 +1235,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func auth(challenge: String, relayUrl: String) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_auth(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_auth(
         FfiConverterString.lower(challenge),
         FfiConverterString.lower(relayUrl),$0)
 })
@@ -1226,7 +1245,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func delete(ids: [EventId], reason: String? = nil)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_delete(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_delete(
         FfiConverterSequenceTypeEventId.lower(ids),
         FfiConverterOptionString.lower(reason),$0)
 })
@@ -1236,7 +1255,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func fileMetadata(description: String, metadata: FileMetadata)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_file_metadata(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_file_metadata(
         FfiConverterString.lower(description),
         FfiConverterTypeFileMetadata.lower(metadata),$0)
 })
@@ -1246,7 +1265,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func hideChannelMsg(messageId: EventId, reason: String?)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_hide_channel_msg(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_hide_channel_msg(
         FfiConverterTypeEventId.lower(messageId),
         FfiConverterOptionString.lower(reason),$0)
 })
@@ -1256,7 +1275,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func longFormTextNote(content: String, tags: [Tag]) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_long_form_text_note(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_long_form_text_note(
         FfiConverterString.lower(content),
         FfiConverterSequenceTypeTag.lower(tags),$0)
 })
@@ -1266,7 +1285,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func muteChannelUser(publicKey: PublicKey, reason: String?)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_mute_channel_user(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_mute_channel_user(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterOptionString.lower(reason),$0)
 })
@@ -1276,7 +1295,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newChannel(metadata: Metadata)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_channel(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_channel(
         FfiConverterTypeMetadata.lower(metadata),$0)
 })
     }
@@ -1285,7 +1304,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newChannelMsg(channelId: String, relayUrl: String, content: String) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_channel_msg(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_channel_msg(
         FfiConverterString.lower(channelId),
         FfiConverterString.lower(relayUrl),
         FfiConverterString.lower(content),$0)
@@ -1296,7 +1315,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newEncryptedDirectMsg(senderKeys: Keys, receiverPubkey: PublicKey, content: String, replyTo: EventId?) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_encrypted_direct_msg(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_encrypted_direct_msg(
         FfiConverterTypeKeys.lower(senderKeys),
         FfiConverterTypePublicKey.lower(receiverPubkey),
         FfiConverterString.lower(content),
@@ -1308,7 +1327,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newReaction(eventId: EventId, publicKey: PublicKey, content: String)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_reaction(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_reaction(
         FfiConverterTypeEventId.lower(eventId),
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterString.lower(content),$0)
@@ -1319,7 +1338,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newTextNote(content: String, tags: [Tag]) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_text_note(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_text_note(
         FfiConverterString.lower(content),
         FfiConverterSequenceTypeTag.lower(tags),$0)
 })
@@ -1329,7 +1348,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newZapReceipt(bolt11: String, preimage: String?, zapRequest: Event)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_zap_receipt(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_zap_receipt(
         FfiConverterString.lower(bolt11),
         FfiConverterOptionString.lower(preimage),
         FfiConverterTypeEvent.lower(zapRequest),$0)
@@ -1340,7 +1359,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func newZapRequest(data: ZapRequestData)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_new_zap_request(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new_zap_request(
         FfiConverterTypeZapRequestData.lower(data),$0)
 })
     }
@@ -1349,7 +1368,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func report(tags: [Tag], content: String)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_report(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_report(
         FfiConverterSequenceTypeTag.lower(tags),
         FfiConverterString.lower(content),$0)
 })
@@ -1359,7 +1378,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func repost(eventId: EventId, publicKey: PublicKey)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_repost(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_repost(
         FfiConverterTypeEventId.lower(eventId),
         FfiConverterTypePublicKey.lower(publicKey),$0)
 })
@@ -1369,7 +1388,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func setChannelMetadata(channelId: String, relayUrl: String?, metadata: Metadata) throws -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_set_channel_metadata(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_set_channel_metadata(
         FfiConverterString.lower(channelId),
         FfiConverterOptionString.lower(relayUrl),
         FfiConverterTypeMetadata.lower(metadata),$0)
@@ -1380,7 +1399,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func setContactList(list: [Contact])  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_set_contact_list(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_set_contact_list(
         FfiConverterSequenceTypeContact.lower(list),$0)
 })
     }
@@ -1389,7 +1408,7 @@ public class EventBuilder: EventBuilderProtocol {
 
     public static func setMetadata(metadata: Metadata)  -> EventBuilder {
         return EventBuilder(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_eventbuilder_set_metadata(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_set_metadata(
         FfiConverterTypeMetadata.lower(metadata),$0)
 })
     }
@@ -1403,7 +1422,7 @@ public class EventBuilder: EventBuilderProtocol {
         return try  FfiConverterTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_eventbuilder_to_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_to_event(self.pointer, 
         FfiConverterTypeKeys.lower(keys),$0
     )
 }
@@ -1414,7 +1433,7 @@ public class EventBuilder: EventBuilderProtocol {
         return try  FfiConverterTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_eventbuilder_to_pow_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_to_pow_event(self.pointer, 
         FfiConverterTypeKeys.lower(keys),
         FfiConverterUInt8.lower(difficulty),$0
     )
@@ -1427,7 +1446,7 @@ public class EventBuilder: EventBuilderProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_eventbuilder_to_unsigned_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_to_unsigned_event(self.pointer, 
         FfiConverterTypePublicKey.lower(publicKey),$0
     )
 }
@@ -1439,7 +1458,7 @@ public class EventBuilder: EventBuilderProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_eventbuilder_to_unsigned_pow_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_to_unsigned_pow_event(self.pointer, 
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterUInt8.lower(difficulty),$0
     )
@@ -1507,7 +1526,7 @@ public class EventId: EventIdProtocol {
     }
     public convenience init(pubkey: PublicKey, createdAt: Timestamp, kind: UInt64, tags: [[String]], content: String) throws {
         self.init(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventid_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventid_new(
         FfiConverterTypePublicKey.lower(pubkey),
         FfiConverterTypeTimestamp.lower(createdAt),
         FfiConverterUInt64.lower(kind),
@@ -1517,14 +1536,14 @@ public class EventId: EventIdProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_eventid(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_eventid(pointer, $0) }
     }
 
     
 
     public static func fromBech32(id: String) throws -> EventId {
         return EventId(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventid_from_bech32(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventid_from_bech32(
         FfiConverterString.lower(id),$0)
 })
     }
@@ -1533,7 +1552,7 @@ public class EventId: EventIdProtocol {
 
     public static func fromBytes(bytes: [UInt8]) throws -> EventId {
         return EventId(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventid_from_bytes(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventid_from_bytes(
         FfiConverterSequenceUInt8.lower(bytes),$0)
 })
     }
@@ -1542,7 +1561,7 @@ public class EventId: EventIdProtocol {
 
     public static func fromHex(hex: String) throws -> EventId {
         return EventId(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventid_from_hex(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventid_from_hex(
         FfiConverterString.lower(hex),$0)
 })
     }
@@ -1551,7 +1570,7 @@ public class EventId: EventIdProtocol {
 
     public static func fromNostrUri(uri: String) throws -> EventId {
         return EventId(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_eventid_from_nostr_uri(
+    uniffi_nostr_sdk_ffi_fn_constructor_eventid_from_nostr_uri(
         FfiConverterString.lower(uri),$0)
 })
     }
@@ -1566,7 +1585,7 @@ public class EventId: EventIdProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_eventid_as_bytes(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_eventid_as_bytes(self.pointer, $0
     )
 }
         )
@@ -1576,7 +1595,7 @@ public class EventId: EventIdProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_eventid_to_bech32(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_eventid_to_bech32(self.pointer, $0
     )
 }
         )
@@ -1587,7 +1606,7 @@ public class EventId: EventIdProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_eventid_to_hex(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_eventid_to_hex(self.pointer, $0
     )
 }
         )
@@ -1597,7 +1616,7 @@ public class EventId: EventIdProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_eventid_to_nostr_uri(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_eventid_to_nostr_uri(self.pointer, $0
     )
 }
         )
@@ -1664,7 +1683,7 @@ public class FileMetadata: FileMetadataProtocol {
     }
     public convenience init(url: String, mimeType: String, hash: String) throws {
         self.init(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_filemetadata_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_filemetadata_new(
         FfiConverterString.lower(url),
         FfiConverterString.lower(mimeType),
         FfiConverterString.lower(hash),$0)
@@ -1672,7 +1691,7 @@ public class FileMetadata: FileMetadataProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_filemetadata(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_filemetadata(pointer, $0) }
     }
 
     
@@ -1685,7 +1704,7 @@ public class FileMetadata: FileMetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filemetadata_aes_256_gcm(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filemetadata_aes_256_gcm(self.pointer, 
         FfiConverterString.lower(key),
         FfiConverterString.lower(iv),$0
     )
@@ -1698,7 +1717,7 @@ public class FileMetadata: FileMetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filemetadata_blurhash(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filemetadata_blurhash(self.pointer, 
         FfiConverterString.lower(blurhash),$0
     )
 }
@@ -1710,7 +1729,7 @@ public class FileMetadata: FileMetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filemetadata_dimensions(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filemetadata_dimensions(self.pointer, 
         FfiConverterTypeImageDimensions.lower(dim),$0
     )
 }
@@ -1722,7 +1741,7 @@ public class FileMetadata: FileMetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filemetadata_magnet(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filemetadata_magnet(self.pointer, 
         FfiConverterString.lower(magnet),$0
     )
 }
@@ -1734,7 +1753,7 @@ public class FileMetadata: FileMetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filemetadata_size(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filemetadata_size(self.pointer, 
         FfiConverterUInt64.lower(size),$0
     )
 }
@@ -1784,17 +1803,18 @@ public func FfiConverterTypeFileMetadata_lower(_ value: FileMetadata) -> UnsafeM
 
 public protocol FilterProtocol {
     func asJson()   -> String
-    func author(author: String)   -> Filter
-    func authors(authors: [String])   -> Filter
+    func author(author: PublicKey)   -> Filter
+    func authors(authors: [PublicKey])   -> Filter
     func customTag(tag: Alphabet, content: [String])   -> Filter
     func event(eventId: EventId)   -> Filter
     func events(ids: [EventId])   -> Filter
-    func id(id: String)   -> Filter
+    func id(id: EventId)   -> Filter
     func identifier(identifier: String)   -> Filter
-    func ids(ids: [String])   -> Filter
+    func ids(ids: [EventId])   -> Filter
     func kind(kind: UInt64)   -> Filter
     func kinds(kinds: [UInt64])   -> Filter
     func limit(limit: UInt64)   -> Filter
+    func matchEvent(event: Event)   -> Bool
     func pubkey(pubkey: PublicKey)   -> Filter
     func pubkeys(pubkeys: [PublicKey])   -> Filter
     func search(text: String)   -> Filter
@@ -1814,19 +1834,19 @@ public class Filter: FilterProtocol {
     }
     public convenience init()  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_filter_new($0)
+    uniffi_nostr_sdk_ffi_fn_constructor_filter_new($0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_filter(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_filter(pointer, $0) }
     }
 
     
 
     public static func fromJson(json: String) throws -> Filter {
         return Filter(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_filter_from_json(
+    uniffi_nostr_sdk_ffi_fn_constructor_filter_from_json(
         FfiConverterString.lower(json),$0)
 })
     }
@@ -1841,31 +1861,31 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_as_json(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_filter_as_json(self.pointer, $0
     )
 }
         )
     }
 
-    public func author(author: String)  -> Filter {
+    public func author(author: PublicKey)  -> Filter {
         return try!  FfiConverterTypeFilter.lift(
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_author(self.pointer, 
-        FfiConverterString.lower(author),$0
+    uniffi_nostr_sdk_ffi_fn_method_filter_author(self.pointer, 
+        FfiConverterTypePublicKey.lower(author),$0
     )
 }
         )
     }
 
-    public func authors(authors: [String])  -> Filter {
+    public func authors(authors: [PublicKey])  -> Filter {
         return try!  FfiConverterTypeFilter.lift(
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_authors(self.pointer, 
-        FfiConverterSequenceString.lower(authors),$0
+    uniffi_nostr_sdk_ffi_fn_method_filter_authors(self.pointer, 
+        FfiConverterSequenceTypePublicKey.lower(authors),$0
     )
 }
         )
@@ -1876,7 +1896,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_custom_tag(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_custom_tag(self.pointer, 
         FfiConverterTypeAlphabet.lower(tag),
         FfiConverterSequenceString.lower(content),$0
     )
@@ -1889,7 +1909,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_event(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_event(self.pointer, 
         FfiConverterTypeEventId.lower(eventId),$0
     )
 }
@@ -1901,20 +1921,20 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_events(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_events(self.pointer, 
         FfiConverterSequenceTypeEventId.lower(ids),$0
     )
 }
         )
     }
 
-    public func id(id: String)  -> Filter {
+    public func id(id: EventId)  -> Filter {
         return try!  FfiConverterTypeFilter.lift(
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_id(self.pointer, 
-        FfiConverterString.lower(id),$0
+    uniffi_nostr_sdk_ffi_fn_method_filter_id(self.pointer, 
+        FfiConverterTypeEventId.lower(id),$0
     )
 }
         )
@@ -1925,20 +1945,20 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_identifier(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_identifier(self.pointer, 
         FfiConverterString.lower(identifier),$0
     )
 }
         )
     }
 
-    public func ids(ids: [String])  -> Filter {
+    public func ids(ids: [EventId])  -> Filter {
         return try!  FfiConverterTypeFilter.lift(
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_ids(self.pointer, 
-        FfiConverterSequenceString.lower(ids),$0
+    uniffi_nostr_sdk_ffi_fn_method_filter_ids(self.pointer, 
+        FfiConverterSequenceTypeEventId.lower(ids),$0
     )
 }
         )
@@ -1949,7 +1969,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_kind(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_kind(self.pointer, 
         FfiConverterUInt64.lower(kind),$0
     )
 }
@@ -1961,7 +1981,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_kinds(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_kinds(self.pointer, 
         FfiConverterSequenceUInt64.lower(kinds),$0
     )
 }
@@ -1973,8 +1993,20 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_limit(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_limit(self.pointer, 
         FfiConverterUInt64.lower(limit),$0
+    )
+}
+        )
+    }
+
+    public func matchEvent(event: Event)  -> Bool {
+        return try!  FfiConverterBool.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_filter_match_event(self.pointer, 
+        FfiConverterTypeEvent.lower(event),$0
     )
 }
         )
@@ -1985,7 +2017,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_pubkey(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_pubkey(self.pointer, 
         FfiConverterTypePublicKey.lower(pubkey),$0
     )
 }
@@ -1997,7 +2029,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_pubkeys(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_pubkeys(self.pointer, 
         FfiConverterSequenceTypePublicKey.lower(pubkeys),$0
     )
 }
@@ -2009,7 +2041,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_search(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_search(self.pointer, 
         FfiConverterString.lower(text),$0
     )
 }
@@ -2021,7 +2053,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_since(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_since(self.pointer, 
         FfiConverterTypeTimestamp.lower(timestamp),$0
     )
 }
@@ -2033,7 +2065,7 @@ public class Filter: FilterProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_filter_until(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_filter_until(self.pointer, 
         FfiConverterTypeTimestamp.lower(timestamp),$0
     )
 }
@@ -2098,14 +2130,14 @@ public class ImageDimensions: ImageDimensionsProtocol {
     }
     public convenience init(width: UInt64, height: UInt64)  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_imagedimensions_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_imagedimensions_new(
         FfiConverterUInt64.lower(width),
         FfiConverterUInt64.lower(height),$0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_imagedimensions(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_imagedimensions(pointer, $0) }
     }
 
     
@@ -2118,7 +2150,7 @@ public class ImageDimensions: ImageDimensionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_imagedimensions_height(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_imagedimensions_height(self.pointer, $0
     )
 }
         )
@@ -2129,7 +2161,7 @@ public class ImageDimensions: ImageDimensionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_imagedimensions_width(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_imagedimensions_width(self.pointer, $0
     )
 }
         )
@@ -2193,20 +2225,20 @@ public class Keys: KeysProtocol {
     }
     public convenience init(sk: SecretKey)  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_keys_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_new(
         FfiConverterTypeSecretKey.lower(sk),$0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_keys(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_keys(pointer, $0) }
     }
 
     
 
     public static func fromMnemonic(mnemonic: String, passphrase: String? = nil) throws -> Keys {
         return Keys(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_keys_from_mnemonic(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_from_mnemonic(
         FfiConverterString.lower(mnemonic),
         FfiConverterOptionString.lower(passphrase),$0)
 })
@@ -2216,7 +2248,7 @@ public class Keys: KeysProtocol {
 
     public static func fromPkStr(pk: String) throws -> Keys {
         return Keys(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_keys_from_pk_str(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_from_pk_str(
         FfiConverterString.lower(pk),$0)
 })
     }
@@ -2225,7 +2257,7 @@ public class Keys: KeysProtocol {
 
     public static func fromPublicKey(pk: PublicKey)  -> Keys {
         return Keys(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_keys_from_public_key(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_from_public_key(
         FfiConverterTypePublicKey.lower(pk),$0)
 })
     }
@@ -2234,7 +2266,7 @@ public class Keys: KeysProtocol {
 
     public static func fromSkStr(sk: String) throws -> Keys {
         return Keys(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_keys_from_sk_str(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_from_sk_str(
         FfiConverterString.lower(sk),$0)
 })
     }
@@ -2243,7 +2275,7 @@ public class Keys: KeysProtocol {
 
     public static func generate()  -> Keys {
         return Keys(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_keys_generate($0)
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_generate($0)
 })
     }
 
@@ -2251,7 +2283,7 @@ public class Keys: KeysProtocol {
 
     public static func vanity(prefixes: [String], bech32: Bool, numCores: UInt8) throws -> Keys {
         return Keys(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_keys_vanity(
+    uniffi_nostr_sdk_ffi_fn_constructor_keys_vanity(
         FfiConverterSequenceString.lower(prefixes),
         FfiConverterBool.lower(bech32),
         FfiConverterUInt8.lower(numCores),$0)
@@ -2268,7 +2300,7 @@ public class Keys: KeysProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_keys_public_key(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_keys_public_key(self.pointer, $0
     )
 }
         )
@@ -2278,7 +2310,7 @@ public class Keys: KeysProtocol {
         return try  FfiConverterTypeSecretKey.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_keys_secret_key(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_keys_secret_key(self.pointer, $0
     )
 }
         )
@@ -2329,6 +2361,7 @@ public protocol MetadataProtocol {
     func asJson()   -> String
     func getAbout()   -> String?
     func getBanner()   -> String?
+    func getCustomField(key: String)   -> String?
     func getDisplayName()   -> String?
     func getLud06()   -> String?
     func getLud16()   -> String?
@@ -2338,6 +2371,7 @@ public protocol MetadataProtocol {
     func getWebsite()   -> String?
     func setAbout(about: String)   -> Metadata
     func setBanner(banner: String)  throws -> Metadata
+    func setCustomField(key: String, value: String)   -> Metadata
     func setDisplayName(displayName: String)   -> Metadata
     func setLud06(lud06: String)   -> Metadata
     func setLud16(lud16: String)   -> Metadata
@@ -2359,19 +2393,19 @@ public class Metadata: MetadataProtocol {
     }
     public convenience init()  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_metadata_new($0)
+    uniffi_nostr_sdk_ffi_fn_constructor_metadata_new($0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_metadata(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_metadata(pointer, $0) }
     }
 
     
 
     public static func fromJson(json: String) throws -> Metadata {
         return Metadata(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_metadata_from_json(
+    uniffi_nostr_sdk_ffi_fn_constructor_metadata_from_json(
         FfiConverterString.lower(json),$0)
 })
     }
@@ -2386,7 +2420,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_as_json(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_as_json(self.pointer, $0
     )
 }
         )
@@ -2397,7 +2431,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_about(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_about(self.pointer, $0
     )
 }
         )
@@ -2408,7 +2442,19 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_banner(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_banner(self.pointer, $0
+    )
+}
+        )
+    }
+
+    public func getCustomField(key: String)  -> String? {
+        return try!  FfiConverterOptionString.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_custom_field(self.pointer, 
+        FfiConverterString.lower(key),$0
     )
 }
         )
@@ -2419,7 +2465,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_display_name(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_display_name(self.pointer, $0
     )
 }
         )
@@ -2430,7 +2476,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_lud06(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_lud06(self.pointer, $0
     )
 }
         )
@@ -2441,7 +2487,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_lud16(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_lud16(self.pointer, $0
     )
 }
         )
@@ -2452,7 +2498,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_name(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_name(self.pointer, $0
     )
 }
         )
@@ -2463,7 +2509,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_nip05(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_nip05(self.pointer, $0
     )
 }
         )
@@ -2474,7 +2520,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_picture(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_picture(self.pointer, $0
     )
 }
         )
@@ -2485,7 +2531,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_get_website(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_metadata_get_website(self.pointer, $0
     )
 }
         )
@@ -2496,7 +2542,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_about(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_about(self.pointer, 
         FfiConverterString.lower(about),$0
     )
 }
@@ -2507,8 +2553,21 @@ public class Metadata: MetadataProtocol {
         return try  FfiConverterTypeMetadata.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_metadata_set_banner(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_banner(self.pointer, 
         FfiConverterString.lower(banner),$0
+    )
+}
+        )
+    }
+
+    public func setCustomField(key: String, value: String)  -> Metadata {
+        return try!  FfiConverterTypeMetadata.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_custom_field(self.pointer, 
+        FfiConverterString.lower(key),
+        FfiConverterString.lower(value),$0
     )
 }
         )
@@ -2519,7 +2578,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_display_name(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_display_name(self.pointer, 
         FfiConverterString.lower(displayName),$0
     )
 }
@@ -2531,7 +2590,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_lud06(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_lud06(self.pointer, 
         FfiConverterString.lower(lud06),$0
     )
 }
@@ -2543,7 +2602,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_lud16(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_lud16(self.pointer, 
         FfiConverterString.lower(lud16),$0
     )
 }
@@ -2555,7 +2614,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_name(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_name(self.pointer, 
         FfiConverterString.lower(name),$0
     )
 }
@@ -2567,7 +2626,7 @@ public class Metadata: MetadataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_metadata_set_nip05(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_nip05(self.pointer, 
         FfiConverterString.lower(nip05),$0
     )
 }
@@ -2578,7 +2637,7 @@ public class Metadata: MetadataProtocol {
         return try  FfiConverterTypeMetadata.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_metadata_set_picture(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_picture(self.pointer, 
         FfiConverterString.lower(picture),$0
     )
 }
@@ -2589,7 +2648,7 @@ public class Metadata: MetadataProtocol {
         return try  FfiConverterTypeMetadata.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_metadata_set_website(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_metadata_set_website(self.pointer, 
         FfiConverterString.lower(website),$0
     )
 }
@@ -2657,14 +2716,14 @@ public class NostrConnectUri: NostrConnectURIProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_nostrconnecturi(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_nostrconnecturi(pointer, $0) }
     }
 
     
 
     public static func fromString(uri: String) throws -> NostrConnectUri {
         return NostrConnectUri(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_nostrconnecturi_from_string(
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrconnecturi_from_string(
         FfiConverterString.lower(uri),$0)
 })
     }
@@ -2679,7 +2738,7 @@ public class NostrConnectUri: NostrConnectURIProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_nostrconnecturi_description(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_description(self.pointer, $0
     )
 }
         )
@@ -2690,7 +2749,7 @@ public class NostrConnectUri: NostrConnectURIProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_nostrconnecturi_name(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_name(self.pointer, $0
     )
 }
         )
@@ -2701,7 +2760,7 @@ public class NostrConnectUri: NostrConnectURIProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_nostrconnecturi_public_key(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_public_key(self.pointer, $0
     )
 }
         )
@@ -2712,7 +2771,7 @@ public class NostrConnectUri: NostrConnectURIProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_nostrconnecturi_relay_url(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_relay_url(self.pointer, $0
     )
 }
         )
@@ -2723,7 +2782,7 @@ public class NostrConnectUri: NostrConnectURIProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_nostrconnecturi_url(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_url(self.pointer, $0
     )
 }
         )
@@ -2794,12 +2853,12 @@ public class Options: OptionsProtocol {
     }
     public convenience init()  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_options_new($0)
+    uniffi_nostr_sdk_ffi_fn_constructor_options_new($0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_options(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_options(pointer, $0) }
     }
 
     
@@ -2812,7 +2871,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_difficulty(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_difficulty(self.pointer, 
         FfiConverterUInt8.lower(difficulty),$0
     )
 }
@@ -2824,7 +2883,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_nip46_timeout(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_nip46_timeout(self.pointer, 
         FfiConverterOptionDuration.lower(nip46Timeout),$0
     )
 }
@@ -2836,7 +2895,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_req_filters_chunk_size(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_req_filters_chunk_size(self.pointer, 
         FfiConverterUInt8.lower(reqFiltersChunkSize),$0
     )
 }
@@ -2848,7 +2907,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_send_timeout(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_send_timeout(self.pointer, 
         FfiConverterOptionDuration.lower(sendTimeout),$0
     )
 }
@@ -2860,7 +2919,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_skip_disconnected_relays(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_skip_disconnected_relays(self.pointer, 
         FfiConverterBool.lower(skip),$0
     )
 }
@@ -2872,7 +2931,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_timeout(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_timeout(self.pointer, 
         FfiConverterDuration.lower(timeout),$0
     )
 }
@@ -2884,7 +2943,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_wait_for_connection(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_wait_for_connection(self.pointer, 
         FfiConverterBool.lower(wait),$0
     )
 }
@@ -2896,7 +2955,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_wait_for_send(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_wait_for_send(self.pointer, 
         FfiConverterBool.lower(wait),$0
     )
 }
@@ -2908,7 +2967,7 @@ public class Options: OptionsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_options_wait_for_subscription(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_options_wait_for_subscription(self.pointer, 
         FfiConverterBool.lower(wait),$0
     )
 }
@@ -2975,21 +3034,21 @@ public class Profile: ProfileProtocol {
     }
     public convenience init(publicKey: PublicKey, relays: [String])  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_profile_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_profile_new(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterSequenceString.lower(relays),$0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_profile(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_profile(pointer, $0) }
     }
 
     
 
     public static func fromBech32(bech32: String) throws -> Profile {
         return Profile(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_profile_from_bech32(
+    uniffi_nostr_sdk_ffi_fn_constructor_profile_from_bech32(
         FfiConverterString.lower(bech32),$0)
 })
     }
@@ -2998,7 +3057,7 @@ public class Profile: ProfileProtocol {
 
     public static func fromNostrUri(uri: String) throws -> Profile {
         return Profile(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_profile_from_nostr_uri(
+    uniffi_nostr_sdk_ffi_fn_constructor_profile_from_nostr_uri(
         FfiConverterString.lower(uri),$0)
 })
     }
@@ -3013,7 +3072,7 @@ public class Profile: ProfileProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_profile_public_key(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_profile_public_key(self.pointer, $0
     )
 }
         )
@@ -3024,7 +3083,7 @@ public class Profile: ProfileProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_profile_relays(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_profile_relays(self.pointer, $0
     )
 }
         )
@@ -3034,7 +3093,7 @@ public class Profile: ProfileProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_profile_to_bech32(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_profile_to_bech32(self.pointer, $0
     )
 }
         )
@@ -3044,7 +3103,7 @@ public class Profile: ProfileProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_profile_to_nostr_uri(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_profile_to_nostr_uri(self.pointer, $0
     )
 }
         )
@@ -3109,14 +3168,14 @@ public class PublicKey: PublicKeyProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_publickey(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_publickey(pointer, $0) }
     }
 
     
 
     public static func fromBech32(pk: String) throws -> PublicKey {
         return PublicKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_publickey_from_bech32(
+    uniffi_nostr_sdk_ffi_fn_constructor_publickey_from_bech32(
         FfiConverterString.lower(pk),$0)
 })
     }
@@ -3125,7 +3184,7 @@ public class PublicKey: PublicKeyProtocol {
 
     public static func fromBytes(pk: [UInt8]) throws -> PublicKey {
         return PublicKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_publickey_from_bytes(
+    uniffi_nostr_sdk_ffi_fn_constructor_publickey_from_bytes(
         FfiConverterSequenceUInt8.lower(pk),$0)
 })
     }
@@ -3134,7 +3193,7 @@ public class PublicKey: PublicKeyProtocol {
 
     public static func fromHex(hex: String) throws -> PublicKey {
         return PublicKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_publickey_from_hex(
+    uniffi_nostr_sdk_ffi_fn_constructor_publickey_from_hex(
         FfiConverterString.lower(hex),$0)
 })
     }
@@ -3143,7 +3202,7 @@ public class PublicKey: PublicKeyProtocol {
 
     public static func fromNostrUri(uri: String) throws -> PublicKey {
         return PublicKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_publickey_from_nostr_uri(
+    uniffi_nostr_sdk_ffi_fn_constructor_publickey_from_nostr_uri(
         FfiConverterString.lower(uri),$0)
 })
     }
@@ -3157,7 +3216,7 @@ public class PublicKey: PublicKeyProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_publickey_to_bech32(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_publickey_to_bech32(self.pointer, $0
     )
 }
         )
@@ -3168,7 +3227,7 @@ public class PublicKey: PublicKeyProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_publickey_to_hex(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_publickey_to_hex(self.pointer, $0
     )
 }
         )
@@ -3178,7 +3237,7 @@ public class PublicKey: PublicKeyProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_publickey_to_nostr_uri(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_publickey_to_nostr_uri(self.pointer, $0
     )
 }
         )
@@ -3257,7 +3316,7 @@ public class Relay: RelayProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_relay(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relay(pointer, $0) }
     }
 
     
@@ -3269,7 +3328,7 @@ public class Relay: RelayProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_connect(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_connect(self.pointer, 
         FfiConverterBool.lower(waitForConnection),$0
     )
 }
@@ -3280,7 +3339,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_document(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_document(self.pointer, $0
     )
 }
         )
@@ -3290,7 +3349,7 @@ public class Relay: RelayProtocol {
         return try  FfiConverterSequenceTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_get_events_of(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_get_events_of(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterDuration.lower(timeout),$0
     )
@@ -3303,7 +3362,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_is_connected(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_is_connected(self.pointer, $0
     )
 }
         )
@@ -3314,7 +3373,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_proxy(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_proxy(self.pointer, $0
     )
 }
         )
@@ -3325,7 +3384,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_queue(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_queue(self.pointer, $0
     )
 }
         )
@@ -3335,7 +3394,7 @@ public class Relay: RelayProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_req_events_of(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_req_events_of(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterDuration.lower(timeout),$0
     )
@@ -3345,7 +3404,7 @@ public class Relay: RelayProtocol {
     public func sendMsg(msg: ClientMessage, wait: TimeInterval?) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_send_msg(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_send_msg(self.pointer, 
         FfiConverterTypeClientMessage.lower(msg),
         FfiConverterOptionDuration.lower(wait),$0
     )
@@ -3357,7 +3416,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_stats(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_stats(self.pointer, $0
     )
 }
         )
@@ -3368,7 +3427,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_status(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_status(self.pointer, $0
     )
 }
         )
@@ -3377,7 +3436,7 @@ public class Relay: RelayProtocol {
     public func stop() throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_stop(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_stop(self.pointer, $0
     )
 }
     }
@@ -3385,7 +3444,7 @@ public class Relay: RelayProtocol {
     public func subscribe(filters: [Filter], wait: TimeInterval?) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_subscribe(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_subscribe(self.pointer, 
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterOptionDuration.lower(wait),$0
     )
@@ -3397,7 +3456,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_subscriptions(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_subscriptions(self.pointer, $0
     )
 }
         )
@@ -3406,7 +3465,7 @@ public class Relay: RelayProtocol {
     public func terminate() throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_terminate(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_terminate(self.pointer, $0
     )
 }
     }
@@ -3414,7 +3473,7 @@ public class Relay: RelayProtocol {
     public func unsubscribe(wait: TimeInterval?) throws {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_method_relay_unsubscribe(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_unsubscribe(self.pointer, 
         FfiConverterOptionDuration.lower(wait),$0
     )
 }
@@ -3424,7 +3483,7 @@ public class Relay: RelayProtocol {
         try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_update_subscription_filters(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_relay_update_subscription_filters(self.pointer, 
         FfiConverterString.lower(internalId),
         FfiConverterSequenceTypeFilter.lower(filters),$0
     )
@@ -3436,7 +3495,7 @@ public class Relay: RelayProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relay_url(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relay_url(self.pointer, $0
     )
 }
         )
@@ -3490,6 +3549,7 @@ public protocol RelayConnectionStatsProtocol {
     func connectedAt()   -> Timestamp
     func latency()   -> TimeInterval?
     func success()   -> UInt64
+    func uptime()   -> Double
     
 }
 
@@ -3504,7 +3564,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_relayconnectionstats(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relayconnectionstats(pointer, $0) }
     }
 
     
@@ -3517,7 +3577,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_attempts(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_attempts(self.pointer, $0
     )
 }
         )
@@ -3528,7 +3588,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_bytes_received(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_bytes_received(self.pointer, $0
     )
 }
         )
@@ -3539,7 +3599,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_bytes_sent(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_bytes_sent(self.pointer, $0
     )
 }
         )
@@ -3550,7 +3610,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_connected_at(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_connected_at(self.pointer, $0
     )
 }
         )
@@ -3561,7 +3621,7 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_latency(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_latency(self.pointer, $0
     )
 }
         )
@@ -3572,7 +3632,18 @@ public class RelayConnectionStats: RelayConnectionStatsProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayconnectionstats_success(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_success(self.pointer, $0
+    )
+}
+        )
+    }
+
+    public func uptime()  -> Double {
+        return try!  FfiConverterDouble.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_uptime(self.pointer, $0
     )
 }
         )
@@ -3641,14 +3712,14 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_relayinformationdocument(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relayinformationdocument(pointer, $0) }
     }
 
     
 
     public static func get(url: String, proxy: String?) throws -> RelayInformationDocument {
         return RelayInformationDocument(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_relayinformationdocument_get(
+    uniffi_nostr_sdk_ffi_fn_constructor_relayinformationdocument_get(
         FfiConverterString.lower(url),
         FfiConverterOptionString.lower(proxy),$0)
 })
@@ -3664,7 +3735,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_contact(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_contact(self.pointer, $0
     )
 }
         )
@@ -3675,7 +3746,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_description(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_description(self.pointer, $0
     )
 }
         )
@@ -3686,7 +3757,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_name(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_name(self.pointer, $0
     )
 }
         )
@@ -3697,7 +3768,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_pubkey(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_pubkey(self.pointer, $0
     )
 }
         )
@@ -3708,7 +3779,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_software(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_software(self.pointer, $0
     )
 }
         )
@@ -3719,7 +3790,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_supported_nips(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_supported_nips(self.pointer, $0
     )
 }
         )
@@ -3730,7 +3801,7 @@ public class RelayInformationDocument: RelayInformationDocumentProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_relayinformationdocument_version(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_relayinformationdocument_version(self.pointer, $0
     )
 }
         )
@@ -3794,14 +3865,14 @@ public class SecretKey: SecretKeyProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_secretkey(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_secretkey(pointer, $0) }
     }
 
     
 
     public static func fromBech32(sk: String) throws -> SecretKey {
         return SecretKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_secretkey_from_bech32(
+    uniffi_nostr_sdk_ffi_fn_constructor_secretkey_from_bech32(
         FfiConverterString.lower(sk),$0)
 })
     }
@@ -3810,7 +3881,7 @@ public class SecretKey: SecretKeyProtocol {
 
     public static func fromBytes(sk: [UInt8]) throws -> SecretKey {
         return SecretKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_secretkey_from_bytes(
+    uniffi_nostr_sdk_ffi_fn_constructor_secretkey_from_bytes(
         FfiConverterSequenceUInt8.lower(sk),$0)
 })
     }
@@ -3819,7 +3890,7 @@ public class SecretKey: SecretKeyProtocol {
 
     public static func fromHex(hex: String) throws -> SecretKey {
         return SecretKey(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_secretkey_from_hex(
+    uniffi_nostr_sdk_ffi_fn_constructor_secretkey_from_hex(
         FfiConverterString.lower(hex),$0)
 })
     }
@@ -3833,7 +3904,7 @@ public class SecretKey: SecretKeyProtocol {
         return try  FfiConverterString.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_secretkey_to_bech32(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_secretkey_to_bech32(self.pointer, $0
     )
 }
         )
@@ -3844,7 +3915,7 @@ public class SecretKey: SecretKeyProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_secretkey_to_hex(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_secretkey_to_hex(self.pointer, $0
     )
 }
         )
@@ -3909,14 +3980,14 @@ public class Tag: TagProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_tag(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_tag(pointer, $0) }
     }
 
     
 
     public static func fromEnum(e: TagEnum) throws -> Tag {
         return Tag(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_tag_from_enum(
+    uniffi_nostr_sdk_ffi_fn_constructor_tag_from_enum(
         FfiConverterTypeTagEnum.lower(e),$0)
 })
     }
@@ -3925,7 +3996,7 @@ public class Tag: TagProtocol {
 
     public static func parse(data: [String]) throws -> Tag {
         return Tag(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_tag_parse(
+    uniffi_nostr_sdk_ffi_fn_constructor_tag_parse(
         FfiConverterSequenceString.lower(data),$0)
 })
     }
@@ -3940,7 +4011,7 @@ public class Tag: TagProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_tag_as_enum(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_tag_as_enum(self.pointer, $0
     )
 }
         )
@@ -3951,7 +4022,7 @@ public class Tag: TagProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_tag_as_vec(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_tag_as_vec(self.pointer, $0
     )
 }
         )
@@ -3962,7 +4033,7 @@ public class Tag: TagProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_tag_kind(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_tag_kind(self.pointer, $0
     )
 }
         )
@@ -4026,14 +4097,14 @@ public class Timestamp: TimestampProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_timestamp(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_timestamp(pointer, $0) }
     }
 
     
 
     public static func fromSecs(secs: UInt64)  -> Timestamp {
         return Timestamp(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_timestamp_from_secs(
+    uniffi_nostr_sdk_ffi_fn_constructor_timestamp_from_secs(
         FfiConverterUInt64.lower(secs),$0)
 })
     }
@@ -4042,7 +4113,7 @@ public class Timestamp: TimestampProtocol {
 
     public static func now()  -> Timestamp {
         return Timestamp(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_timestamp_now($0)
+    uniffi_nostr_sdk_ffi_fn_constructor_timestamp_now($0)
 })
     }
 
@@ -4056,7 +4127,7 @@ public class Timestamp: TimestampProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_timestamp_as_secs(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_timestamp_as_secs(self.pointer, $0
     )
 }
         )
@@ -4067,7 +4138,7 @@ public class Timestamp: TimestampProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_timestamp_to_human_datetime(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_timestamp_to_human_datetime(self.pointer, $0
     )
 }
         )
@@ -4138,14 +4209,14 @@ public class UnsignedEvent: UnsignedEventProtocol {
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_unsignedevent(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_unsignedevent(pointer, $0) }
     }
 
     
 
     public static func fromJson(json: String) throws -> UnsignedEvent {
         return UnsignedEvent(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_constructor_unsignedevent_from_json(
+    uniffi_nostr_sdk_ffi_fn_constructor_unsignedevent_from_json(
         FfiConverterString.lower(json),$0)
 })
     }
@@ -4159,7 +4230,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
         return try  FfiConverterTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_unsignedevent_add_signature(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_add_signature(self.pointer, 
         FfiConverterString.lower(sig),$0
     )
 }
@@ -4171,7 +4242,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_as_json(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_as_json(self.pointer, $0
     )
 }
         )
@@ -4182,7 +4253,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_content(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_content(self.pointer, $0
     )
 }
         )
@@ -4193,7 +4264,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_created_at(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_created_at(self.pointer, $0
     )
 }
         )
@@ -4204,7 +4275,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_id(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_id(self.pointer, $0
     )
 }
         )
@@ -4215,7 +4286,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_kind(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_kind(self.pointer, $0
     )
 }
         )
@@ -4226,7 +4297,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_pubkey(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_pubkey(self.pointer, $0
     )
 }
         )
@@ -4236,7 +4307,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
         return try  FfiConverterTypeEvent.lift(
             try 
     rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_method_unsignedevent_sign(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_sign(self.pointer, 
         FfiConverterTypeKeys.lower(keys),$0
     )
 }
@@ -4248,7 +4319,7 @@ public class UnsignedEvent: UnsignedEventProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_unsignedevent_tags(self.pointer, $0
+    uniffi_nostr_sdk_ffi_fn_method_unsignedevent_tags(self.pointer, $0
     )
 }
         )
@@ -4313,14 +4384,14 @@ public class ZapRequestData: ZapRequestDataProtocol {
     }
     public convenience init(publicKey: PublicKey, relays: [String])  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_fn_constructor_zaprequestdata_new(
+    uniffi_nostr_sdk_ffi_fn_constructor_zaprequestdata_new(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterSequenceString.lower(relays),$0)
 })
     }
 
     deinit {
-        try! rustCall { uniffi_nostr_sdk_fn_free_zaprequestdata(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_zaprequestdata(pointer, $0) }
     }
 
     
@@ -4333,7 +4404,7 @@ public class ZapRequestData: ZapRequestDataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_zaprequestdata_amount(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_zaprequestdata_amount(self.pointer, 
         FfiConverterUInt64.lower(amount),$0
     )
 }
@@ -4345,7 +4416,7 @@ public class ZapRequestData: ZapRequestDataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_zaprequestdata_event_id(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_zaprequestdata_event_id(self.pointer, 
         FfiConverterTypeEventId.lower(eventId),$0
     )
 }
@@ -4357,7 +4428,7 @@ public class ZapRequestData: ZapRequestDataProtocol {
             try! 
     rustCall() {
     
-    uniffi_nostr_sdk_fn_method_zaprequestdata_lnurl(self.pointer, 
+    uniffi_nostr_sdk_ffi_fn_method_zaprequestdata_lnurl(self.pointer, 
         FfiConverterString.lower(lnurl),$0
     )
 }
@@ -5024,8 +5095,9 @@ extension RelayMessage: Equatable, Hashable {}
 public enum RelayStatus {
     
     case initialized
-    case connected
+    case pending
     case connecting
+    case connected
     case disconnected
     case stopped
     case terminated
@@ -5040,15 +5112,17 @@ public struct FfiConverterTypeRelayStatus: FfiConverterRustBuffer {
         
         case 1: return .initialized
         
-        case 2: return .connected
+        case 2: return .pending
         
         case 3: return .connecting
         
-        case 4: return .disconnected
+        case 4: return .connected
         
-        case 5: return .stopped
+        case 5: return .disconnected
         
-        case 6: return .terminated
+        case 6: return .stopped
+        
+        case 7: return .terminated
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5062,7 +5136,7 @@ public struct FfiConverterTypeRelayStatus: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
         
         
-        case .connected:
+        case .pending:
             writeInt(&buf, Int32(2))
         
         
@@ -5070,16 +5144,20 @@ public struct FfiConverterTypeRelayStatus: FfiConverterRustBuffer {
             writeInt(&buf, Int32(3))
         
         
-        case .disconnected:
+        case .connected:
             writeInt(&buf, Int32(4))
         
         
-        case .stopped:
+        case .disconnected:
             writeInt(&buf, Int32(5))
         
         
-        case .terminated:
+        case .stopped:
             writeInt(&buf, Int32(6))
+        
+        
+        case .terminated:
+            writeInt(&buf, Int32(7))
         
         }
     }
@@ -5156,6 +5234,7 @@ public enum TagEnum {
     case payload(hash: String)
     case anon(msg: String?)
     case proxy(id: String, `protocol`: String)
+    case emoji(shortcode: String, url: String)
 }
 
 public struct FfiConverterTypeTagEnum: FfiConverterRustBuffer {
@@ -5398,6 +5477,11 @@ public struct FfiConverterTypeTagEnum: FfiConverterRustBuffer {
         case 53: return .proxy(
             id: try FfiConverterString.read(from: &buf), 
             protocol: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 54: return .emoji(
+            shortcode: try FfiConverterString.read(from: &buf), 
+            url: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5695,6 +5779,12 @@ public struct FfiConverterTypeTagEnum: FfiConverterRustBuffer {
             FfiConverterString.write(id, into: &buf)
             FfiConverterString.write(`protocol`, into: &buf)
             
+        
+        case let .emoji(shortcode,url):
+            writeInt(&buf, Int32(54))
+            FfiConverterString.write(shortcode, into: &buf)
+            FfiConverterString.write(url, into: &buf)
+            
         }
     }
 }
@@ -5822,6 +5912,7 @@ public enum TagKindKnown {
     case payload
     case anon
     case proxy
+    case emoji
 }
 
 public struct FfiConverterTypeTagKindKnown: FfiConverterRustBuffer {
@@ -5924,6 +6015,8 @@ public struct FfiConverterTypeTagKindKnown: FfiConverterRustBuffer {
         case 46: return .anon
         
         case 47: return .proxy
+        
+        case 48: return .emoji
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -6120,6 +6213,10 @@ public struct FfiConverterTypeTagKindKnown: FfiConverterRustBuffer {
         case .proxy:
             writeInt(&buf, Int32(47))
         
+        
+        case .emoji:
+            writeInt(&buf, Int32(48))
+        
         }
     }
 }
@@ -6291,7 +6388,7 @@ fileprivate struct FfiConverterCallbackInterfaceHandleNotification {
     private static let initCallbackOnce: () = {
         // Swift ensures this initializer code will once run once, even when accessed by multiple threads.
         try! rustCall { (err: UnsafeMutablePointer<RustCallStatus>) in
-            uniffi_nostr_sdk_fn_init_callback_handlenotification(foreignCallbackCallbackInterfaceHandleNotification, err)
+            uniffi_nostr_sdk_ffi_fn_init_callback_handlenotification(foreignCallbackCallbackInterfaceHandleNotification, err)
         }
     }()
 
@@ -6711,7 +6808,7 @@ fileprivate struct FfiConverterDictionaryStringTypeRelay: FfiConverterRustBuffer
 public func generateSharedKey(secretKey: SecretKey, publicKey: PublicKey) throws -> [UInt8] {
     return try  FfiConverterSequenceUInt8.lift(
         try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_func_generate_shared_key(
+    uniffi_nostr_sdk_ffi_fn_func_generate_shared_key(
         FfiConverterTypeSecretKey.lower(secretKey),
         FfiConverterTypePublicKey.lower(publicKey),$0)
 }
@@ -6721,16 +6818,24 @@ public func generateSharedKey(secretKey: SecretKey, publicKey: PublicKey) throws
 public func getNip05Profile(nip05: String, proxy: String?) throws -> Profile {
     return try  FfiConverterTypeProfile.lift(
         try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_func_get_nip05_profile(
+    uniffi_nostr_sdk_ffi_fn_func_get_nip05_profile(
         FfiConverterString.lower(nip05),
         FfiConverterOptionString.lower(proxy),$0)
 }
     )
 }
 
+public func gitHashVersion()  -> String {
+    return try!  FfiConverterString.lift(
+        try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_func_git_hash_version($0)
+}
+    )
+}
+
 public func initLogger(level: LogLevel) throws {
     try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_fn_func_init_logger(
+    uniffi_nostr_sdk_ffi_fn_func_init_logger(
         FfiConverterTypeLogLevel.lower(level),$0)
 }
 }
@@ -6740,7 +6845,7 @@ public func initLogger(level: LogLevel) throws {
 public func nip04Decrypt(secretKey: SecretKey, publicKey: PublicKey, encryptedContent: String) throws -> String {
     return try  FfiConverterString.lift(
         try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_func_nip04_decrypt(
+    uniffi_nostr_sdk_ffi_fn_func_nip04_decrypt(
         FfiConverterTypeSecretKey.lower(secretKey),
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterString.lower(encryptedContent),$0)
@@ -6751,7 +6856,7 @@ public func nip04Decrypt(secretKey: SecretKey, publicKey: PublicKey, encryptedCo
 public func nip04Encrypt(secretKey: SecretKey, publicKey: PublicKey, content: String) throws -> String {
     return try  FfiConverterString.lift(
         try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_func_nip04_encrypt(
+    uniffi_nostr_sdk_ffi_fn_func_nip04_encrypt(
         FfiConverterTypeSecretKey.lower(secretKey),
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterString.lower(content),$0)
@@ -6761,7 +6866,7 @@ public func nip04Encrypt(secretKey: SecretKey, publicKey: PublicKey, content: St
 
 public func verifyNip05(publicKey: PublicKey, nip05: String, proxy: String?) throws {
     try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_sdk_fn_func_verify_nip05(
+    uniffi_nostr_sdk_ffi_fn_func_verify_nip05(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterString.lower(nip05),
         FfiConverterOptionString.lower(proxy),$0)
@@ -6779,709 +6884,724 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private var initializationResult: InitializationResult {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 23
+    let bindings_contract_version = 24
     // Get the scaffolding contract version by calling the into the dylib
-    let scaffolding_contract_version = ffi_nostr_sdk_uniffi_contract_version()
+    let scaffolding_contract_version = ffi_nostr_sdk_ffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_generate_shared_key() != 47145) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_generate_shared_key() != 34762) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_get_nip05_profile() != 9660) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_get_nip05_profile() != 58347) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_init_logger() != 53695) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_git_hash_version() != 7774) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_nip04_decrypt() != 11951) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_init_logger() != 62777) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_nip04_encrypt() != 50703) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip04_decrypt() != 65368) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_func_verify_nip05() != 42566) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip04_encrypt() != 19635) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_activesubscription_filters() != 19322) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_verify_nip05() != 30997) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_activesubscription_id() != 383) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_activesubscription_filters() != 36417) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_add_relay() != 43262) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_activesubscription_id() != 64974) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_clear_already_seen_events() != 34213) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 16034) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_connect() != 4782) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_clear_already_seen_events() != 208) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_connect_relay() != 55271) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 37054) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_disconnect() != 38823) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 2004) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_disconnect_relay() != 38378) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect() != 24120) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_file_metadata() != 49114) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect_relay() != 46652) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_get_events_of() != 43781) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 52227) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_handle_notifications() != 61754) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 32928) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_is_running() != 2394) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 48185) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_keys() != 58592) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_is_running() != 17204) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_relay() != 35154) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_keys() != 21290) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_relays() != 36250) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 62643) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_remove_relay() != 65531) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 19728) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_req_events_of() != 6818) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 6378) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_send_direct_msg() != 14159) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_req_events_of() != 41063) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_send_event() != 6446) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 53590) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_send_event_to() != 2871) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 9650) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_send_msg() != 46631) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 39373) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_send_msg_to() != 36533) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg() != 61735) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_set_metadata() != 45457) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 42618) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_shutdown() != 10680) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 20179) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_start() != 3454) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 62014) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_stop() != 55960) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_start() != 57138) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_subscribe() != 47545) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_stop() != 40890) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_unsubscribe() != 17245) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 7263) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_client_update_difficulty() != 63620) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 63114) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_contact_alias() != 45450) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 30777) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_contact_public_key() != 38603) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_contact_alias() != 37997) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_contact_relay_url() != 33739) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_contact_public_key() != 64625) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_as_json() != 27244) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_contact_relay_url() != 17561) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_content() != 15708) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_as_json() != 535) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_created_at() != 50842) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_content() != 11771) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_id() != 18715) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_created_at() != 36106) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_kind() != 10572) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_id() != 18720) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_pubkey() != 47828) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_kind() != 29222) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_signature() != 33225) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_pubkey() != 32270) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_tags() != 21259) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_signature() != 17668) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_event_verify() != 15159) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_tags() != 16526) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventbuilder_to_event() != 43560) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_verify() != 35956) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventbuilder_to_pow_event() != 2712) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_to_event() != 28048) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventbuilder_to_unsigned_event() != 6114) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_to_pow_event() != 10665) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventbuilder_to_unsigned_pow_event() != 21920) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_to_unsigned_event() != 7729) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventid_as_bytes() != 63839) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_to_unsigned_pow_event() != 41305) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventid_to_bech32() != 23428) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_as_bytes() != 55588) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventid_to_hex() != 47287) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_bech32() != 55247) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_eventid_to_nostr_uri() != 11366) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_hex() != 46836) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filemetadata_aes_256_gcm() != 53837) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_nostr_uri() != 4559) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filemetadata_blurhash() != 25718) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_aes_256_gcm() != 58510) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filemetadata_dimensions() != 374) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_blurhash() != 53207) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filemetadata_magnet() != 55248) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_dimensions() != 44573) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filemetadata_size() != 12937) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_magnet() != 51427) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_as_json() != 43723) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_size() != 28829) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_author() != 21507) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_as_json() != 59721) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_authors() != 1086) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_author() != 32501) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_custom_tag() != 14971) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_authors() != 36082) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_event() != 21102) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_custom_tag() != 12203) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_events() != 53359) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_event() != 46933) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_id() != 46827) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_events() != 49957) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_identifier() != 14188) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_id() != 15566) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_ids() != 38090) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_identifier() != 57226) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_kind() != 47478) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_ids() != 11569) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_kinds() != 31533) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_kind() != 39178) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_limit() != 43274) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_kinds() != 62999) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_pubkey() != 63494) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_limit() != 30232) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_pubkeys() != 29064) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_match_event() != 38997) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_search() != 46852) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkey() != 49229) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_since() != 19109) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkeys() != 7655) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_filter_until() != 47684) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_search() != 47337) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_imagedimensions_height() != 21282) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_since() != 11143) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_imagedimensions_width() != 42051) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_until() != 57875) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_keys_public_key() != 13057) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_height() != 46790) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_keys_secret_key() != 35488) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_width() != 30165) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_as_json() != 54041) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_keys_public_key() != 51564) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_about() != 46433) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_keys_secret_key() != 44344) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_banner() != 55138) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_json() != 3615) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_display_name() != 609) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_about() != 64453) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_lud06() != 19572) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_banner() != 56385) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_lud16() != 32540) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_custom_field() != 61819) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_name() != 57713) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_display_name() != 10694) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_nip05() != 46486) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud06() != 30316) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_picture() != 51580) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud16() != 53356) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_get_website() != 61243) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_name() != 31440) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_about() != 50843) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_nip05() != 57659) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_banner() != 59633) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_picture() != 57953) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_display_name() != 41035) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_website() != 16152) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_lud06() != 40524) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_about() != 31663) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_lud16() != 10472) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_banner() != 10064) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_name() != 54513) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_custom_field() != 61755) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_nip05() != 58855) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_display_name() != 2607) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_picture() != 53891) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud06() != 39391) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_metadata_set_website() != 45184) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud16() != 5354) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_nostrconnecturi_description() != 2785) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_name() != 55696) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_nostrconnecturi_name() != 54969) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_nip05() != 45673) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_nostrconnecturi_public_key() != 22018) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_picture() != 35390) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_nostrconnecturi_relay_url() != 35561) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_website() != 32002) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_nostrconnecturi_url() != 10388) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_description() != 40944) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_difficulty() != 62014) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_name() != 56008) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_nip46_timeout() != 36970) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_public_key() != 28218) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_req_filters_chunk_size() != 28630) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_relay_url() != 23521) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_send_timeout() != 46670) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_url() != 31912) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_skip_disconnected_relays() != 10932) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 6680) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_timeout() != 31695) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_nip46_timeout() != 14161) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_wait_for_connection() != 20410) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_req_filters_chunk_size() != 55071) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_wait_for_send() != 6906) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_send_timeout() != 21314) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_options_wait_for_subscription() != 42430) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_skip_disconnected_relays() != 15957) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_profile_public_key() != 49157) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_timeout() != 36395) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_profile_relays() != 64533) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_wait_for_connection() != 56178) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_profile_to_bech32() != 21319) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_wait_for_send() != 15971) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_profile_to_nostr_uri() != 8282) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_wait_for_subscription() != 32946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_publickey_to_bech32() != 33919) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_profile_public_key() != 23665) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_publickey_to_hex() != 29316) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_profile_relays() != 51774) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_publickey_to_nostr_uri() != 43332) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_profile_to_bech32() != 62539) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_connect() != 13856) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_profile_to_nostr_uri() != 11778) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_document() != 17603) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_bech32() != 44618) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_get_events_of() != 62980) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_hex() != 52638) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_is_connected() != 62689) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_nostr_uri() != 4441) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_proxy() != 40033) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 59934) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_queue() != 12643) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 13946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_req_events_of() != 62052) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 20348) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_send_msg() != 45256) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 44758) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_stats() != 32225) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_proxy() != 12155) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_status() != 25758) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 2884) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_stop() != 8562) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_req_events_of() != 64671) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_subscribe() != 58450) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_msg() != 10158) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_subscriptions() != 46410) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_stats() != 395) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_terminate() != 51031) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_status() != 10823) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_unsubscribe() != 6404) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_stop() != 8911) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_update_subscription_filters() != 45793) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe() != 10729) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relay_url() != 48169) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscriptions() != 25598) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_attempts() != 56764) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_terminate() != 64438) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_bytes_received() != 54009) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe() != 26713) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_bytes_sent() != 9079) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_update_subscription_filters() != 10610) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_connected_at() != 28659) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 10461) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_latency() != 25342) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 6853) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayconnectionstats_success() != 38538) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_received() != 38174) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_contact() != 31013) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_sent() != 10776) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_description() != 62938) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_connected_at() != 44873) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_name() != 14438) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_latency() != 32055) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_pubkey() != 9393) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success() != 45907) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_software() != 11948) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_uptime() != 57418) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_supported_nips() != 17796) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_contact() != 40890) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_relayinformationdocument_version() != 55568) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_description() != 33859) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_secretkey_to_bech32() != 59993) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_name() != 30628) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_secretkey_to_hex() != 28675) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_pubkey() != 20230) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_tag_as_enum() != 25306) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_software() != 26881) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_tag_as_vec() != 61602) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_supported_nips() != 10712) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_tag_kind() != 27825) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_version() != 11515) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_timestamp_as_secs() != 5603) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_bech32() != 2460) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_timestamp_to_human_datetime() != 10584) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_hex() != 64465) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_add_signature() != 45009) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_enum() != 3093) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_as_json() != 3195) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_vec() != 17432) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_content() != 47764) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind() != 27859) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_created_at() != 24542) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_as_secs() != 36415) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_id() != 28308) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_to_human_datetime() != 30680) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_kind() != 52236) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_add_signature() != 24212) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_pubkey() != 50542) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_as_json() != 55382) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_sign() != 26628) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_content() != 4713) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_unsignedevent_tags() != 25085) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_created_at() != 39107) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_zaprequestdata_amount() != 61892) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_id() != 16894) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_zaprequestdata_event_id() != 50159) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_kind() != 23375) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_zaprequestdata_lnurl() != 18795) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_pubkey() != 48228) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_client_new() != 7546) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_sign() != 38142) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_client_with_opts() != 6519) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_tags() != 57997) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_contact_new() != 25304) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_amount() != 34736) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_event_from_json() != 1263) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_event_id() != 27104) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_add_recommended_relay() != 3296) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_lnurl() != 32183) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_auth() != 38004) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 15627) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_delete() != 13131) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 63066) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_file_metadata() != 3694) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_contact_new() != 51330) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_hide_channel_msg() != 1863) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_event_from_json() != 41313) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_long_form_text_note() != 37444) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_add_recommended_relay() != 38144) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_mute_channel_user() != 16578) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_auth() != 18114) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new() != 23750) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_delete() != 37111) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_channel() != 58046) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_file_metadata() != 35713) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_channel_msg() != 40254) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_hide_channel_msg() != 61409) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_encrypted_direct_msg() != 18140) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_long_form_text_note() != 25556) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_reaction() != 58121) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_mute_channel_user() != 54033) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_text_note() != 32633) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new() != 41362) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_zap_receipt() != 12040) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_channel() != 9761) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_new_zap_request() != 53535) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_channel_msg() != 50954) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_report() != 4664) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_encrypted_direct_msg() != 20774) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_repost() != 21237) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_reaction() != 11958) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_set_channel_metadata() != 27440) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_text_note() != 32312) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_set_contact_list() != 44638) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_zap_receipt() != 43081) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventbuilder_set_metadata() != 53610) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new_zap_request() != 41882) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventid_from_bech32() != 29645) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_report() != 47508) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventid_from_bytes() != 51838) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_repost() != 38998) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventid_from_hex() != 12198) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_set_channel_metadata() != 992) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventid_from_nostr_uri() != 35802) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_set_contact_list() != 37484) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_eventid_new() != 30886) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_set_metadata() != 21444) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_filemetadata_new() != 42757) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bech32() != 3900) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_filter_from_json() != 65200) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bytes() != 46075) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_filter_new() != 63667) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_hex() != 64712) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_imagedimensions_new() != 64564) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_nostr_uri() != 46211) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_from_mnemonic() != 50615) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_new() != 32417) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_from_pk_str() != 45484) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_filemetadata_new() != 49946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_from_public_key() != 27655) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_from_json() != 11780) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_from_sk_str() != 61833) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_new() != 46645) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_generate() != 13660) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_imagedimensions_new() != 54894) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_new() != 50806) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_mnemonic() != 64328) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_keys_vanity() != 16628) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_pk_str() != 45631) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_metadata_from_json() != 38921) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_public_key() != 13431) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_metadata_new() != 20882) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_sk_str() != 28000) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_nostrconnecturi_from_string() != 36187) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_generate() != 7272) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_options_new() != 51438) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_new() != 58194) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_profile_from_bech32() != 29526) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_vanity() != 13387) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_profile_from_nostr_uri() != 30948) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_from_json() != 12219) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_profile_new() != 47057) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_new() != 53881) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_publickey_from_bech32() != 37962) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnecturi_from_string() != 33038) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_publickey_from_bytes() != 27563) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_options_new() != 28666) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_publickey_from_hex() != 62816) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_from_bech32() != 19872) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_publickey_from_nostr_uri() != 37347) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_from_nostr_uri() != 57237) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_relayinformationdocument_get() != 837) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_new() != 22323) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_secretkey_from_bech32() != 8161) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bech32() != 36705) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_secretkey_from_bytes() != 7850) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bytes() != 8645) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_secretkey_from_hex() != 45953) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_hex() != 28534) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_tag_from_enum() != 62896) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_nostr_uri() != 8616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_tag_parse() != 31797) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayinformationdocument_get() != 23108) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_timestamp_from_secs() != 55991) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bech32() != 54156) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_timestamp_now() != 52567) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bytes() != 16499) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_unsignedevent_from_json() != 38935) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_hex() != 36916) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_constructor_zaprequestdata_new() != 35285) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_from_enum() != 6162) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_handlenotification_handle_msg() != 20088) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_parse() != 7646) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_checksum_method_handlenotification_handle() != 1610) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_from_secs() != 37857) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_now() != 24885) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_unsignedevent_from_json() != 38478) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_zaprequestdata_new() != 38852) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 51678) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 40293) {
         return InitializationResult.apiChecksumMismatch
     }
 
