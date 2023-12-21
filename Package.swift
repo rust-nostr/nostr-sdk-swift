@@ -12,10 +12,9 @@ let package = Package(
     products: [
         .library(name: "NostrSDK", targets: ["nostr_sdkFFI", "NostrSDK"]),
     ],
-    dependencies: [
-    ],
+    dependencies: [],
     targets: [
-        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/rust-nostr/nostr-sdk-swift/releases/download/0.0.5/nostr_sdkFFI.xcframework.zip", checksum: "e1878ff756acc31d461af228179dbe0eb3b8601f35d628f82a2e2d027e0c9146"),
+        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/rust-nostr/nostr-sdk-swift/releases/download/0.6.0/nostr_sdkFFI.xcframework.zip", checksum: "1880d85acbf0eb307b758cf9a474194004999ce83ec650d5f70040b7bb071751"),
         .target(name: "NostrSDK", dependencies: ["nostr_sdkFFI"]),
     ]
 )
