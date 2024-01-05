@@ -523,6 +523,8 @@ public protocol ClientProtocol : AnyObject {
     
     func addRelay(url: String) throws  -> Bool
     
+    func addRelays(relays: [String]) throws 
+    
     func connect() 
     
     func connectRelay(url: String) throws 
@@ -541,8 +543,6 @@ public protocol ClientProtocol : AnyObject {
     
     func isRunning()  -> Bool
     
-    func keys()  -> Keys
-    
     func reconcile(filter: Filter) throws 
     
     func relay(url: String) throws  -> Relay
@@ -557,6 +557,20 @@ public protocol ClientProtocol : AnyObject {
     
     func sendEvent(event: Event) throws  -> EventId
     
+    /**
+     * Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+     *
+     * Rise an error if the [`ClientSigner`] is not set.
+     */
+    func sendEventBuilder(builder: EventBuilder) throws  -> EventId
+    
+    /**
+     * Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+     *
+     * Rise an error if the [`ClientSigner`] is not set.
+     */
+    func sendEventBuilderTo(url: String, builder: EventBuilder) throws  -> EventId
+    
     func sendEventTo(url: String, event: Event) throws  -> EventId
     
     func sendMsg(msg: ClientMessage) throws 
@@ -566,6 +580,8 @@ public protocol ClientProtocol : AnyObject {
     func setMetadata(metadata: Metadata) throws  -> EventId
     
     func shutdown() throws 
+    
+    func signer() throws  -> ClientSigner
     
     func start() 
     
@@ -592,10 +608,10 @@ public class Client:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_client(self.pointer, $0) }
     }
-    public convenience init(keys: Keys)  {
+    public convenience init(signer: ClientSigner?)  {
         self.init(unsafeFromRawPointer: try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_client_new(
-        FfiConverterTypeKeys_lower(keys),$0)
+        FfiConverterOptionTypeClientSigner.lower(signer),$0)
 })
     }
 
@@ -604,10 +620,10 @@ public class Client:
     }
 
     
-    public static func withOpts(keys: Keys, opts: Options)  -> Client {
+    public static func withOpts(signer: ClientSigner?, opts: Options)  -> Client {
         return Client(unsafeFromRawPointer: try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_client_with_opts(
-        FfiConverterTypeKeys_lower(keys),
+        FfiConverterOptionTypeClientSigner.lower(signer),
         FfiConverterTypeOptions.lower(opts),$0)
 })
     }
@@ -625,6 +641,14 @@ public class Client:
     )
 }
         )
+    }
+    public func addRelays(relays: [String]) throws  {
+        try 
+    rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_add_relays(self.uniffiClonePointer(), 
+        FfiConverterSequenceString.lower(relays),$0
+    )
+}
     }
     public func connect()  {
         try! 
@@ -708,16 +732,6 @@ public class Client:
 }
         )
     }
-    public func keys()  -> Keys {
-        return try!  FfiConverterTypeKeys_lift(
-            try! 
-    rustCall() {
-    
-    uniffi_nostr_sdk_ffi_fn_method_client_keys(self.uniffiClonePointer(), $0
-    )
-}
-        )
-    }
     public func reconcile(filter: Filter) throws  {
         try 
     rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
@@ -786,6 +800,37 @@ public class Client:
 }
         )
     }
+    /**
+     * Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to all relays.
+     *
+     * Rise an error if the [`ClientSigner`] is not set.
+     */
+    public func sendEventBuilder(builder: EventBuilder) throws  -> EventId {
+        return try  FfiConverterTypeEventId_lift(
+            try 
+    rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder(self.uniffiClonePointer(), 
+        FfiConverterTypeEventBuilder_lower(builder),$0
+    )
+}
+        )
+    }
+    /**
+     * Take an [`EventBuilder`], sign it by using the [`ClientSigner`] and broadcast to specific relays.
+     *
+     * Rise an error if the [`ClientSigner`] is not set.
+     */
+    public func sendEventBuilderTo(url: String, builder: EventBuilder) throws  -> EventId {
+        return try  FfiConverterTypeEventId_lift(
+            try 
+    rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder_to(self.uniffiClonePointer(), 
+        FfiConverterString.lower(url),
+        FfiConverterTypeEventBuilder_lower(builder),$0
+    )
+}
+        )
+    }
     public func sendEventTo(url: String, event: Event) throws  -> EventId {
         return try  FfiConverterTypeEventId_lift(
             try 
@@ -830,6 +875,15 @@ public class Client:
     uniffi_nostr_sdk_ffi_fn_method_client_shutdown(self.uniffiClonePointer(), $0
     )
 }
+    }
+    public func signer() throws  -> ClientSigner {
+        return try  FfiConverterTypeClientSigner.lift(
+            try 
+    rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_signer(self.uniffiClonePointer(), $0
+    )
+}
+        )
     }
     public func start()  {
         try! 
@@ -932,6 +986,8 @@ public protocol ClientBuilderProtocol : AnyObject {
      */
     func opts(opts: Options)  -> ClientBuilder
     
+    func signer(signer: ClientSigner)  -> ClientBuilder
+    
 }
 public class ClientBuilder:
     ClientBuilderProtocol {
@@ -950,10 +1006,9 @@ public class ClientBuilder:
     /**
      * New client builder
      */
-    public convenience init(keys: Keys)  {
+    public convenience init()  {
         self.init(unsafeFromRawPointer: try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_clientbuilder_new(
-        FfiConverterTypeKeys_lower(keys),$0)
+    uniffi_nostr_sdk_ffi_fn_constructor_clientbuilder_new($0)
 })
     }
 
@@ -1003,6 +1058,17 @@ public class ClientBuilder:
 }
         )
     }
+    public func signer(signer: ClientSigner)  -> ClientBuilder {
+        return try!  FfiConverterTypeClientBuilder.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_clientbuilder_signer(self.uniffiClonePointer(), 
+        FfiConverterTypeClientSigner.lower(signer),$0
+    )
+}
+        )
+    }
 
 }
 
@@ -1044,6 +1110,125 @@ public func FfiConverterTypeClientBuilder_lift(_ pointer: UnsafeMutableRawPointe
 
 public func FfiConverterTypeClientBuilder_lower(_ value: ClientBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeClientBuilder.lower(value)
+}
+
+
+
+
+public protocol Nip46SignerProtocol : AnyObject {
+    
+    /**
+     * Get signer relay [`Url`]
+     */
+    func relayUrl()  -> String
+    
+    /**
+     * Get signer [`XOnlyPublicKey`]
+     */
+    func signerPublicKey()  -> PublicKey?
+    
+}
+public class Nip46Signer:
+    Nip46SignerProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_nip46signer(self.pointer, $0) }
+    }
+    /**
+     * New NIP46 remote signer
+     */
+    public convenience init(relayUrl: String, appKeys: Keys, signerPublicKey: PublicKey?) throws  {
+        self.init(unsafeFromRawPointer: try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_constructor_nip46signer_new(
+        FfiConverterString.lower(relayUrl),
+        FfiConverterTypeKeys_lower(appKeys),
+        FfiConverterOptionTypePublicKey.lower(signerPublicKey),$0)
+})
+    }
+
+    deinit {
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_nip46signer(pointer, $0) }
+    }
+
+    
+
+    
+    
+    /**
+     * Get signer relay [`Url`]
+     */
+    public func relayUrl()  -> String {
+        return try!  FfiConverterString.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_nip46signer_relay_url(self.uniffiClonePointer(), $0
+    )
+}
+        )
+    }
+    /**
+     * Get signer [`XOnlyPublicKey`]
+     */
+    public func signerPublicKey()  -> PublicKey? {
+        return try!  FfiConverterOptionTypePublicKey.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_nip46signer_signer_public_key(self.uniffiClonePointer(), $0
+    )
+}
+        )
+    }
+
+}
+
+public struct FfiConverterTypeNip46Signer: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Nip46Signer
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Nip46Signer {
+        return Nip46Signer(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Nip46Signer) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Nip46Signer {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Nip46Signer, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+public func FfiConverterTypeNip46Signer_lift(_ pointer: UnsafeMutableRawPointer) throws -> Nip46Signer {
+    return try FfiConverterTypeNip46Signer.lift(pointer)
+}
+
+public func FfiConverterTypeNip46Signer_lower(_ value: Nip46Signer) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeNip46Signer.lower(value)
 }
 
 
@@ -1987,6 +2172,66 @@ public func FfiConverterTypeRelayConnectionStats_lower(_ value: RelayConnectionS
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+public enum ClientSigner {
+    
+    case keys(
+        signer: Keys
+    )
+    case nip46(
+        signer: Nip46Signer
+    )
+}
+
+public struct FfiConverterTypeClientSigner: FfiConverterRustBuffer {
+    typealias SwiftType = ClientSigner
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClientSigner {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .keys(
+            signer: try FfiConverterTypeKeys.read(from: &buf)
+        )
+        
+        case 2: return .nip46(
+            signer: try FfiConverterTypeNip46Signer.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ClientSigner, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .keys(signer):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeKeys.write(signer, into: &buf)
+            
+        
+        case let .nip46(signer):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeNip46Signer.write(signer, into: &buf)
+            
+        }
+    }
+}
+
+
+public func FfiConverterTypeClientSigner_lift(_ buf: RustBuffer) throws -> ClientSigner {
+    return try FfiConverterTypeClientSigner.lift(buf)
+}
+
+public func FfiConverterTypeClientSigner_lower(_ value: ClientSigner) -> RustBuffer {
+    return FfiConverterTypeClientSigner.lower(value)
+}
+
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum LogLevel {
     
     case error
@@ -2441,6 +2686,27 @@ fileprivate struct FfiConverterOptionDuration: FfiConverterRustBuffer {
     }
 }
 
+fileprivate struct FfiConverterOptionTypeClientSigner: FfiConverterRustBuffer {
+    typealias SwiftType = ClientSigner?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeClientSigner.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeClientSigner.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]?
 
@@ -2478,6 +2744,27 @@ fileprivate struct FfiConverterOptionTypeEventId: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeEventId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionTypePublicKey: FfiConverterRustBuffer {
+    typealias SwiftType = PublicKey?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePublicKey.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePublicKey.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -2616,6 +2903,8 @@ fileprivate struct FfiConverterDictionaryStringTypeRelay: FfiConverterRustBuffer
 
 
 
+
+
 public func initLogger(level: LogLevel) throws  {
     try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_func_init_logger(
@@ -2652,6 +2941,9 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 57027) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 27754) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 931) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2679,9 +2971,6 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_is_running() != 15604) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_keys() != 35726) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_reconcile() != 28329) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2703,6 +2992,12 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 47519) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 13918) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 47904) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 14429) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2716,6 +3011,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 18928) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 8016) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_start() != 10767) {
@@ -2740,6 +3038,15 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_opts() != 13520) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 47855) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_relay_url() != 34734) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_signer_public_key() != 56148) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 29275) {
@@ -2868,13 +3175,16 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_uptime() != 18216) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 105) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 37668) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 56268) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 53855) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 10089) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 53242) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip46signer_new() != 14708) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 12427) {
