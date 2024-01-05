@@ -19,7 +19,7 @@ as a package dependency in Xcode.
 Add the following to the dependencies array in your `Package.swift`:
 
 ``` swift
-.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.6.0"),
+.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.7.0"),
 ```
 
 ## 📄 Usage
