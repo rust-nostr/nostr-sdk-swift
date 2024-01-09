@@ -1115,6 +1115,94 @@ public func FfiConverterTypeClientBuilder_lower(_ value: ClientBuilder) -> Unsaf
 
 
 
+public protocol ClientSignerProtocol : AnyObject {
+    
+}
+public class ClientSigner:
+    ClientSignerProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_clientsigner(self.pointer, $0) }
+    }
+
+    deinit {
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_clientsigner(pointer, $0) }
+    }
+
+    
+    public static func keys(keys: Keys)  -> ClientSigner {
+        return ClientSigner(unsafeFromRawPointer: try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_clientsigner_keys(
+        FfiConverterTypeKeys_lower(keys),$0)
+})
+    }
+
+    
+    public static func nip46(nip46: Nip46Signer)  -> ClientSigner {
+        return ClientSigner(unsafeFromRawPointer: try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_clientsigner_nip46(
+        FfiConverterTypeNip46Signer.lower(nip46),$0)
+})
+    }
+
+    
+
+    
+    
+
+}
+
+public struct FfiConverterTypeClientSigner: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = ClientSigner
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ClientSigner {
+        return ClientSigner(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: ClientSigner) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClientSigner {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: ClientSigner, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+public func FfiConverterTypeClientSigner_lift(_ pointer: UnsafeMutableRawPointer) throws -> ClientSigner {
+    return try FfiConverterTypeClientSigner.lift(pointer)
+}
+
+public func FfiConverterTypeClientSigner_lower(_ value: ClientSigner) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeClientSigner.lower(value)
+}
+
+
+
+
 public protocol Nip46SignerProtocol : AnyObject {
     
     /**
@@ -2172,66 +2260,6 @@ public func FfiConverterTypeRelayConnectionStats_lower(_ value: RelayConnectionS
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-public enum ClientSigner {
-    
-    case keys(
-        signer: Keys
-    )
-    case nip46(
-        signer: Nip46Signer
-    )
-}
-
-public struct FfiConverterTypeClientSigner: FfiConverterRustBuffer {
-    typealias SwiftType = ClientSigner
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClientSigner {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-        
-        case 1: return .keys(
-            signer: try FfiConverterTypeKeys.read(from: &buf)
-        )
-        
-        case 2: return .nip46(
-            signer: try FfiConverterTypeNip46Signer.read(from: &buf)
-        )
-        
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: ClientSigner, into buf: inout [UInt8]) {
-        switch value {
-        
-        
-        case let .keys(signer):
-            writeInt(&buf, Int32(1))
-            FfiConverterTypeKeys.write(signer, into: &buf)
-            
-        
-        case let .nip46(signer):
-            writeInt(&buf, Int32(2))
-            FfiConverterTypeNip46Signer.write(signer, into: &buf)
-            
-        }
-    }
-}
-
-
-public func FfiConverterTypeClientSigner_lift(_ buf: RustBuffer) throws -> ClientSigner {
-    return try FfiConverterTypeClientSigner.lift(buf)
-}
-
-public func FfiConverterTypeClientSigner_lower(_ value: ClientSigner) -> RustBuffer {
-    return FfiConverterTypeClientSigner.lower(value)
-}
-
-
-
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 public enum LogLevel {
     
     case error
@@ -3013,7 +3041,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 18928) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 8016) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 57777) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_start() != 10767) {
@@ -3040,7 +3068,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_opts() != 13520) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 47855) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 39026) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_relay_url() != 34734) {
@@ -3175,13 +3203,19 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_uptime() != 18216) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 37668) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 28400) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 53855) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 54987) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 53242) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientsigner_keys() != 57808) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientsigner_nip46() != 46208) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nip46signer_new() != 14708) {

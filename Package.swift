@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/rust-nostr/nostr-sdk-swift/releases/download/0.7.0/nostr_sdkFFI.xcframework.zip", checksum: "215488cf8f18dcfa17f15e77fffb9e921e72afab896e84c4cb1f58a26f8dea5e"),
+        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/rust-nostr/nostr-sdk-swift/releases/download/0.7.1/nostr_sdkFFI.xcframework.zip", checksum: "437351558b9d301e41aaaede2eabc65318b35c8dfa9334faa61d4727bd8e022e"),
         .target(name: "NostrSDK", dependencies: ["nostr_sdkFFI"]),
     ]
 )

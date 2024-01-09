@@ -2053,8 +2053,6 @@ public protocol FilterProtocol : AnyObject {
     
     func limit(limit: UInt64)  -> Filter
     
-    func matchEvent(event: Event)  -> Bool
-    
     /**
      * Add Public Key (`p` tag)
      */
@@ -2318,17 +2316,6 @@ public class Filter:
     
     uniffi_nostr_ffi_fn_method_filter_limit(self.uniffiClonePointer(), 
         FfiConverterUInt64.lower(limit),$0
-    )
-}
-        )
-    }
-    public func matchEvent(event: Event)  -> Bool {
-        return try!  FfiConverterBool.lift(
-            try! 
-    rustCall() {
-    
-    uniffi_nostr_ffi_fn_method_filter_match_event(self.uniffiClonePointer(), 
-        FfiConverterTypeEvent.lower(event),$0
     )
 }
         )
@@ -13203,9 +13190,6 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_limit() != 4466) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_filter_match_event() != 57404) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_pubkey() != 31814) {
