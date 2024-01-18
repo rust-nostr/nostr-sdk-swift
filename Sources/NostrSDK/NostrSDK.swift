@@ -1205,6 +1205,8 @@ public func FfiConverterTypeClientSigner_lower(_ value: ClientSigner) -> UnsafeM
 
 public protocol Nip46SignerProtocol : AnyObject {
     
+    func nostrConnectUri(metadata: NostrConnectMetadata)  -> NostrConnectUri
+    
     /**
      * Get signer relay [`Url`]
      */
@@ -1250,6 +1252,17 @@ public class Nip46Signer:
 
     
     
+    public func nostrConnectUri(metadata: NostrConnectMetadata)  -> NostrConnectUri {
+        return try!  FfiConverterTypeNostrConnectURI_lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_nip46signer_nostr_connect_uri(self.uniffiClonePointer(), 
+        FfiConverterTypeNostrConnectMetadata_lower(metadata),$0
+    )
+}
+        )
+    }
     /**
      * Get signer relay [`Url`]
      */
@@ -1513,6 +1526,13 @@ public func FfiConverterTypeNostrDatabase_lower(_ value: NostrDatabase) -> Unsaf
 
 public protocol OptionsProtocol : AnyObject {
     
+    /**
+     * Connection timeout (default: None)
+     *
+     * If set to `None`, the client will try to connect to the relays without waiting.
+     */
+    func connectionTimeout(timeout: TimeInterval?)  -> Options
+    
     func difficulty(difficulty: UInt8)  -> Options
     
     func nip46Timeout(nip46Timeout: TimeInterval?)  -> Options
@@ -1524,8 +1544,6 @@ public protocol OptionsProtocol : AnyObject {
     func skipDisconnectedRelays(skip: Bool)  -> Options
     
     func timeout(timeout: TimeInterval)  -> Options
-    
-    func waitForConnection(wait: Bool)  -> Options
     
     func waitForSend(wait: Bool)  -> Options
     
@@ -1560,6 +1578,22 @@ public class Options:
 
     
     
+    /**
+     * Connection timeout (default: None)
+     *
+     * If set to `None`, the client will try to connect to the relays without waiting.
+     */
+    public func connectionTimeout(timeout: TimeInterval?)  -> Options {
+        return try!  FfiConverterTypeOptions.lift(
+            try! 
+    rustCall() {
+    
+    uniffi_nostr_sdk_ffi_fn_method_options_connection_timeout(self.uniffiClonePointer(), 
+        FfiConverterOptionDuration.lower(timeout),$0
+    )
+}
+        )
+    }
     public func difficulty(difficulty: UInt8)  -> Options {
         return try!  FfiConverterTypeOptions.lift(
             try! 
@@ -1622,17 +1656,6 @@ public class Options:
     
     uniffi_nostr_sdk_ffi_fn_method_options_timeout(self.uniffiClonePointer(), 
         FfiConverterDuration.lower(timeout),$0
-    )
-}
-        )
-    }
-    public func waitForConnection(wait: Bool)  -> Options {
-        return try!  FfiConverterTypeOptions.lift(
-            try! 
-    rustCall() {
-    
-    uniffi_nostr_sdk_ffi_fn_method_options_wait_for_connection(self.uniffiClonePointer(), 
-        FfiConverterBool.lower(wait),$0
     )
 }
         )
@@ -1853,7 +1876,7 @@ public func FfiConverterTypeProfile_lower(_ value: Profile) -> UnsafeMutableRawP
 
 public protocol RelayProtocol : AnyObject {
     
-    func connect(waitForConnection: Bool) 
+    func connect(connectionTimeout: TimeInterval?) 
     
     func document()  -> RelayInformationDocument
     
@@ -1909,12 +1932,12 @@ public class Relay:
 
     
     
-    public func connect(waitForConnection: Bool)  {
+    public func connect(connectionTimeout: TimeInterval?)  {
         try! 
     rustCall() {
     
     uniffi_nostr_sdk_ffi_fn_method_relay_connect(self.uniffiClonePointer(), 
-        FfiConverterBool.lower(waitForConnection),$0
+        FfiConverterOptionDuration.lower(connectionTimeout),$0
     )
 }
     }
@@ -2933,6 +2956,10 @@ fileprivate struct FfiConverterDictionaryStringTypeRelay: FfiConverterRustBuffer
 
 
 
+
+
+
+
 public func initLogger(level: LogLevel) throws  {
     try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_func_init_logger(
@@ -3071,6 +3098,9 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 39026) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_nostr_connect_uri() != 19908) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_relay_url() != 34734) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3098,6 +3128,9 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_wipe() != 31282) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_connection_timeout() != 57490) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 36158) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3116,9 +3149,6 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_options_timeout() != 43772) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_wait_for_connection() != 12978) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_wait_for_send() != 40688) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3134,7 +3164,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_profile_public_key() != 64123) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 51651) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 8946) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 25236) {
