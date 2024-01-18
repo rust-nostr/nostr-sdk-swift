@@ -1,47 +1,8 @@
 # Nostr SDK – Swift Package
 
-## Installation
-
-This package is intended to be used with the [Swift Package Manager](https://www.swift.org/package-manager/).
-
-### Xcode
-
-Via `File > Add Packages...`, add
-
-```
-https://github.com/rust-nostr/nostr-sdk-swift.git
-```
-
-as a package dependency in Xcode.
-
-### Swift Package
-
-Add the following to the dependencies array in your `Package.swift`:
-
-``` swift
-.package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.7.1"),
-```
-
 ## 📄 Usage
 
-``` swift
-import NostrSDK
-
-let keys = Keys.generate();
-let client = Client(keys: keys);
-
-try client.addRelay(url: "wss://relay.damus.io");
-client.connect();
-
-let filter = Filter()
-    .pubkey(pubkey: keys.publicKey())
-    .since(timestamp: Timestamp.now());
-let events = try client.getEventsOf(filters: [filter], timeout: nil);
-// handle events
-
-let event = try EventBuilder.newTextNote(content: "Hello from Rust Nostr SDK Swift bindings", tags: []).toEvent(keys: keys);
-client.sendEvent(event: event);
-```
+Check https://rust-nostr.org
 
 ## Information for Maintainers and Contributors
 
