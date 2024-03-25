@@ -27,11 +27,14 @@ jobs:
           path: dist
           ssh-key: ${{ secrets.NOSTR_SDK_SWIFT_DEPLOY_KEY }}
 
+      - name: Install just
+        run: cargo install just
+
       - name: Build Swift bindings
         working-directory: build/bindings/nostr-sdk-ffi
         run: |
-          make init
-          make bindings-swift
+          just init
+          just bindings-swift
 
       - name: Compress XCFramework
         working-directory: build/bindings/nostr-sdk-ffi/bindings-swift
