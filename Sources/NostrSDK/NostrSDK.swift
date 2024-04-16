@@ -1606,8 +1606,8 @@ open class Nwc:
     /**
      * Compose new `NWC` client
      */
-public convenience init(uri: NostrWalletConnectUri) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(uri: NostrWalletConnectUri) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_nwc_new(
         FfiConverterTypeNostrWalletConnectURI_lower(uri),$0
     )
@@ -1945,8 +1945,8 @@ open class Nip46Signer:
     /**
      * New NIP46 remote signer
      */
-public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_nip46signer_new(
         FfiConverterTypeNostrConnectURI_lower(uri),
         FfiConverterTypeKeys_lower(appKeys),
@@ -3186,8 +3186,8 @@ open class Proxy:
     /**
      * Compose proxy (ex. `127.0.0.1:9050`)
      */
-public convenience init(addr: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(addr: String) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_proxy_new(
         FfiConverterString.lower(addr),$0
     )
@@ -3459,8 +3459,8 @@ open class Relay:
     /**
      * Create new `Relay` with **default** `options` and `in-memory database`
      */
-public convenience init(url: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(url: String) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_relay_new(
         FfiConverterString.lower(url),$0
     )

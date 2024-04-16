@@ -1199,8 +1199,8 @@ open class EncryptedSecretKey:
     /**
      * Encrypt secret key
      */
-public convenience init(secretKey: SecretKey, password: String, logN: UInt8, keySecurity: KeySecurity) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrError.lift) {
+public convenience init(secretKey: SecretKey, password: String, logN: UInt8, keySecurity: KeySecurity) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_encryptedsecretkey_new(
         FfiConverterTypeSecretKey.lower(secretKey),
         FfiConverterString.lower(password),
@@ -2590,8 +2590,8 @@ open class EventId:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_ffi_fn_clone_eventid(self.pointer, $0) }
     }
-public convenience init(publicKey: PublicKey, createdAt: Timestamp, kind: Kind, tags: [Tag], content: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrError.lift) {
+public convenience init(publicKey: PublicKey, createdAt: Timestamp, kind: Kind, tags: [Tag], content: String) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_eventid_new(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterTypeTimestamp.lower(createdAt),
@@ -2816,8 +2816,8 @@ open class FileMetadata:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_ffi_fn_clone_filemetadata(self.pointer, $0) }
     }
-public convenience init(url: String, mimeType: String, hash: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrError.lift) {
+public convenience init(url: String, mimeType: String, hash: String) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_filemetadata_new(
         FfiConverterString.lower(url),
         FfiConverterString.lower(mimeType),
@@ -4830,8 +4830,8 @@ open class Nip19Profile:
     /**
      * New NIP19 profile
      */
-public convenience init(publicKey: PublicKey, relays: [String]) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrError.lift) {
+public convenience init(publicKey: PublicKey, relays: [String]) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_nip19profile_new(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterSequenceString.lower(relays),$0
@@ -5621,8 +5621,8 @@ open class NostrWalletConnectUri:
     /**
      * Create new Nostr Wallet Connect URI
      */
-public convenience init(publicKey: PublicKey, relayUrl: String, randomSecretKey: SecretKey, lud16: String?) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrError.lift) {
+public convenience init(publicKey: PublicKey, relayUrl: String, randomSecretKey: SecretKey, lud16: String?) throws  {
+    let pointer = try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_nostrwalletconnecturi_new(
         FfiConverterTypePublicKey.lower(publicKey),
         FfiConverterString.lower(relayUrl),
