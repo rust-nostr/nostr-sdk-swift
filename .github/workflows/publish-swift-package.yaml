@@ -3,9 +3,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'nostr-sdk repo release (MAJOR.MINOR.PATCH)'
+        description: 'Release (MAJOR.MINOR.PATCH)'
         required: true
         type: string
+      ref:
+        description: 'Ref (branch, tag, commit) to checkout (from rust-nostr/nostr repo)'
+        required: true
+        type: string
+        default: 'master'
 
 jobs:
   build-tag-release:
@@ -19,7 +24,7 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/nostr
           path: build
-          # ref: v${{ inputs.version }}
+          ref: ${{ inputs.ref }}
 
       - name: Checkout nostr-sdk-swift repo
         uses: actions/checkout@v3
