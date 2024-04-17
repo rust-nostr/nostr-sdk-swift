@@ -864,7 +864,8 @@ open class Client:
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_client(self.pointer, $0) }
     }
 public convenience init(signer: NostrSigner?) {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_client_new(
         FfiConverterOptionTypeNostrSigner.lower(signer),$0
     )
@@ -1419,7 +1420,8 @@ open class ClientBuilder:
      * New client builder
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_clientbuilder_new($0
     )
 }
@@ -1606,8 +1608,9 @@ open class Nwc:
     /**
      * Compose new `NWC` client
      */
-public convenience init(uri: NostrWalletConnectUri) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(uri: NostrWalletConnectUri)throws  {
+    let pointer =
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_nwc_new(
         FfiConverterTypeNostrWalletConnectURI_lower(uri),$0
     )
@@ -1807,7 +1810,8 @@ open class NegentropyOptions:
      * New default options
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_negentropyoptions_new($0
     )
 }
@@ -1945,8 +1949,9 @@ open class Nip46Signer:
     /**
      * New NIP46 remote signer
      */
-public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?)throws  {
+    let pointer =
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_nip46signer_new(
         FfiConverterTypeNostrConnectURI_lower(uri),
         FfiConverterTypeKeys_lower(appKeys),
@@ -2517,7 +2522,8 @@ open class NostrWalletConnectOptions:
      * New default NWC options
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_nostrwalletconnectoptions_new($0
     )
 }
@@ -2781,7 +2787,8 @@ open class Options:
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_options(self.pointer, $0) }
     }
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_options_new($0
     )
 }
@@ -3008,7 +3015,8 @@ open class Profile:
      * Compose new profile
      */
 public convenience init(publicKey: PublicKey, metadata: Metadata) {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_profile_new(
         FfiConverterTypePublicKey_lower(publicKey),
         FfiConverterTypeMetadata_lower(metadata),$0
@@ -3186,8 +3194,9 @@ open class Proxy:
     /**
      * Compose proxy (ex. `127.0.0.1:9050`)
      */
-public convenience init(addr: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(addr: String)throws  {
+    let pointer =
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_proxy_new(
         FfiConverterString.lower(addr),$0
     )
@@ -3459,8 +3468,9 @@ open class Relay:
     /**
      * Create new `Relay` with **default** `options` and `in-memory database`
      */
-public convenience init(url: String) {
-    let pointer = throws try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public convenience init(url: String)throws  {
+    let pointer =
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_relay_new(
         FfiConverterString.lower(url),$0
     )
@@ -4097,7 +4107,8 @@ open class RelayLimits:
      * Construct with default limits
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_relaylimits_new($0
     )
 }
@@ -4332,7 +4343,8 @@ open class RelayOptions:
      * New default relay options
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_relayoptions_new($0
     )
 }
@@ -4740,7 +4752,8 @@ open class RelayPool:
      * Create new `RelayPool` with `in-memory` database
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_relaypool_new($0
     )
 }
@@ -5215,7 +5228,8 @@ open class RelaySendOptions:
      * New default `RelaySendOptions`
      */
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_relaysendoptions_new($0
     )
 }
@@ -5365,7 +5379,8 @@ open class SubscribeAutoCloseOptions:
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_subscribeautocloseoptions(self.pointer, $0) }
     }
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_subscribeautocloseoptions_new($0
     )
 }
@@ -5502,7 +5517,8 @@ open class SubscribeOptions:
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_subscribeoptions(self.pointer, $0) }
     }
 public convenience init() {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_subscribeoptions_new($0
     )
 }
@@ -5642,7 +5658,8 @@ open class ZapDetails:
      * **Note: `private` zaps are not currently supported here!**
      */
 public convenience init(zapType: ZapType) {
-    let pointer = try! rustCall() {
+    let pointer =
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_zapdetails_new(
         FfiConverterTypeZapType_lower(zapType),$0
     )
