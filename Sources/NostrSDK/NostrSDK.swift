@@ -7,8 +7,8 @@ import Foundation
 // Depending on the consumer's build setup, the low-level FFI code
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
-#if canImport(nostr_sdkFFI)
-import nostr_sdkFFI
+#if canImport(nostr_sdk_ffiFFI)
+import nostr_sdk_ffiFFI
 #endif
 
 fileprivate extension RustBuffer {
@@ -662,7 +662,10 @@ public protocol ClientProtocol : AnyObject {
      *
      * Return `false` if the relay already exists.
      *
-     * This method use perviously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
+     * This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
      * To use custom `RelayOptions`, check `add_relay_with_opts` method.
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
@@ -674,6 +677,9 @@ public protocol ClientProtocol : AnyObject {
      *
      * Return `false` if the relay already exists.
      *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
     func addRelayWithOpts(url: String, opts: RelayOptions) throws  -> Bool
@@ -681,13 +687,35 @@ public protocol ClientProtocol : AnyObject {
     /**
      * Add multiple relays
      *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
      * Connection is **NOT** automatically started with relays, remember to call `connect` method!
      */
     func addRelays(relays: [String]) throws 
     
+    /**
+     * Get blacklist
+     */
+    func blacklist()  -> RelayBlacklist
+    
+    /**
+     * Connect to all added relays
+     */
     func connect() 
     
+    /**
+     * Connect to a previously added relay
+     */
     func connectRelay(url: String) throws 
+    
+    /**
+     * Connect to all added relays
+     *
+     * Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
+     * The code continues if the `timeout` is reached or if all relays connect.
+     */
+    func connectWithTimeout(timeout: TimeInterval) 
     
     func database()  -> NostrDatabase
     
@@ -735,6 +763,24 @@ public protocol ClientProtocol : AnyObject {
     func like(event: Event) throws  -> EventId
     
     /**
+     * Mute event IDs
+     *
+     * Add event IDs to blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+    func muteIds(ids: [EventId]) 
+    
+    /**
+     * Mute public keys
+     *
+     * Add public keys to blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+    func mutePublicKeys(publicKeys: [PublicKey]) 
+    
+    /**
      * React to an [`Event`]
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
@@ -754,6 +800,13 @@ public protocol ClientProtocol : AnyObject {
      */
     func repost(event: Event, relayUrl: String?) throws  -> EventId
     
+    /**
+     * Encrypted direct msg
+     *
+     * <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/04.md>
+     */
     func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?) throws  -> EventId
     
     func sendEvent(event: Event) throws  -> EventId
@@ -779,9 +832,11 @@ public protocol ClientProtocol : AnyObject {
     func sendMsgTo(urls: [String], msg: ClientMessage) throws 
     
     /**
-     * Send GiftWrapper Sealed Direct message
+     * Send private direct message
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-    func sendSealedMsg(receiver: PublicKey, message: String, expiration: Timestamp?) throws 
+    func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?) throws 
     
     func setMetadata(metadata: Metadata) throws  -> EventId
     
@@ -799,7 +854,7 @@ public protocol ClientProtocol : AnyObject {
     func stop() throws 
     
     /**
-     * Subscribe to filters
+     * Subscribe to filters to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -808,7 +863,16 @@ public protocol ClientProtocol : AnyObject {
     func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions?)  -> String
     
     /**
-     * Subscribe to filters with custom subscription ID
+     * Subscribe to filters to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+     */
+    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions?) throws  -> String
+    
+    /**
+     * Subscribe to filters with custom subscription ID to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -816,20 +880,55 @@ public protocol ClientProtocol : AnyObject {
      */
     func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) 
     
+    /**
+     * Subscribe to filters with custom subscription ID to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+     */
+    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) throws 
+    
     func subscription(id: String)  -> [Filter]?
     
     func subscriptions()  -> [String: [Filter]]
+    
+    /**
+     * Unmute event IDs
+     *
+     * Remove event IDs from blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+    func unmuteIds(ids: [EventId]) 
+    
+    /**
+     * Unmute public keys
+     *
+     * Remove public keys from blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+    func unmutePublicKeys(publicKeys: [PublicKey]) 
     
     func unsubscribe(subscriptionId: String) 
     
     func unsubscribeAll() 
     
+    /**
+     * Update default difficulty for new `Event`
+     */
     func updateDifficulty(difficulty: UInt8) 
     
     /**
-     * Send a Zap!
+     * Update minimum POW difficulty for received events
      *
-     * This method automatically create a split zap to support Rust Nostr development.
+     * Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
+     */
+    func updateMinPowDifficulty(difficulty: UInt8) 
+    
+    /**
+     * Send a Zap!
      */
     func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?) throws 
     
@@ -863,7 +962,7 @@ open class Client:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_client(self.pointer, $0) }
     }
-public convenience init(signer: NostrSigner?) {
+public convenience init(signer: NostrSigner? = nil) {
     let pointer =
         try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_client_new(
@@ -898,7 +997,10 @@ public static func withOpts(signer: NostrSigner?, opts: Options) -> Client {
      *
      * Return `false` if the relay already exists.
      *
-     * This method use perviously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
+     * This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
      * To use custom `RelayOptions`, check `add_relay_with_opts` method.
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
@@ -916,6 +1018,9 @@ open func addRelay(url: String)throws  -> Bool {
      *
      * Return `false` if the relay already exists.
      *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
 open func addRelayWithOpts(url: String, opts: RelayOptions)throws  -> Bool {
@@ -930,6 +1035,9 @@ open func addRelayWithOpts(url: String, opts: RelayOptions)throws  -> Bool {
     /**
      * Add multiple relays
      *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     *
      * Connection is **NOT** automatically started with relays, remember to call `connect` method!
      */
 open func addRelays(relays: [String])throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
@@ -939,15 +1047,44 @@ open func addRelays(relays: [String])throws  {try rustCallWithError(FfiConverter
 }
 }
     
+    /**
+     * Get blacklist
+     */
+open func blacklist() -> RelayBlacklist {
+    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_blacklist(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Connect to all added relays
+     */
 open func connect() {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_client_connect(self.uniffiClonePointer(),$0
     )
 }
 }
     
+    /**
+     * Connect to a previously added relay
+     */
 open func connectRelay(url: String)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_client_connect_relay(self.uniffiClonePointer(),
         FfiConverterString.lower(url),$0
+    )
+}
+}
+    
+    /**
+     * Connect to all added relays
+     *
+     * Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
+     * The code continues if the `timeout` is reached or if all relays connect.
+     */
+open func connectWithTimeout(timeout: TimeInterval) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_connect_with_timeout(self.uniffiClonePointer(),
+        FfiConverterDuration.lower(timeout),$0
     )
 }
 }
@@ -1059,6 +1196,34 @@ open func like(event: Event)throws  -> EventId {
 }
     
     /**
+     * Mute event IDs
+     *
+     * Add event IDs to blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+open func muteIds(ids: [EventId]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_mute_ids(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeEventId.lower(ids),$0
+    )
+}
+}
+    
+    /**
+     * Mute public keys
+     *
+     * Add public keys to blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+open func mutePublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_mute_public_keys(self.uniffiClonePointer(),
+        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
+    )
+}
+}
+    
+    /**
      * React to an [`Event`]
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
@@ -1114,6 +1279,13 @@ open func repost(event: Event, relayUrl: String?)throws  -> EventId {
 })
 }
     
+    /**
+     * Encrypted direct msg
+     *
+     * <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/04.md>
+     */
 open func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?)throws  -> EventId {
     return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_client_send_direct_msg(self.uniffiClonePointer(),
@@ -1184,13 +1356,15 @@ open func sendMsgTo(urls: [String], msg: ClientMessage)throws  {try rustCallWith
 }
     
     /**
-     * Send GiftWrapper Sealed Direct message
+     * Send private direct message
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-open func sendSealedMsg(receiver: PublicKey, message: String, expiration: Timestamp?)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_sealed_msg(self.uniffiClonePointer(),
+open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId? = nil)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg(self.uniffiClonePointer(),
         FfiConverterTypePublicKey_lower(receiver),
         FfiConverterString.lower(message),
-        FfiConverterOptionTypeTimestamp.lower(expiration),$0
+        FfiConverterOptionTypeEventId.lower(replyTo),$0
     )
 }
 }
@@ -1240,13 +1414,13 @@ open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lif
 }
     
     /**
-     * Subscribe to filters
+     * Subscribe to filters to all connected relays
      *
      * ### Auto-closing subscription
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions?) -> String {
+open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions? = nil) -> String {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_client_subscribe(self.uniffiClonePointer(),
         FfiConverterSequenceTypeFilter.lower(filters),
@@ -1256,14 +1430,48 @@ open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions?) -> Stri
 }
     
     /**
-     * Subscribe to filters with custom subscription ID
+     * Subscribe to filters to specific relays
      *
      * ### Auto-closing subscription
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) {try! rustCall() {
+open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_subscribe_to(self.uniffiClonePointer(),
+        FfiConverterSequenceString.lower(urls),
+        FfiConverterSequenceTypeFilter.lower(filters),
+        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
+    )
+})
+}
+    
+    /**
+     * Subscribe to filters with custom subscription ID to all connected relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+     */
+open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceTypeFilter.lower(filters),
+        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
+    )
+}
+}
+    
+    /**
+     * Subscribe to filters with custom subscription ID to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
+     */
+open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id_to(self.uniffiClonePointer(),
+        FfiConverterSequenceString.lower(urls),
         FfiConverterString.lower(id),
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
@@ -1286,6 +1494,34 @@ open func subscriptions() -> [String: [Filter]] {
 })
 }
     
+    /**
+     * Unmute event IDs
+     *
+     * Remove event IDs from blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+open func unmuteIds(ids: [EventId]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_unmute_ids(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeEventId.lower(ids),$0
+    )
+}
+}
+    
+    /**
+     * Unmute public keys
+     *
+     * Remove public keys from blacklist
+     *
+     * <div class="warning">Mute list event is not currently created/updated!</div>
+     */
+open func unmutePublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_unmute_public_keys(self.uniffiClonePointer(),
+        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
+    )
+}
+}
+    
 open func unsubscribe(subscriptionId: String) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe(self.uniffiClonePointer(),
         FfiConverterString.lower(subscriptionId),$0
@@ -1299,6 +1535,9 @@ open func unsubscribeAll() {try! rustCall() {
 }
 }
     
+    /**
+     * Update default difficulty for new `Event`
+     */
 open func updateDifficulty(difficulty: UInt8) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_client_update_difficulty(self.uniffiClonePointer(),
         FfiConverterUInt8.lower(difficulty),$0
@@ -1307,9 +1546,19 @@ open func updateDifficulty(difficulty: UInt8) {try! rustCall() {
 }
     
     /**
-     * Send a Zap!
+     * Update minimum POW difficulty for received events
      *
-     * This method automatically create a split zap to support Rust Nostr development.
+     * Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
+     */
+open func updateMinPowDifficulty(difficulty: UInt8) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_update_min_pow_difficulty(self.uniffiClonePointer(),
+        FfiConverterUInt8.lower(difficulty),$0
+    )
+}
+}
+    
+    /**
+     * Send a Zap!
      */
 open func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_client_zap(self.uniffiClonePointer(),
@@ -3313,6 +3562,11 @@ public protocol RelayProtocol : AnyObject {
     func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) throws 
     
     /**
+     * Get blacklist
+     */
+    func blacklist()  -> RelayBlacklist
+    
+    /**
      * Connect to relay and keep alive connection
      */
     func connect(connectionTimeout: TimeInterval?) 
@@ -3343,6 +3597,9 @@ public protocol RelayProtocol : AnyObject {
      */
     func proxy()  -> String?
     
+    /**
+     * Get number of messages in queue
+     */
     func queue()  -> UInt64
     
     /**
@@ -3490,11 +3747,12 @@ public convenience init(url: String)throws  {
     /**
      * Create new `Relay` with **custom** `options` and/or `database`
      */
-public static func custom(url: String, database: NostrDatabase, opts: RelayOptions)throws  -> Relay {
+public static func custom(url: String, database: NostrDatabase, blacklist: RelayBlacklist, opts: RelayOptions)throws  -> Relay {
     return try  FfiConverterTypeRelay.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_relay_custom(
         FfiConverterString.lower(url),
         FfiConverterTypeNostrDatabase.lower(database),
+        FfiConverterTypeRelayBlacklist.lower(blacklist),
         FfiConverterTypeRelayOptions.lower(opts),$0
     )
 })
@@ -3534,6 +3792,16 @@ open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)throws  {try ru
         FfiConverterTypeRelaySendOptions.lower(opts),$0
     )
 }
+}
+    
+    /**
+     * Get blacklist
+     */
+open func blacklist() -> RelayBlacklist {
+    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relay_blacklist(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -3606,6 +3874,9 @@ open func proxy() -> String? {
 })
 }
     
+    /**
+     * Get number of messages in queue
+     */
 open func queue() -> UInt64 {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relay_queue(self.uniffiClonePointer(),$0
@@ -3836,6 +4107,254 @@ public func FfiConverterTypeRelay_lift(_ pointer: UnsafeMutableRawPointer) throw
 
 public func FfiConverterTypeRelay_lower(_ value: Relay) -> UnsafeMutableRawPointer {
     return FfiConverterTypeRelay.lower(value)
+}
+
+
+
+
+public protocol RelayBlacklistProtocol : AnyObject {
+    
+    /**
+     * Add event IDs to blacklist
+     */
+    func addIds(ids: [EventId]) 
+    
+    /**
+     * Add public keys to blacklist
+     */
+    func addPublicKeys(publicKeys: [PublicKey]) 
+    
+    /**
+     * Remove everything
+     */
+    func clear() 
+    
+    /**
+     * Check if blacklist contains event ID
+     */
+    func hasId(id: EventId)  -> Bool
+    
+    /**
+     * Check if blacklist contains public key
+     */
+    func hasPublicKey(publicKey: PublicKey)  -> Bool
+    
+    /**
+     * Remove event ID from blacklist
+     */
+    func removeId(id: EventId) 
+    
+    /**
+     * Remove event IDs from blacklist
+     */
+    func removeIds(ids: [EventId]) 
+    
+    /**
+     * Remove public key from blacklist
+     */
+    func removePublicKey(publicKey: PublicKey) 
+    
+    /**
+     * Remove event IDs from blacklist
+     */
+    func removePublicKeys(ids: [PublicKey]) 
+    
+}
+
+open class RelayBlacklist:
+    RelayBlacklistProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_relayblacklist(self.pointer, $0) }
+    }
+public convenience init(ids: [EventId] = [], publicKeys: [PublicKey] = []) {
+    let pointer =
+        try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_relayblacklist_new(
+        FfiConverterSequenceTypeEventId.lower(ids),
+        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relayblacklist(pointer, $0) }
+    }
+
+    
+    /**
+     * construct new empty blacklist
+     */
+public static func empty() -> RelayBlacklist {
+    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_relayblacklist_empty($0
+    )
+})
+}
+    
+
+    
+    /**
+     * Add event IDs to blacklist
+     */
+open func addIds(ids: [EventId]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_ids(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeEventId.lower(ids),$0
+    )
+}
+}
+    
+    /**
+     * Add public keys to blacklist
+     */
+open func addPublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_public_keys(self.uniffiClonePointer(),
+        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
+    )
+}
+}
+    
+    /**
+     * Remove everything
+     */
+open func clear() {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_clear(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+    /**
+     * Check if blacklist contains event ID
+     */
+open func hasId(id: EventId) -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_id(self.uniffiClonePointer(),
+        FfiConverterTypeEventId_lower(id),$0
+    )
+})
+}
+    
+    /**
+     * Check if blacklist contains public key
+     */
+open func hasPublicKey(publicKey: PublicKey) -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_public_key(self.uniffiClonePointer(),
+        FfiConverterTypePublicKey_lower(publicKey),$0
+    )
+})
+}
+    
+    /**
+     * Remove event ID from blacklist
+     */
+open func removeId(id: EventId) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_id(self.uniffiClonePointer(),
+        FfiConverterTypeEventId_lower(id),$0
+    )
+}
+}
+    
+    /**
+     * Remove event IDs from blacklist
+     */
+open func removeIds(ids: [EventId]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_ids(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeEventId.lower(ids),$0
+    )
+}
+}
+    
+    /**
+     * Remove public key from blacklist
+     */
+open func removePublicKey(publicKey: PublicKey) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_key(self.uniffiClonePointer(),
+        FfiConverterTypePublicKey_lower(publicKey),$0
+    )
+}
+}
+    
+    /**
+     * Remove event IDs from blacklist
+     */
+open func removePublicKeys(ids: [PublicKey]) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_keys(self.uniffiClonePointer(),
+        FfiConverterSequenceTypePublicKey.lower(ids),$0
+    )
+}
+}
+    
+
+}
+
+public struct FfiConverterTypeRelayBlacklist: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = RelayBlacklist
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayBlacklist {
+        return RelayBlacklist(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: RelayBlacklist) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RelayBlacklist {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: RelayBlacklist, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeRelayBlacklist_lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayBlacklist {
+    return try FfiConverterTypeRelayBlacklist.lift(pointer)
+}
+
+public func FfiConverterTypeRelayBlacklist_lower(_ value: RelayBlacklist) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeRelayBlacklist.lower(value)
 }
 
 
@@ -4257,7 +4776,7 @@ public protocol RelayOptionsProtocol : AnyObject {
     /**
      * Minimum POW for received events (default: 0)
      */
-    func pow(diffculty: UInt8)  -> RelayOptions
+    func pow(difficulty: UInt8)  -> RelayOptions
     
     /**
      * Set proxy
@@ -4289,7 +4808,7 @@ public protocol RelayOptionsProtocol : AnyObject {
     /**
      * Update `pow` option
      */
-    func updatePowDifficulty(diffculty: UInt8) 
+    func updatePowDifficulty(difficulty: UInt8) 
     
     /**
      * Update `reconnect` option
@@ -4398,10 +4917,10 @@ open func ping(ping: Bool) -> RelayOptions {
     /**
      * Minimum POW for received events (default: 0)
      */
-open func pow(diffculty: UInt8) -> RelayOptions {
+open func pow(difficulty: UInt8) -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relayoptions_pow(self.uniffiClonePointer(),
-        FfiConverterUInt8.lower(diffculty),$0
+        FfiConverterUInt8.lower(difficulty),$0
     )
 })
 }
@@ -4465,9 +4984,9 @@ open func updateAdjustRetrySec(adjustRetrySec: Bool) {try! rustCall() {
     /**
      * Update `pow` option
      */
-open func updatePowDifficulty(diffculty: UInt8) {try! rustCall() {
+open func updatePowDifficulty(difficulty: UInt8) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relayoptions_update_pow_difficulty(self.uniffiClonePointer(),
-        FfiConverterUInt8.lower(diffculty),$0
+        FfiConverterUInt8.lower(difficulty),$0
     )
 }
 }
@@ -4578,6 +5097,11 @@ public protocol RelayPoolProtocol : AnyObject {
     func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions) throws 
     
     /**
+     * Get blacklist
+     */
+    func blacklist()  -> RelayBlacklist
+    
+    /**
      * Connect to all added relays and keep connection alive
      */
     func connect(connectionTimeout: TimeInterval?) 
@@ -4670,6 +5194,13 @@ public protocol RelayPoolProtocol : AnyObject {
     func shutdown() throws 
     
     /**
+     * Start
+     *
+     * Internally call `connect` without wait for connection.
+     */
+    func start() 
+    
+    /**
      * Stop
      *
      * Call `connect` to re-start relays connections
@@ -4677,7 +5208,7 @@ public protocol RelayPoolProtocol : AnyObject {
     func stop() throws 
     
     /**
-     * Subscribe to filters
+     * Subscribe to filters to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -4688,7 +5219,16 @@ public protocol RelayPoolProtocol : AnyObject {
     func subscribe(filters: [Filter], opts: SubscribeOptions)  -> String
     
     /**
-     * Subscribe with custom subscription ID
+     * Subscribe to filters to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+     */
+    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions) throws  -> String
+    
+    /**
+     * Subscribe with custom subscription ID to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -4697,6 +5237,15 @@ public protocol RelayPoolProtocol : AnyObject {
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
     func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) 
+    
+    /**
+     * Subscribe to filters with custom subscription ID to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+     */
+    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions) throws 
     
     /**
      * Get filters by subscription ID
@@ -4837,6 +5386,16 @@ open func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptio
         FfiConverterTypeRelaySendOptions.lower(opts),$0
     )
 }
+}
+    
+    /**
+     * Get blacklist
+     */
+open func blacklist() -> RelayBlacklist {
+    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relaypool_blacklist(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -5039,6 +5598,17 @@ open func shutdown()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError
 }
     
     /**
+     * Start
+     *
+     * Internally call `connect` without wait for connection.
+     */
+open func start() {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relaypool_start(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+    /**
      * Stop
      *
      * Call `connect` to re-start relays connections
@@ -5050,7 +5620,7 @@ open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lif
 }
     
     /**
-     * Subscribe to filters
+     * Subscribe to filters to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -5068,7 +5638,24 @@ open func subscribe(filters: [Filter], opts: SubscribeOptions) -> String {
 }
     
     /**
-     * Subscribe with custom subscription ID
+     * Subscribe to filters to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+     */
+open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions)throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_to(self.uniffiClonePointer(),
+        FfiConverterSequenceString.lower(urls),
+        FfiConverterSequenceTypeFilter.lower(filters),
+        FfiConverterTypeSubscribeOptions.lower(opts),$0
+    )
+})
+}
+    
+    /**
+     * Subscribe with custom subscription ID to all connected relays
      *
      * ### Auto-closing subscription
      *
@@ -5078,6 +5665,23 @@ open func subscribe(filters: [Filter], opts: SubscribeOptions) -> String {
      */
 open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterSequenceTypeFilter.lower(filters),
+        FfiConverterTypeSubscribeOptions.lower(opts),$0
+    )
+}
+}
+    
+    /**
+     * Subscribe to filters with custom subscription ID to specific relays
+     *
+     * ### Auto-closing subscription
+     *
+     * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
+     */
+open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id_to(self.uniffiClonePointer(),
+        FfiConverterSequenceString.lower(urls),
         FfiConverterString.lower(id),
         FfiConverterSequenceTypeFilter.lower(filters),
         FfiConverterTypeSubscribeOptions.lower(opts),$0
@@ -7295,6 +7899,28 @@ fileprivate struct FfiConverterSequenceTypeEvent: FfiConverterRustBuffer {
     }
 }
 
+fileprivate struct FfiConverterSequenceTypeEventId: FfiConverterRustBuffer {
+    typealias SwiftType = [EventId]
+
+    public static func write(_ value: [EventId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeEventId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EventId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [EventId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeEventId.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 fileprivate struct FfiConverterSequenceTypeFilter: FfiConverterRustBuffer {
     typealias SwiftType = [Filter]
 
@@ -7334,6 +7960,28 @@ fileprivate struct FfiConverterSequenceTypeLookupInvoiceResponseResult: FfiConve
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLookupInvoiceResponseResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+fileprivate struct FfiConverterSequenceTypePublicKey: FfiConverterRustBuffer {
+    typealias SwiftType = [PublicKey]
+
+    public static func write(_ value: [PublicKey], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePublicKey.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PublicKey] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PublicKey]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePublicKey.read(from: &buf))
         }
         return seq
     }
@@ -7465,19 +8113,25 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_aborthandle_is_aborted() != 57233) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 55300) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 49) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay_with_opts() != 23524) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay_with_opts() != 12575) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 45072) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 59820) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 931) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_blacklist() != 3155) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 33775) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 58188) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 56847) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_with_timeout() != 62841) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_database() != 35722) {
@@ -7510,6 +8164,12 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_like() != 55130) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_ids() != 48617) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_public_keys() != 11521) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_reaction() != 48411) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7528,7 +8188,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 27770) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 12788) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 44479) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 10342) {
@@ -7549,7 +8209,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 48694) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_sealed_msg() != 15891) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 47492) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 18910) {
@@ -7570,10 +8230,16 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_stop() != 46184) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 7326) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 26024) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 43239) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 56417) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 1639) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 48827) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscription() != 64265) {
@@ -7582,16 +8248,25 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 25974) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_ids() != 23766) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_public_keys() != 41508) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 33797) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe_all() != 27202) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 40801) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 12551) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 9277) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_min_pow_difficulty() != 58908) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 7374) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_build() != 61424) {
@@ -7747,6 +8422,9 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 7075) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_blacklist() != 35021) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 65283) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7768,7 +8446,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_proxy() != 64699) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 4051) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 23174) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_reconcile() != 21720) {
@@ -7819,6 +8497,33 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 1351) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_ids() != 39906) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_public_keys() != 49994) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_clear() != 54680) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_id() != 19398) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_public_key() != 44714) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_id() != 64401) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_ids() != 29502) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_key() != 52685) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_keys() != 25) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 52060) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7861,7 +8566,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_ping() != 51607) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_pow() != 22672) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_pow() != 37387) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_proxy() != 35156) {
@@ -7879,7 +8584,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_adjust_retry_sec() != 1296) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_pow_difficulty() != 50131) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_pow_difficulty() != 44137) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_reconnect() != 23173) {
@@ -7904,6 +8609,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 4853) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_blacklist() != 51161) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 1941) {
@@ -7960,13 +8668,22 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 56982) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_start() != 10745) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_stop() != 37084) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 21574) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 63291) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 1822) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 13626) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 36090) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 26652) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscription() != 46314) {
@@ -8005,7 +8722,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_zapdetails_message() != 43166) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 1292) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 54751) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 35054) {
@@ -8056,13 +8773,19 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_proxy_new() != 51726) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 55798) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 17945) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_new() != 3279) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_with_opts() != 9335) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayblacklist_empty() != 38614) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayblacklist_new() != 62518) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_disable() != 39641) {
