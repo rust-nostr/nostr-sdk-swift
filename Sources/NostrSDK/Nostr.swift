@@ -556,7 +556,7 @@ public protocol ClientMessageProtocol : AnyObject {
      */
     func asEnum()  -> ClientMessageEnum
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
 }
 
@@ -694,8 +694,8 @@ open func asEnum() -> ClientMessageEnum {
 })
 }
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_clientmessage_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -1347,7 +1347,7 @@ public func FfiConverterTypeEncryptedSecretKey_lower(_ value: EncryptedSecretKey
 
 public protocol EventProtocol : AnyObject {
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     /**
      * Get event author (`pubkey` field)
@@ -1510,8 +1510,8 @@ public static func fromJson(json: String)throws  -> Event {
     
 
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_event_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -2999,7 +2999,7 @@ public func FfiConverterTypeFileMetadata_lower(_ value: FileMetadata) -> UnsafeM
 
 public protocol FilterProtocol : AnyObject {
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     func asRecord()  -> FilterRecord
     
@@ -3163,8 +3163,8 @@ public static func fromRecord(record: FilterRecord) -> Filter {
     
 
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_filter_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -4114,7 +4114,7 @@ public func FfiConverterTypeKind_lower(_ value: Kind) -> UnsafeMutableRawPointer
 
 public protocol MetadataProtocol : AnyObject {
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     func asRecord()  -> MetadataRecord
     
@@ -4226,8 +4226,8 @@ public static func fromRecord(r: MetadataRecord) -> Metadata {
     
 
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_metadata_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -5117,7 +5117,7 @@ public protocol NostrConnectMetadataProtocol : AnyObject {
     /**
      * Serialize as JSON string
      */
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     /**
      * Description of the `App`
@@ -5194,8 +5194,8 @@ public convenience init(name: String) {
     /**
      * Serialize as JSON string
      */
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_nostrconnectmetadata_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -5950,7 +5950,7 @@ public func FfiConverterTypePublicKey_lower(_ value: PublicKey) -> UnsafeMutable
 
 public protocol RawEventProtocol : AnyObject {
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     func asRecord()  -> RawEventRecord
     
@@ -6016,8 +6016,8 @@ public static func fromRecord(r: RawEventRecord) -> RawEvent {
     
 
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_rawevent_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -6396,7 +6396,7 @@ public protocol RelayMessageProtocol : AnyObject {
      */
     func asEnum()  -> RelayMessageEnum
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
 }
 
@@ -6560,8 +6560,8 @@ open func asEnum() -> RelayMessageEnum {
 })
 }
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_relaymessage_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -7429,7 +7429,7 @@ public func FfiConverterTypeSingleLetterTag_lower(_ value: SingleLetterTag) -> U
 
 public protocol StallDataProtocol : AnyObject {
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     func asRecord()  -> StallDataRecord
     
@@ -7514,8 +7514,8 @@ public static func fromRecord(r: StallDataRecord) -> StallData {
     
 
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_stalldata_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -8178,7 +8178,7 @@ public protocol UnsignedEventProtocol : AnyObject {
      */
     func addSignature(sig: String) throws  -> Event
     
-    func asJson()  -> String
+    func asJson() throws  -> String
     
     func author()  -> PublicKey
     
@@ -8266,8 +8266,8 @@ open func addSignature(sig: String)throws  -> Event {
 })
 }
     
-open func asJson() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
+open func asJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_unsignedevent_as_json(self.uniffiClonePointer(),$0
     )
 })
@@ -18224,7 +18224,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_clientmessage_as_enum() != 33173) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_clientmessage_as_json() != 2801) {
+    if (uniffi_nostr_ffi_checksum_method_clientmessage_as_json() != 25711) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_contact_alias() != 19227) {
@@ -18266,7 +18266,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_encryptedsecretkey_version() != 27626) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_event_as_json() != 13177) {
+    if (uniffi_nostr_ffi_checksum_method_event_as_json() != 6443) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_event_author() != 55205) {
@@ -18380,7 +18380,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_filemetadata_size() != 25033) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_filter_as_json() != 460) {
+    if (uniffi_nostr_ffi_checksum_method_filter_as_json() != 2504) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_as_record() != 10817) {
@@ -18518,7 +18518,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_kind_as_u64() != 51642) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_metadata_as_json() != 65508) {
+    if (uniffi_nostr_ffi_checksum_method_metadata_as_json() != 49741) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_metadata_as_record() != 14817) {
@@ -18620,7 +18620,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_nip21_to_nostr_uri() != 50917) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_nostrconnectmetadata_as_json() != 44995) {
+    if (uniffi_nostr_ffi_checksum_method_nostrconnectmetadata_as_json() != 46001) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_nostrconnectmetadata_description() != 20591) {
@@ -18659,7 +18659,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_publickey_to_nostr_uri() != 23126) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_rawevent_as_json() != 48986) {
+    if (uniffi_nostr_ffi_checksum_method_rawevent_as_json() != 12712) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_rawevent_as_record() != 15974) {
@@ -18716,7 +18716,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_relaymessage_as_enum() != 56517) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_relaymessage_as_json() != 58619) {
+    if (uniffi_nostr_ffi_checksum_method_relaymessage_as_json() != 2111) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_request_method() != 18547) {
@@ -18749,7 +18749,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_singlelettertag_is_uppercase() != 50218) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_stalldata_as_json() != 23354) {
+    if (uniffi_nostr_ffi_checksum_method_stalldata_as_json() != 14021) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_stalldata_as_record() != 56802) {
@@ -18797,7 +18797,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_ffi_checksum_method_unsignedevent_add_signature() != 65391) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_unsignedevent_as_json() != 632) {
+    if (uniffi_nostr_ffi_checksum_method_unsignedevent_as_json() != 44697) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_unsignedevent_author() != 15518) {
