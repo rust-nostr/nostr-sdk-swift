@@ -670,7 +670,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
-    func addRelay(url: String) throws  -> Bool
+    func addRelay(url: String) async throws  -> Bool
     
     /**
      * Add new relay with custom `RelayOptions`
@@ -682,7 +682,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
-    func addRelayWithOpts(url: String, opts: RelayOptions) throws  -> Bool
+    func addRelayWithOpts(url: String, opts: RelayOptions) async throws  -> Bool
     
     /**
      * Add multiple relays
@@ -692,7 +692,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * Connection is **NOT** automatically started with relays, remember to call `connect` method!
      */
-    func addRelays(relays: [String]) throws 
+    func addRelays(relays: [String]) async throws 
     
     /**
      * Get blacklist
@@ -702,12 +702,12 @@ public protocol ClientProtocol : AnyObject {
     /**
      * Connect to all added relays
      */
-    func connect() 
+    func connect() async 
     
     /**
      * Connect to a previously added relay
      */
-    func connectRelay(url: String) throws 
+    func connectRelay(url: String) async throws 
     
     /**
      * Connect to all added relays
@@ -715,43 +715,45 @@ public protocol ClientProtocol : AnyObject {
      * Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
      * The code continues if the `timeout` is reached or if all relays connect.
      */
-    func connectWithTimeout(timeout: TimeInterval) 
+    func connectWithTimeout(timeout: TimeInterval) async 
     
     func database()  -> NostrDatabase
     
-    func disconnect() throws 
+    func disconnect() async throws 
     
-    func disconnectRelay(url: String) throws 
+    func disconnectRelay(url: String) async throws 
     
     /**
      * Disike event
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-    func dislike(event: Event) throws  -> EventId
+    func dislike(event: Event) async throws  -> EventId
     
-    func fileMetadata(description: String, metadata: FileMetadata) throws  -> EventId
+    func fileMetadata(description: String, metadata: FileMetadata) async throws  -> EventId
     
     /**
      * Get events of filters from specific relays
      *
      * Get events both from **local database** and **relays**
      */
-    func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?) throws  -> [Event]
+    func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?) async throws  -> [Event]
     
-    func getEventsOf(filters: [Filter], timeout: TimeInterval?) throws  -> [Event]
+    func getEventsOf(filters: [Filter], timeout: TimeInterval?) async throws  -> [Event]
     
     /**
      * Gift Wrap
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-    func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) throws 
+    func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) async throws 
     
     /**
      * Handle notifications
      *
      * **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
+     *
+     * <div class="warning">Python bindings needs to call `uniffi_set_event_loop(asyncio.get_running_loop())` before this method!</div>
      */
     func handleNotifications(handler: HandleNotification) throws  -> AbortHandle
     
@@ -760,7 +762,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-    func like(event: Event) throws  -> EventId
+    func like(event: Event) async throws  -> EventId
     
     /**
      * Mute event IDs
@@ -769,7 +771,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-    func muteIds(ids: [EventId]) 
+    func muteIds(ids: [EventId]) async 
     
     /**
      * Mute public keys
@@ -778,27 +780,27 @@ public protocol ClientProtocol : AnyObject {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-    func mutePublicKeys(publicKeys: [PublicKey]) 
+    func mutePublicKeys(publicKeys: [PublicKey]) async 
     
     /**
      * React to an [`Event`]
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-    func reaction(event: Event, reaction: String) throws  -> EventId
+    func reaction(event: Event, reaction: String) async throws  -> EventId
     
-    func reconcile(filter: Filter, opts: NegentropyOptions) throws 
+    func reconcile(filter: Filter, opts: NegentropyOptions) async throws 
     
-    func relay(url: String) throws  -> Relay
+    func relay(url: String) async throws  -> Relay
     
-    func relays()  -> [String: Relay]
+    func relays() async  -> [String: Relay]
     
-    func removeRelay(url: String) throws 
+    func removeRelay(url: String) async throws 
     
     /**
      * Repost
      */
-    func repost(event: Event, relayUrl: String?) throws  -> EventId
+    func repost(event: Event, relayUrl: String?) async throws  -> EventId
     
     /**
      * Encrypted direct msg
@@ -807,51 +809,51 @@ public protocol ClientProtocol : AnyObject {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/04.md>
      */
-    func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?) throws  -> EventId
+    func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?) async throws  -> EventId
     
-    func sendEvent(event: Event) throws  -> EventId
+    func sendEvent(event: Event) async throws  -> EventId
     
     /**
      * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
      *
      * Rise an error if the [`NostrSigner`] is not set.
      */
-    func sendEventBuilder(builder: EventBuilder) throws  -> EventId
+    func sendEventBuilder(builder: EventBuilder) async throws  -> EventId
     
     /**
      * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
      *
      * Rise an error if the [`NostrSigner`] is not set.
      */
-    func sendEventBuilderTo(urls: [String], builder: EventBuilder) throws  -> EventId
+    func sendEventBuilderTo(urls: [String], builder: EventBuilder) async throws  -> EventId
     
-    func sendEventTo(urls: [String], event: Event) throws  -> EventId
+    func sendEventTo(urls: [String], event: Event) async throws  -> EventId
     
-    func sendMsg(msg: ClientMessage) throws 
+    func sendMsg(msg: ClientMessage) async throws 
     
-    func sendMsgTo(urls: [String], msg: ClientMessage) throws 
+    func sendMsgTo(urls: [String], msg: ClientMessage) async throws 
     
     /**
      * Send private direct message
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-    func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?) throws 
+    func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?) async throws 
     
-    func setMetadata(metadata: Metadata) throws  -> EventId
+    func setMetadata(metadata: Metadata) async throws  -> EventId
     
-    func shutdown() throws 
+    func shutdown() async throws 
     
     /**
      * Signs the `EventBuilder` into an `Event` using the `NostrSigner`
      */
-    func signEventBuilder(builder: EventBuilder) throws  -> Event
+    func signEventBuilder(builder: EventBuilder) async throws  -> Event
     
-    func signer() throws  -> NostrSigner
+    func signer() async throws  -> NostrSigner
     
-    func start() 
+    func start() async 
     
-    func stop() throws 
+    func stop() async throws 
     
     /**
      * Subscribe to filters to all connected relays
@@ -860,7 +862,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-    func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions?)  -> String
+    func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions?) async  -> String
     
     /**
      * Subscribe to filters to specific relays
@@ -869,7 +871,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions?) throws  -> String
+    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions?) async throws  -> String
     
     /**
      * Subscribe to filters with custom subscription ID to all connected relays
@@ -878,7 +880,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) 
+    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) async 
     
     /**
      * Subscribe to filters with custom subscription ID to specific relays
@@ -887,11 +889,11 @@ public protocol ClientProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) throws 
+    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions?) async throws 
     
-    func subscription(id: String)  -> [Filter]?
+    func subscription(id: String) async  -> [Filter]?
     
-    func subscriptions()  -> [String: [Filter]]
+    func subscriptions() async  -> [String: [Filter]]
     
     /**
      * Unmute event IDs
@@ -900,7 +902,7 @@ public protocol ClientProtocol : AnyObject {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-    func unmuteIds(ids: [EventId]) 
+    func unmuteIds(ids: [EventId]) async 
     
     /**
      * Unmute public keys
@@ -909,11 +911,11 @@ public protocol ClientProtocol : AnyObject {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-    func unmutePublicKeys(publicKeys: [PublicKey]) 
+    func unmutePublicKeys(publicKeys: [PublicKey]) async 
     
-    func unsubscribe(subscriptionId: String) 
+    func unsubscribe(subscriptionId: String) async 
     
-    func unsubscribeAll() 
+    func unsubscribeAll() async 
     
     /**
      * Update default difficulty for new `Event`
@@ -930,7 +932,7 @@ public protocol ClientProtocol : AnyObject {
     /**
      * Send a Zap!
      */
-    func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?) throws 
+    func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?) async throws 
     
 }
 
@@ -1005,12 +1007,21 @@ public static func withOpts(signer: NostrSigner?, opts: Options) -> Client {
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
-open func addRelay(url: String)throws  -> Bool {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_add_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-})
+open func addRelay(url: String)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_add_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1023,13 +1034,21 @@ open func addRelay(url: String)throws  -> Bool {
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
-open func addRelayWithOpts(url: String, opts: RelayOptions)throws  -> Bool {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_add_relay_with_opts(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),
-        FfiConverterTypeRelayOptions.lower(opts),$0
-    )
-})
+open func addRelayWithOpts(url: String, opts: RelayOptions)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_add_relay_with_opts(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url),FfiConverterTypeRelayOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1040,11 +1059,21 @@ open func addRelayWithOpts(url: String, opts: RelayOptions)throws  -> Bool {
      *
      * Connection is **NOT** automatically started with relays, remember to call `connect` method!
      */
-open func addRelays(relays: [String])throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_add_relays(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(relays),$0
-    )
-}
+open func addRelays(relays: [String])async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_add_relays(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(relays)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1060,20 +1089,42 @@ open func blacklist() -> RelayBlacklist {
     /**
      * Connect to all added relays
      */
-open func connect() {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_connect(self.uniffiClonePointer(),$0
-    )
-}
+open func connect()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_connect(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Connect to a previously added relay
      */
-open func connectRelay(url: String)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_connect_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-}
+open func connectRelay(url: String)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_connect_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1082,11 +1133,22 @@ open func connectRelay(url: String)throws  {try rustCallWithError(FfiConverterTy
      * Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
      * The code continues if the `timeout` is reached or if all relays connect.
      */
-open func connectWithTimeout(timeout: TimeInterval) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_connect_with_timeout(self.uniffiClonePointer(),
-        FfiConverterDuration.lower(timeout),$0
-    )
-}
+open func connectWithTimeout(timeout: TimeInterval)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_connect_with_timeout(
+                    self.uniffiClonePointer(),
+                    FfiConverterDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
 open func database() -> NostrDatabase {
@@ -1096,17 +1158,38 @@ open func database() -> NostrDatabase {
 })
 }
     
-open func disconnect()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_disconnect(self.uniffiClonePointer(),$0
-    )
-}
+open func disconnect()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_disconnect(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func disconnectRelay(url: String)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_disconnect_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-}
+open func disconnectRelay(url: String)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_disconnect_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1114,21 +1197,38 @@ open func disconnectRelay(url: String)throws  {try rustCallWithError(FfiConverte
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-open func dislike(event: Event)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_dislike(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),$0
-    )
-})
+open func dislike(event: Event)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_dislike(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func fileMetadata(description: String, metadata: FileMetadata)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_file_metadata(self.uniffiClonePointer(),
-        FfiConverterString.lower(description),
-        FfiConverterTypeFileMetadata_lower(metadata),$0
-    )
-})
+open func fileMetadata(description: String, metadata: FileMetadata)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_file_metadata(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(description),FfiConverterTypeFileMetadata_lower(metadata)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1136,23 +1236,38 @@ open func fileMetadata(description: String, metadata: FileMetadata)throws  -> Ev
      *
      * Get events both from **local database** and **relays**
      */
-open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?)throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_get_events_from(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
+open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?)async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_get_events_from(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func getEventsOf(filters: [Filter], timeout: TimeInterval?)throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_get_events_of(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
+open func getEventsOf(filters: [Filter], timeout: TimeInterval?)async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_get_events_of(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1160,24 +1275,34 @@ open func getEventsOf(filters: [Filter], timeout: TimeInterval?)throws  -> [Even
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-open func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(receiver),
-        FfiConverterTypeEventBuilder_lower(rumor),
-        FfiConverterOptionTypeTimestamp.lower(expiration),$0
-    )
-}
+open func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(receiver),FfiConverterTypeEventBuilder_lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Handle notifications
      *
      * **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
+     *
+     * <div class="warning">Python bindings needs to call `uniffi_set_event_loop(asyncio.get_running_loop())` before this method!</div>
      */
 open func handleNotifications(handler: HandleNotification)throws  -> AbortHandle {
     return try  FfiConverterTypeAbortHandle.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_client_handle_notifications(self.uniffiClonePointer(),
-        FfiConverterCallbackInterfaceHandleNotification.lower(handler),$0
+        FfiConverterTypeHandleNotification.lower(handler),$0
     )
 })
 }
@@ -1187,12 +1312,21 @@ open func handleNotifications(handler: HandleNotification)throws  -> AbortHandle
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-open func like(event: Event)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_like(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),$0
-    )
-})
+open func like(event: Event)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_like(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1202,11 +1336,22 @@ open func like(event: Event)throws  -> EventId {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-open func muteIds(ids: [EventId]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_mute_ids(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEventId.lower(ids),$0
-    )
-}
+open func muteIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_mute_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1216,11 +1361,22 @@ open func muteIds(ids: [EventId]) {try! rustCall() {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-open func mutePublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_mute_public_keys(self.uniffiClonePointer(),
-        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
-    )
-}
+open func mutePublicKeys(publicKeys: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_mute_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1228,55 +1384,110 @@ open func mutePublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/25.md>
      */
-open func reaction(event: Event, reaction: String)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_reaction(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),
-        FfiConverterString.lower(reaction),$0
-    )
-})
+open func reaction(event: Event, reaction: String)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_reaction(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event),FfiConverterString.lower(reaction)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func reconcile(filter: Filter, opts: NegentropyOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_reconcile(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),
-        FfiConverterTypeNegentropyOptions.lower(opts),$0
-    )
-}
-}
-    
-open func relay(url: String)throws  -> Relay {
-    return try  FfiConverterTypeRelay.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-})
-}
-    
-open func relays() -> [String: Relay] {
-    return try!  FfiConverterDictionaryStringTypeRelay.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_relays(self.uniffiClonePointer(),$0
-    )
-})
+open func reconcile(filter: Filter, opts: NegentropyOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_reconcile(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter),FfiConverterTypeNegentropyOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func removeRelay(url: String)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_remove_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
+open func relay(url: String)async throws  -> Relay {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeRelay.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
+    
+open func relays()async  -> [String: Relay] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_relays(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterDictionaryStringTypeRelay.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+open func removeRelay(url: String)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_remove_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Repost
      */
-open func repost(event: Event, relayUrl: String?)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_repost(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),
-        FfiConverterOptionString.lower(relayUrl),$0
-    )
-})
+open func repost(event: Event, relayUrl: String?)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_repost(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event),FfiConverterOptionString.lower(relayUrl)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1286,22 +1497,38 @@ open func repost(event: Event, relayUrl: String?)throws  -> EventId {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/04.md>
      */
-open func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_direct_msg(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(receiver),
-        FfiConverterString.lower(msg),
-        FfiConverterOptionTypeEventId.lower(reply),$0
-    )
-})
+open func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_direct_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(receiver),FfiConverterString.lower(msg),FfiConverterOptionTypeEventId.lower(reply)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func sendEvent(event: Event)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_event(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),$0
-    )
-})
+open func sendEvent(event: Event)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1309,12 +1536,21 @@ open func sendEvent(event: Event)throws  -> EventId {
      *
      * Rise an error if the [`NostrSigner`] is not set.
      */
-open func sendEventBuilder(builder: EventBuilder)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder(self.uniffiClonePointer(),
-        FfiConverterTypeEventBuilder_lower(builder),$0
-    )
-})
+open func sendEventBuilder(builder: EventBuilder)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventBuilder_lower(builder)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1322,37 +1558,72 @@ open func sendEventBuilder(builder: EventBuilder)throws  -> EventId {
      *
      * Rise an error if the [`NostrSigner`] is not set.
      */
-open func sendEventBuilderTo(urls: [String], builder: EventBuilder)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterTypeEventBuilder_lower(builder),$0
-    )
-})
+open func sendEventBuilderTo(urls: [String], builder: EventBuilder)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_event_builder_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypeEventBuilder_lower(builder)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func sendEventTo(urls: [String], event: Event)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_event_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterTypeEvent_lower(event),$0
-    )
-})
+open func sendEventTo(urls: [String], event: Event)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_event_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func sendMsg(msg: ClientMessage)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_msg(self.uniffiClonePointer(),
-        FfiConverterTypeClientMessage_lower(msg),$0
-    )
-}
+open func sendMsg(msg: ClientMessage)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeClientMessage_lower(msg)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func sendMsgTo(urls: [String], msg: ClientMessage)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_msg_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterTypeClientMessage_lower(msg),$0
-    )
-}
+open func sendMsgTo(urls: [String], msg: ClientMessage)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_msg_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypeClientMessage_lower(msg)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1360,57 +1631,127 @@ open func sendMsgTo(urls: [String], msg: ClientMessage)throws  {try rustCallWith
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId? = nil)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(receiver),
-        FfiConverterString.lower(message),
-        FfiConverterOptionTypeEventId.lower(replyTo),$0
-    )
-}
+open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId? = nil)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(receiver),FfiConverterString.lower(message),FfiConverterOptionTypeEventId.lower(replyTo)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func setMetadata(metadata: Metadata)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_set_metadata(self.uniffiClonePointer(),
-        FfiConverterTypeMetadata_lower(metadata),$0
-    )
-})
+open func setMetadata(metadata: Metadata)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_set_metadata(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeMetadata_lower(metadata)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func shutdown()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_shutdown(self.uniffiClonePointer(),$0
-    )
-}
+open func shutdown()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_shutdown(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Signs the `EventBuilder` into an `Event` using the `NostrSigner`
      */
-open func signEventBuilder(builder: EventBuilder)throws  -> Event {
-    return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_sign_event_builder(self.uniffiClonePointer(),
-        FfiConverterTypeEventBuilder_lower(builder),$0
-    )
-})
+open func signEventBuilder(builder: EventBuilder)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_sign_event_builder(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventBuilder_lower(builder)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func signer()throws  -> NostrSigner {
-    return try  FfiConverterTypeNostrSigner.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_signer(self.uniffiClonePointer(),$0
-    )
-})
+open func signer()async throws  -> NostrSigner {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_signer(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrSigner.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func start() {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_start(self.uniffiClonePointer(),$0
-    )
-}
+open func start()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_start(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
-open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_stop(self.uniffiClonePointer(),$0
-    )
-}
+open func stop()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_stop(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1420,13 +1761,22 @@ open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lif
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions? = nil) -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscribe(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
-    )
-})
+open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)async  -> String {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1436,14 +1786,21 @@ open func subscribe(filters: [Filter], opts: SubscribeAutoCloseOptions? = nil) -
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscribe_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
-    )
-})
+open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscribe_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -1453,13 +1810,22 @@ open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoClos
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
-    )
-}
+open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1469,29 +1835,57 @@ open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeAutoClos
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
      */
-open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterString.lower(id),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts),$0
-    )
-}
+open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeAutoCloseOptions? = nil)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscribe_with_id_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterString.lower(id),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionTypeSubscribeAutoCloseOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func subscription(id: String) -> [Filter]? {
-    return try!  FfiConverterOptionSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscription(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),$0
-    )
-})
+open func subscription(id: String)async  -> [Filter]? {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscription(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
-open func subscriptions() -> [String: [Filter]] {
-    return try!  FfiConverterDictionaryStringSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_subscriptions(self.uniffiClonePointer(),$0
-    )
-})
+open func subscriptions()async  -> [String: [Filter]] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_subscriptions(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterDictionaryStringSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1501,11 +1895,22 @@ open func subscriptions() -> [String: [Filter]] {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-open func unmuteIds(ids: [EventId]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_unmute_ids(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEventId.lower(ids),$0
-    )
-}
+open func unmuteIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_unmute_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1515,24 +1920,58 @@ open func unmuteIds(ids: [EventId]) {try! rustCall() {
      *
      * <div class="warning">Mute list event is not currently created/updated!</div>
      */
-open func unmutePublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_unmute_public_keys(self.uniffiClonePointer(),
-        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
-    )
-}
+open func unmutePublicKeys(publicKeys: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_unmute_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
-open func unsubscribe(subscriptionId: String) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe(self.uniffiClonePointer(),
-        FfiConverterString.lower(subscriptionId),$0
-    )
-}
+open func unsubscribe(subscriptionId: String)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(subscriptionId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
-open func unsubscribeAll() {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe_all(self.uniffiClonePointer(),$0
-    )
-}
+open func unsubscribeAll()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_unsubscribe_all(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -1560,13 +1999,21 @@ open func updateMinPowDifficulty(difficulty: UInt8) {try! rustCall() {
     /**
      * Send a Zap!
      */
-open func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_client_zap(self.uniffiClonePointer(),
-        FfiConverterTypeZapEntity.lower(to),
-        FfiConverterUInt64.lower(satoshi),
-        FfiConverterOptionTypeZapDetails.lower(details),$0
-    )
-}
+open func zap(to: ZapEntity, satoshi: UInt64, details: ZapDetails?)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_zap(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeZapEntity.lower(to),FfiConverterUInt64.lower(satoshi),FfiConverterOptionTypeZapDetails.lower(details)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 
@@ -1781,6 +2228,679 @@ public func FfiConverterTypeClientBuilder_lower(_ value: ClientBuilder) -> Unsaf
 
 
 
+public protocol CustomNostrDatabaseProtocol : AnyObject {
+    
+    /**
+     * Name of backend
+     */
+    func backend()  -> String
+    
+    /**
+     * Save [`Event`] into store
+     *
+     * Return `true` if event was successfully saved into database.
+     *
+     * **This method assume that [`Event`] was already verified**
+     */
+    func saveEvent(event: Event) async throws  -> Bool
+    
+    /**
+     * Check if [`Event`] has already been saved
+     */
+    func hasEventAlreadyBeenSaved(eventId: EventId) async throws  -> Bool
+    
+    /**
+     * Check if [`EventId`] has already been seen
+     */
+    func hasEventAlreadyBeenSeen(eventId: EventId) async throws  -> Bool
+    
+    /**
+     * Check if [`EventId`] has been deleted
+     */
+    func hasEventIdBeenDeleted(eventId: EventId) async throws  -> Bool
+    
+    /**
+     * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+     */
+    func hasCoordinateBeenDeleted(coordinate: Coordinate, timestamp: Timestamp) async throws  -> Bool
+    
+    /**
+     * Set [`EventId`] as seen by relay
+     *
+     * Useful for NIP65 (aka gossip)
+     */
+    func eventIdSeen(eventId: EventId, relayUrl: String) async throws 
+    
+    /**
+     * Get list of relays that have seen the [`EventId`]
+     */
+    func eventSeenOnRelays(eventId: EventId) async throws  -> [String]?
+    
+    /**
+     * Get [`Event`] by [`EventId`]
+     */
+    func eventById(eventId: EventId) async throws  -> Event
+    
+    /**
+     * Count number of [`Event`] found by filters
+     *
+     * Use `Filter::new()` or `Filter::default()` to count all events.
+     */
+    func count(filters: [Filter]) async throws  -> UInt64
+    
+    /**
+     * Query store with filters
+     */
+    func query(filters: [Filter]) async throws  -> [Event]
+    
+    /**
+     * Delete all events that match the `Filter`
+     */
+    func delete(filter: Filter) async throws 
+    
+    /**
+     * Wipe all data
+     */
+    func wipe() async throws 
+    
+}
+
+open class CustomNostrDatabase:
+    CustomNostrDatabaseProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_customnostrdatabase(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_customnostrdatabase(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * Name of backend
+     */
+open func backend() -> String {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_backend(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Save [`Event`] into store
+     *
+     * Return `true` if event was successfully saved into database.
+     *
+     * **This method assume that [`Event`] was already verified**
+     */
+open func saveEvent(event: Event)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_save_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Check if [`Event`] has already been saved
+     */
+open func hasEventAlreadyBeenSaved(eventId: EventId)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_already_been_saved(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Check if [`EventId`] has already been seen
+     */
+open func hasEventAlreadyBeenSeen(eventId: EventId)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_already_been_seen(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Check if [`EventId`] has been deleted
+     */
+open func hasEventIdBeenDeleted(eventId: EventId)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_id_been_deleted(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+     */
+open func hasCoordinateBeenDeleted(coordinate: Coordinate, timestamp: Timestamp)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_coordinate_been_deleted(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeCoordinate_lower(coordinate),FfiConverterTypeTimestamp_lower(timestamp)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Set [`EventId`] as seen by relay
+     *
+     * Useful for NIP65 (aka gossip)
+     */
+open func eventIdSeen(eventId: EventId, relayUrl: String)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_id_seen(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId),FfiConverterString.lower(relayUrl)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Get list of relays that have seen the [`EventId`]
+     */
+open func eventSeenOnRelays(eventId: EventId)async throws  -> [String]? {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_seen_on_relays(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionSequenceString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Get [`Event`] by [`EventId`]
+     */
+open func eventById(eventId: EventId)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_by_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Count number of [`Event`] found by filters
+     *
+     * Use `Filter::new()` or `Filter::default()` to count all events.
+     */
+open func count(filters: [Filter])async throws  -> UInt64 {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_count(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_u64,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Query store with filters
+     */
+open func query(filters: [Filter])async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_query(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Delete all events that match the `Filter`
+     */
+open func delete(filter: Filter)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_delete(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Wipe all data
+     */
+open func wipe()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_wipe(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+
+}
+
+public struct FfiConverterTypeCustomNostrDatabase: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = CustomNostrDatabase
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrDatabase {
+        return CustomNostrDatabase(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: CustomNostrDatabase) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomNostrDatabase {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: CustomNostrDatabase, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeCustomNostrDatabase_lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrDatabase {
+    return try FfiConverterTypeCustomNostrDatabase.lift(pointer)
+}
+
+public func FfiConverterTypeCustomNostrDatabase_lower(_ value: CustomNostrDatabase) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeCustomNostrDatabase.lower(value)
+}
+
+
+
+
+public protocol HandleNotification : AnyObject {
+    
+    func handleMsg(relayUrl: String, msg: RelayMessage) async 
+    
+    func handle(relayUrl: String, subscriptionId: String, event: Event) async 
+    
+}
+
+open class HandleNotificationImpl:
+    HandleNotification {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_handlenotification(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_handlenotification(pointer, $0) }
+    }
+
+    
+
+    
+open func handleMsg(relayUrl: String, msg: RelayMessage)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_handlenotification_handle_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(relayUrl),FfiConverterTypeRelayMessage_lower(msg)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+open func handle(relayUrl: String, subscriptionId: String, event: Event)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_handlenotification_handle(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(relayUrl),FfiConverterString.lower(subscriptionId),FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+
+}
+// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+private let IDX_CALLBACK_FREE: Int32 = 0
+// Callback return codes
+private let UNIFFI_CALLBACK_SUCCESS: Int32 = 0
+private let UNIFFI_CALLBACK_ERROR: Int32 = 1
+private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceHandleNotification {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceHandleNotification = UniffiVTableCallbackInterfaceHandleNotification(
+        handleMsg: { (
+            uniffiHandle: UInt64,
+            relayUrl: RustBuffer,
+            msg: UnsafeMutableRawPointer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteVoid,
+            uniffiCallbackData: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
+        ) in
+            let makeCall = {
+                () async throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeHandleNotification.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return await uniffiObj.handleMsg(
+                     relayUrl: try FfiConverterString.lift(relayUrl),
+                     msg: try FfiConverterTypeRelayMessage_lift(msg)
+                )
+            }
+
+            let uniffiHandleSuccess = { (returnValue: ()) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructVoid(
+                        callStatus: RustCallStatus()
+                    )
+                )
+            }
+            let uniffiHandleError = { (statusCode, errorBuf) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructVoid(
+                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
+                    )
+                )
+            }
+            let uniffiForeignFuture = uniffiTraitInterfaceCallAsync(
+                makeCall: makeCall,
+                handleSuccess: uniffiHandleSuccess,
+                handleError: uniffiHandleError
+            )
+            uniffiOutReturn.pointee = uniffiForeignFuture
+        },
+        handle: { (
+            uniffiHandle: UInt64,
+            relayUrl: RustBuffer,
+            subscriptionId: RustBuffer,
+            event: UnsafeMutableRawPointer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteVoid,
+            uniffiCallbackData: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
+        ) in
+            let makeCall = {
+                () async throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeHandleNotification.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return await uniffiObj.handle(
+                     relayUrl: try FfiConverterString.lift(relayUrl),
+                     subscriptionId: try FfiConverterString.lift(subscriptionId),
+                     event: try FfiConverterTypeEvent_lift(event)
+                )
+            }
+
+            let uniffiHandleSuccess = { (returnValue: ()) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructVoid(
+                        callStatus: RustCallStatus()
+                    )
+                )
+            }
+            let uniffiHandleError = { (statusCode, errorBuf) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructVoid(
+                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
+                    )
+                )
+            }
+            let uniffiForeignFuture = uniffiTraitInterfaceCallAsync(
+                makeCall: makeCall,
+                handleSuccess: uniffiHandleSuccess,
+                handleError: uniffiHandleError
+            )
+            uniffiOutReturn.pointee = uniffiForeignFuture
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterTypeHandleNotification.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface HandleNotification: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitHandleNotification() {
+    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_handlenotification(&UniffiCallbackInterfaceHandleNotification.vtable)
+}
+
+public struct FfiConverterTypeHandleNotification: FfiConverter {
+    fileprivate static var handleMap = UniffiHandleMap<HandleNotification>()
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = HandleNotification
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> HandleNotification {
+        return HandleNotificationImpl(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: HandleNotification) -> UnsafeMutableRawPointer {
+        guard let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: handleMap.insert(obj: value))) else {
+            fatalError("Cast to UnsafeMutableRawPointer failed")
+        }
+        return ptr
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HandleNotification {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: HandleNotification, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeHandleNotification_lift(_ pointer: UnsafeMutableRawPointer) throws -> HandleNotification {
+    return try FfiConverterTypeHandleNotification.lift(pointer)
+}
+
+public func FfiConverterTypeHandleNotification_lower(_ value: HandleNotification) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeHandleNotification.lower(value)
+}
+
+
+
+
 /**
  * Nostr Wallet Connect client
  */
@@ -1789,37 +2909,37 @@ public protocol NwcProtocol : AnyObject {
     /**
      * Get balance
      */
-    func getBalance() throws  -> UInt64
+    func getBalance() async throws  -> UInt64
     
     /**
      * Get info
      */
-    func getInfo() throws  -> GetInfoResponseResult
+    func getInfo() async throws  -> GetInfoResponseResult
     
     /**
      * List transactions
      */
-    func listTransactions(params: ListTransactionsRequestParams) throws  -> [LookupInvoiceResponseResult]
+    func listTransactions(params: ListTransactionsRequestParams) async throws  -> [LookupInvoiceResponseResult]
     
     /**
      * Lookup invoice
      */
-    func lookupInvoice(params: LookupInvoiceRequestParams) throws  -> LookupInvoiceResponseResult
+    func lookupInvoice(params: LookupInvoiceRequestParams) async throws  -> LookupInvoiceResponseResult
     
     /**
      * Create invoice
      */
-    func makeInvoice(params: MakeInvoiceRequestParams) throws  -> MakeInvoiceResponseResult
+    func makeInvoice(params: MakeInvoiceRequestParams) async throws  -> MakeInvoiceResponseResult
     
     /**
      * Pay invoice
      */
-    func payInvoice(invoice: String) throws  -> String
+    func payInvoice(invoice: String) async throws  -> String
     
     /**
      * Pay keysend
      */
-    func payKeysend(params: PayKeysendRequestParams) throws  -> PayKeysendResponseResult
+    func payKeysend(params: PayKeysendRequestParams) async throws  -> PayKeysendResponseResult
     
 }
 
@@ -1857,9 +2977,9 @@ open class Nwc:
     /**
      * Compose new `NWC` client
      */
-public convenience init(uri: NostrWalletConnectUri)throws  {
+public convenience init(uri: NostrWalletConnectUri) {
     let pointer =
-        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+        try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_nwc_new(
         FfiConverterTypeNostrWalletConnectURI_lower(uri),$0
     )
@@ -1879,8 +2999,8 @@ public convenience init(uri: NostrWalletConnectUri)throws  {
     /**
      * Compose new `NWC` client with `NostrWalletConnectOptions`
      */
-public static func withOpts(uri: NostrWalletConnectUri, opts: NostrWalletConnectOptions)throws  -> Nwc {
-    return try  FfiConverterTypeNWC.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public static func withOpts(uri: NostrWalletConnectUri, opts: NostrWalletConnectOptions) -> Nwc {
+    return try!  FfiConverterTypeNWC.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_nwc_with_opts(
         FfiConverterTypeNostrWalletConnectURI_lower(uri),
         FfiConverterTypeNostrWalletConnectOptions.lower(opts),$0
@@ -1893,76 +3013,141 @@ public static func withOpts(uri: NostrWalletConnectUri, opts: NostrWalletConnect
     /**
      * Get balance
      */
-open func getBalance()throws  -> UInt64 {
-    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_get_balance(self.uniffiClonePointer(),$0
-    )
-})
+open func getBalance()async throws  -> UInt64 {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_get_balance(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_u64,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get info
      */
-open func getInfo()throws  -> GetInfoResponseResult {
-    return try  FfiConverterTypeGetInfoResponseResult_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_get_info(self.uniffiClonePointer(),$0
-    )
-})
+open func getInfo()async throws  -> GetInfoResponseResult {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_get_info(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeGetInfoResponseResult_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * List transactions
      */
-open func listTransactions(params: ListTransactionsRequestParams)throws  -> [LookupInvoiceResponseResult] {
-    return try  FfiConverterSequenceTypeLookupInvoiceResponseResult.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_list_transactions(self.uniffiClonePointer(),
-        FfiConverterTypeListTransactionsRequestParams_lower(params),$0
-    )
-})
+open func listTransactions(params: ListTransactionsRequestParams)async throws  -> [LookupInvoiceResponseResult] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_list_transactions(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeListTransactionsRequestParams_lower(params)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeLookupInvoiceResponseResult.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Lookup invoice
      */
-open func lookupInvoice(params: LookupInvoiceRequestParams)throws  -> LookupInvoiceResponseResult {
-    return try  FfiConverterTypeLookupInvoiceResponseResult_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_lookup_invoice(self.uniffiClonePointer(),
-        FfiConverterTypeLookupInvoiceRequestParams_lower(params),$0
-    )
-})
+open func lookupInvoice(params: LookupInvoiceRequestParams)async throws  -> LookupInvoiceResponseResult {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_lookup_invoice(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeLookupInvoiceRequestParams_lower(params)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLookupInvoiceResponseResult_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Create invoice
      */
-open func makeInvoice(params: MakeInvoiceRequestParams)throws  -> MakeInvoiceResponseResult {
-    return try  FfiConverterTypeMakeInvoiceResponseResult_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_make_invoice(self.uniffiClonePointer(),
-        FfiConverterTypeMakeInvoiceRequestParams_lower(params),$0
-    )
-})
+open func makeInvoice(params: MakeInvoiceRequestParams)async throws  -> MakeInvoiceResponseResult {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_make_invoice(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeMakeInvoiceRequestParams_lower(params)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeMakeInvoiceResponseResult_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Pay invoice
      */
-open func payInvoice(invoice: String)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_pay_invoice(self.uniffiClonePointer(),
-        FfiConverterString.lower(invoice),$0
-    )
-})
+open func payInvoice(invoice: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_pay_invoice(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(invoice)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Pay keysend
      */
-open func payKeysend(params: PayKeysendRequestParams)throws  -> PayKeysendResponseResult {
-    return try  FfiConverterTypePayKeysendResponseResult_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nwc_pay_keysend(self.uniffiClonePointer(),
-        FfiConverterTypePayKeysendRequestParams_lower(params),$0
-    )
-})
+open func payKeysend(params: PayKeysendRequestParams)async throws  -> PayKeysendResponseResult {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nwc_pay_keysend(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePayKeysendRequestParams_lower(params)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePayKeysendResponseResult_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 
@@ -2153,12 +3338,12 @@ public protocol Nip46SignerProtocol : AnyObject {
     /**
      * Get Nostr Connect URI in **bunker** format.
      */
-    func nostrConnectUri()  -> NostrConnectUri
+    func nostrConnectUri() async  -> NostrConnectUri
     
     /**
      * Get signer relays
      */
-    func relays()  -> [String]
+    func relays() async  -> [String]
     
     /**
      * Get signer public key
@@ -2195,21 +3380,7 @@ open class Nip46Signer:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_nip46signer(self.pointer, $0) }
     }
-    /**
-     * New NIP46 remote signer
-     */
-public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?)throws  {
-    let pointer =
-        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_constructor_nip46signer_new(
-        FfiConverterTypeNostrConnectURI_lower(uri),
-        FfiConverterTypeKeys_lower(appKeys),
-        FfiConverterDuration.lower(timeout),
-        FfiConverterOptionTypeRelayOptions.lower(opts),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
+    // No primary constructor declared for this class.
 
     deinit {
         guard let pointer = pointer else {
@@ -2220,26 +3391,66 @@ public convenience init(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterv
     }
 
     
+    /**
+     * Construct Nostr Connect client
+     */
+public static func `init`(uri: NostrConnectUri, appKeys: Keys, timeout: TimeInterval, opts: RelayOptions?)async throws  -> Nip46Signer {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_nip46signer_init(FfiConverterTypeNostrConnectURI_lower(uri),FfiConverterTypeKeys_lower(appKeys),FfiConverterDuration.lower(timeout),FfiConverterOptionTypeRelayOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNip46Signer.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
 
     
     /**
      * Get Nostr Connect URI in **bunker** format.
      */
-open func nostrConnectUri() -> NostrConnectUri {
-    return try!  FfiConverterTypeNostrConnectURI_lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_nip46signer_nostr_connect_uri(self.uniffiClonePointer(),$0
-    )
-})
+open func nostrConnectUri()async  -> NostrConnectUri {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nip46signer_nostr_connect_uri(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrConnectURI_lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Get signer relays
      */
-open func relays() -> [String] {
-    return try!  FfiConverterSequenceString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_nip46signer_relays(self.uniffiClonePointer(),$0
-    )
-})
+open func relays()async  -> [String] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nip46signer_relays(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -2300,40 +3511,414 @@ public func FfiConverterTypeNip46Signer_lower(_ value: Nip46Signer) -> UnsafeMut
 
 
 
+/**
+ * Nostr Connect Signer
+ *
+ * Signer that listen for requests from client, handle them and send the response.
+ *
+ * <https://github.com/nostr-protocol/nips/blob/master/46.md>
+ */
+public protocol NostrConnectRemoteSignerProtocol : AnyObject {
+    
+    /**
+     * Get Nostr Connect URI
+     */
+    func nostrConnectUri() async  -> NostrConnectUri
+    
+    /**
+     * Get signer relays
+     */
+    func relays() async  -> [String]
+    
+    /**
+     * Serve signer
+     */
+    func serve(actions: NostrConnectSignerActions) async throws 
+    
+}
+
+/**
+ * Nostr Connect Signer
+ *
+ * Signer that listen for requests from client, handle them and send the response.
+ *
+ * <https://github.com/nostr-protocol/nips/blob/master/46.md>
+ */
+open class NostrConnectRemoteSigner:
+    NostrConnectRemoteSignerProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_nostrconnectremotesigner(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_nostrconnectremotesigner(pointer, $0) }
+    }
+
+    
+    /**
+     * Construct remote signer from client URI (`nostrconnect://..`)
+     */
+public static func fromUri(uri: NostrConnectUri, secretKey: SecretKey, secret: String? = nil, opts: RelayOptions? = nil)async throws  -> NostrConnectRemoteSigner {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_from_uri(FfiConverterTypeNostrConnectURI_lower(uri),FfiConverterTypeSecretKey_lower(secretKey),FfiConverterOptionString.lower(secret),FfiConverterOptionTypeRelayOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrConnectRemoteSigner.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+public static func `init`(secretKey: SecretKey, relays: [String], secret: String? = nil, opts: RelayOptions? = nil)async throws  -> NostrConnectRemoteSigner {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_init(FfiConverterTypeSecretKey_lower(secretKey),FfiConverterSequenceString.lower(relays),FfiConverterOptionString.lower(secret),FfiConverterOptionTypeRelayOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrConnectRemoteSigner.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+
+    
+    /**
+     * Get Nostr Connect URI
+     */
+open func nostrConnectUri()async  -> NostrConnectUri {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_nostr_connect_uri(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrConnectURI_lift,
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Get signer relays
+     */
+open func relays()async  -> [String] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_relays(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Serve signer
+     */
+open func serve(actions: NostrConnectSignerActions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_serve(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeNostrConnectSignerActions.lower(actions)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+
+}
+
+public struct FfiConverterTypeNostrConnectRemoteSigner: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = NostrConnectRemoteSigner
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> NostrConnectRemoteSigner {
+        return NostrConnectRemoteSigner(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: NostrConnectRemoteSigner) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NostrConnectRemoteSigner {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: NostrConnectRemoteSigner, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeNostrConnectRemoteSigner_lift(_ pointer: UnsafeMutableRawPointer) throws -> NostrConnectRemoteSigner {
+    return try FfiConverterTypeNostrConnectRemoteSigner.lift(pointer)
+}
+
+public func FfiConverterTypeNostrConnectRemoteSigner_lower(_ value: NostrConnectRemoteSigner) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeNostrConnectRemoteSigner.lower(value)
+}
+
+
+
+
+public protocol NostrConnectSignerActions : AnyObject {
+    
+    /**
+     * Approve
+     */
+    func approve(req: Nip46Request)  -> Bool
+    
+}
+
+open class NostrConnectSignerActionsImpl:
+    NostrConnectSignerActions {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_nostrconnectsigneractions(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_nostrconnectsigneractions(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * Approve
+     */
+open func approve(req: Nip46Request) -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnectsigneractions_approve(self.uniffiClonePointer(),
+        FfiConverterTypeNip46Request_lower(req),$0
+    )
+})
+}
+    
+
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceNostrConnectSignerActions {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    static var vtable: UniffiVTableCallbackInterfaceNostrConnectSignerActions = UniffiVTableCallbackInterfaceNostrConnectSignerActions(
+        approve: { (
+            uniffiHandle: UInt64,
+            req: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<Int8>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Bool in
+                guard let uniffiObj = try? FfiConverterTypeNostrConnectSignerActions.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.approve(
+                     req: try FfiConverterTypeNip46Request_lift(req)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            let result = try? FfiConverterTypeNostrConnectSignerActions.handleMap.remove(handle: uniffiHandle)
+            if result == nil {
+                print("Uniffi callback interface NostrConnectSignerActions: handle missing in uniffiFree")
+            }
+        }
+    )
+}
+
+private func uniffiCallbackInitNostrConnectSignerActions() {
+    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_nostrconnectsigneractions(&UniffiCallbackInterfaceNostrConnectSignerActions.vtable)
+}
+
+public struct FfiConverterTypeNostrConnectSignerActions: FfiConverter {
+    fileprivate static var handleMap = UniffiHandleMap<NostrConnectSignerActions>()
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = NostrConnectSignerActions
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> NostrConnectSignerActions {
+        return NostrConnectSignerActionsImpl(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: NostrConnectSignerActions) -> UnsafeMutableRawPointer {
+        guard let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: handleMap.insert(obj: value))) else {
+            fatalError("Cast to UnsafeMutableRawPointer failed")
+        }
+        return ptr
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NostrConnectSignerActions {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: NostrConnectSignerActions, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeNostrConnectSignerActions_lift(_ pointer: UnsafeMutableRawPointer) throws -> NostrConnectSignerActions {
+    return try FfiConverterTypeNostrConnectSignerActions.lift(pointer)
+}
+
+public func FfiConverterTypeNostrConnectSignerActions_lower(_ value: NostrConnectSignerActions) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeNostrConnectSignerActions.lower(value)
+}
+
+
+
+
 public protocol NostrDatabaseProtocol : AnyObject {
     
-    func count(filters: [Filter]) throws  -> UInt64
+    func count(filters: [Filter]) async throws  -> UInt64
     
     /**
      * Delete all events that match the `Filter`
      */
-    func delete(filter: Filter) throws 
+    func delete(filter: Filter) async throws 
     
     /**
      * Get [`Event`] by [`EventId`]
      */
-    func eventById(eventId: EventId) throws  -> Event
+    func eventById(eventId: EventId) async throws  -> Event
     
     /**
      * Get list of relays that have seen the [`EventId`]
      */
-    func eventSeenOnRelays(eventId: EventId) throws  -> [String]?
+    func eventSeenOnRelays(eventId: EventId) async throws  -> [String]?
     
-    func profile(publicKey: PublicKey) throws  -> Profile
+    func profile(publicKey: PublicKey) async throws  -> Profile
     
-    func query(filters: [Filter]) throws  -> [Event]
+    func query(filters: [Filter]) async throws  -> [Event]
     
     /**
      * Save [`Event`] into store
      *
      * Return `true` if event was successfully saved into database.
      */
-    func saveEvent(event: Event) throws  -> Bool
+    func saveEvent(event: Event) async throws  -> Bool
     
     /**
      * Wipe all data
      */
-    func wipe() throws 
+    func wipe() async throws 
     
 }
 
@@ -2379,7 +3964,7 @@ open class NostrDatabase:
 public static func custom(database: CustomNostrDatabase) -> NostrDatabase {
     return try!  FfiConverterTypeNostrDatabase.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_custom(
-        FfiConverterCallbackInterfaceCustomNostrDatabase.lower(database),$0
+        FfiConverterTypeCustomNostrDatabase.lower(database),$0
     )
 })
 }
@@ -2395,70 +3980,132 @@ public static func ndb(path: String)throws  -> NostrDatabase {
 })
 }
     
-public static func sqlite(path: String)throws  -> NostrDatabase {
-    return try  FfiConverterTypeNostrDatabase.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite(
-        FfiConverterString.lower(path),$0
-    )
-})
+public static func sqlite(path: String)async throws  -> NostrDatabase {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite(FfiConverterString.lower(path)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrDatabase.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 
     
-open func count(filters: [Filter])throws  -> UInt64 {
-    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_count(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),$0
-    )
-})
+open func count(filters: [Filter])async throws  -> UInt64 {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_count(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_u64,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Delete all events that match the `Filter`
      */
-open func delete(filter: Filter)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_delete(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),$0
-    )
-}
+open func delete(filter: Filter)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_delete(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get [`Event`] by [`EventId`]
      */
-open func eventById(eventId: EventId)throws  -> Event {
-    return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_event_by_id(self.uniffiClonePointer(),
-        FfiConverterTypeEventId_lower(eventId),$0
-    )
-})
+open func eventById(eventId: EventId)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_event_by_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get list of relays that have seen the [`EventId`]
      */
-open func eventSeenOnRelays(eventId: EventId)throws  -> [String]? {
-    return try  FfiConverterOptionSequenceString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_event_seen_on_relays(self.uniffiClonePointer(),
-        FfiConverterTypeEventId_lower(eventId),$0
-    )
-})
+open func eventSeenOnRelays(eventId: EventId)async throws  -> [String]? {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_event_seen_on_relays(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionSequenceString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func profile(publicKey: PublicKey)throws  -> Profile {
-    return try  FfiConverterTypeProfile.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_profile(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),$0
-    )
-})
+open func profile(publicKey: PublicKey)async throws  -> Profile {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_profile(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeProfile.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func query(filters: [Filter])throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_query(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),$0
-    )
-})
+open func query(filters: [Filter])async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_query(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -2466,21 +4113,41 @@ open func query(filters: [Filter])throws  -> [Event] {
      *
      * Return `true` if event was successfully saved into database.
      */
-open func saveEvent(event: Event)throws  -> Bool {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_save_event(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),$0
-    )
-})
+open func saveEvent(event: Event)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_save_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Wipe all data
      */
-open func wipe()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_wipe(self.uniffiClonePointer(),$0
-    )
-}
+open func wipe()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_wipe(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 
@@ -2533,22 +4200,22 @@ public func FfiConverterTypeNostrDatabase_lower(_ value: NostrDatabase) -> Unsaf
 
 public protocol NostrSignerProtocol : AnyObject {
     
-    func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) throws  -> String
+    func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) async throws  -> String
     
-    func nip04Encrypt(publicKey: PublicKey, content: String) throws  -> String
+    func nip04Encrypt(publicKey: PublicKey, content: String) async throws  -> String
     
-    func nip44Decrypt(publicKey: PublicKey, content: String) throws  -> String
+    func nip44Decrypt(publicKey: PublicKey, content: String) async throws  -> String
     
-    func nip44Encrypt(publicKey: PublicKey, content: String) throws  -> String
+    func nip44Encrypt(publicKey: PublicKey, content: String) async throws  -> String
     
     /**
      * Get signer public key
      */
-    func publicKey() throws  -> PublicKey
+    func publicKey() async throws  -> PublicKey
     
-    func signEvent(unsignedEvent: UnsignedEvent) throws  -> Event
+    func signEvent(unsignedEvent: UnsignedEvent) async throws  -> Event
     
-    func signEventBuilder(builder: EventBuilder) throws  -> Event
+    func signEventBuilder(builder: EventBuilder) async throws  -> Event
     
 }
 
@@ -2609,66 +4276,126 @@ public static func nip46(nip46: Nip46Signer) -> NostrSigner {
     
 
     
-open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_decrypt(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),
-        FfiConverterString.lower(encryptedContent),$0
-    )
-})
+open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_decrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey),FfiConverterString.lower(encryptedContent)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func nip04Encrypt(publicKey: PublicKey, content: String)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_encrypt(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),
-        FfiConverterString.lower(content),$0
-    )
-})
+open func nip04Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_encrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey),FfiConverterString.lower(content)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func nip44Decrypt(publicKey: PublicKey, content: String)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_decrypt(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),
-        FfiConverterString.lower(content),$0
-    )
-})
+open func nip44Decrypt(publicKey: PublicKey, content: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_decrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey),FfiConverterString.lower(content)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func nip44Encrypt(publicKey: PublicKey, content: String)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_encrypt(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),
-        FfiConverterString.lower(content),$0
-    )
-})
+open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_encrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey),FfiConverterString.lower(content)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get signer public key
      */
-open func publicKey()throws  -> PublicKey {
-    return try  FfiConverterTypePublicKey_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_public_key(self.uniffiClonePointer(),$0
-    )
-})
+open func publicKey()async throws  -> PublicKey {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_public_key(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypePublicKey_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func signEvent(unsignedEvent: UnsignedEvent)throws  -> Event {
-    return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event(self.uniffiClonePointer(),
-        FfiConverterTypeUnsignedEvent_lower(unsignedEvent),$0
-    )
-})
+open func signEvent(unsignedEvent: UnsignedEvent)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeUnsignedEvent_lower(unsignedEvent)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func signEventBuilder(builder: EventBuilder)throws  -> Event {
-    return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event_builder(self.uniffiClonePointer(),
-        FfiConverterTypeEventBuilder_lower(builder),$0
-    )
-})
+open func signEventBuilder(builder: EventBuilder)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event_builder(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventBuilder_lower(builder)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 
@@ -2909,10 +4636,10 @@ open class NostrZapper:
     }
 
     
-public static func nwc(uri: NostrWalletConnectUri)throws  -> NostrZapper {
-    return try  FfiConverterTypeNostrZapper.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+public static func nwc(client: Nwc) -> NostrZapper {
+    return try!  FfiConverterTypeNostrZapper.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_nostrzapper_nwc(
-        FfiConverterTypeNostrWalletConnectURI_lower(uri),$0
+        FfiConverterTypeNWC.lower(client),$0
     )
 })
 }
@@ -2968,6 +4695,13 @@ public func FfiConverterTypeNostrZapper_lower(_ value: NostrZapper) -> UnsafeMut
 
 
 public protocol OptionsProtocol : AnyObject {
+    
+    /**
+     * Auto authenticate to relays (default: true)
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/42.md>
+     */
+    func automaticAuthentication(enabled: Bool)  -> Options
     
     /**
      * Connection timeout (default: None)
@@ -3054,6 +4788,19 @@ public convenience init() {
 
     
 
+    
+    /**
+     * Auto authenticate to relays (default: true)
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/42.md>
+     */
+open func automaticAuthentication(enabled: Bool) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_automatic_authentication(self.uniffiClonePointer(),
+        FfiConverterBool.lower(enabled),$0
+    )
+})
+}
     
     /**
      * Connection timeout (default: None)
@@ -3554,12 +5301,12 @@ public protocol RelayProtocol : AnyObject {
     /**
      * Send multiple `Event` at once
      */
-    func batchEvent(events: [Event], opts: RelaySendOptions) throws 
+    func batchEvent(events: [Event], opts: RelaySendOptions) async throws 
     
     /**
      * Send multiple `ClientMessage` at once
      */
-    func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) throws 
+    func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) async throws 
     
     /**
      * Get blacklist
@@ -3569,26 +5316,26 @@ public protocol RelayProtocol : AnyObject {
     /**
      * Connect to relay and keep alive connection
      */
-    func connect(connectionTimeout: TimeInterval?) 
+    func connect(connectionTimeout: TimeInterval?) async 
     
     /**
      * Count events of filters
      */
-    func countEventsOf(filters: [Filter], timeout: TimeInterval) throws  -> UInt64
+    func countEventsOf(filters: [Filter], timeout: TimeInterval) async throws  -> UInt64
     
-    func document()  -> RelayInformationDocument
+    func document() async  -> RelayInformationDocument
     
     /**
      * Get events of filters
      *
      * Get events from local database and relay
      */
-    func getEventsOf(filters: [Filter], timeout: TimeInterval) throws  -> [Event]
+    func getEventsOf(filters: [Filter], timeout: TimeInterval) async throws  -> [Event]
     
     /**
      * Check if `Relay` is connected
      */
-    func isConnected()  -> Bool
+    func isConnected() async  -> Bool
     
     func opts()  -> RelayOptions
     
@@ -3607,34 +5354,34 @@ public protocol RelayProtocol : AnyObject {
      *
      * Use events stored in database
      */
-    func reconcile(filter: Filter, opts: NegentropyOptions) throws 
+    func reconcile(filter: Filter, opts: NegentropyOptions) async throws 
     
     /**
      * Negentropy reconciliation with custom items
      */
-    func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions) throws 
+    func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions) async throws 
     
     /**
      * Send event and wait for `OK` relay msg
      */
-    func sendEvent(event: Event, opts: RelaySendOptions) throws  -> EventId
+    func sendEvent(event: Event, opts: RelaySendOptions) async throws  -> EventId
     
     /**
      * Send msg to relay
      */
-    func sendMsg(msg: ClientMessage, opts: RelaySendOptions) throws 
+    func sendMsg(msg: ClientMessage, opts: RelaySendOptions) async throws 
     
     func stats()  -> RelayConnectionStats
     
     /**
      * Get relay status
      */
-    func status()  -> RelayStatus
+    func status() async  -> RelayStatus
     
     /**
      * Disconnect from relay and set status to 'Stopped'
      */
-    func stop() throws 
+    func stop() async throws 
     
     /**
      * Subscribe to filters
@@ -3647,7 +5394,7 @@ public protocol RelayProtocol : AnyObject {
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-    func subscribe(filters: [Filter], opts: SubscribeOptions) throws  -> String
+    func subscribe(filters: [Filter], opts: SubscribeOptions) async throws  -> String
     
     /**
      * Subscribe with custom subscription ID
@@ -3658,34 +5405,34 @@ public protocol RelayProtocol : AnyObject {
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) throws 
+    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) async throws 
     
     /**
      * Get filters by subscription ID
      */
-    func subscription(id: String)  -> [Filter]?
+    func subscription(id: String) async  -> [Filter]?
     
-    func subscriptions()  -> [String: [Filter]]
+    func subscriptions() async  -> [String: [Filter]]
     
     /**
      * Check if relay support negentropy protocol
      */
-    func supportNegentropy() throws  -> Bool
+    func supportNegentropy() async throws  -> Bool
     
     /**
      * Disconnect from relay and set status to 'Terminated'
      */
-    func terminate() throws 
+    func terminate() async throws 
     
     /**
      * Unsubscribe
      */
-    func unsubscribe(id: String, opts: RelaySendOptions) throws 
+    func unsubscribe(id: String, opts: RelaySendOptions) async throws 
     
     /**
      * Unsubscribe from all subscriptions
      */
-    func unsubscribeAll(opts: RelaySendOptions) throws 
+    func unsubscribeAll(opts: RelaySendOptions) async throws 
     
     /**
      * Get relay url
@@ -3775,23 +5522,41 @@ public static func withOpts(url: String, opts: RelayOptions)throws  -> Relay {
     /**
      * Send multiple `Event` at once
      */
-open func batchEvent(events: [Event], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_batch_event(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEvent.lower(events),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchEvent(events: [Event], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_batch_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEvent.lower(events),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send multiple `ClientMessage` at once
      */
-open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_batch_msg(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeClientMessage.lower(msgs),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_batch_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeClientMessage.lower(msgs),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -3807,30 +5572,60 @@ open func blacklist() -> RelayBlacklist {
     /**
      * Connect to relay and keep alive connection
      */
-open func connect(connectionTimeout: TimeInterval?) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_connect(self.uniffiClonePointer(),
-        FfiConverterOptionDuration.lower(connectionTimeout),$0
-    )
-}
+open func connect(connectionTimeout: TimeInterval?)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_connect(
+                    self.uniffiClonePointer(),
+                    FfiConverterOptionDuration.lower(connectionTimeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Count events of filters
      */
-open func countEventsOf(filters: [Filter], timeout: TimeInterval)throws  -> UInt64 {
-    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_count_events_of(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterDuration.lower(timeout),$0
-    )
-})
+open func countEventsOf(filters: [Filter], timeout: TimeInterval)async throws  -> UInt64 {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_count_events_of(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_u64,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func document() -> RelayInformationDocument {
-    return try!  FfiConverterTypeRelayInformationDocument_lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_document(self.uniffiClonePointer(),$0
-    )
-})
+open func document()async  -> RelayInformationDocument {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_document(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeRelayInformationDocument_lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -3838,23 +5633,42 @@ open func document() -> RelayInformationDocument {
      *
      * Get events from local database and relay
      */
-open func getEventsOf(filters: [Filter], timeout: TimeInterval)throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_get_events_of(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterDuration.lower(timeout),$0
-    )
-})
+open func getEventsOf(filters: [Filter], timeout: TimeInterval)async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_get_events_of(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Check if `Relay` is connected
      */
-open func isConnected() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_is_connected(self.uniffiClonePointer(),$0
-    )
-})
+open func isConnected()async  -> Bool {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_is_connected(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
 open func opts() -> RelayOptions {
@@ -3889,47 +5703,81 @@ open func queue() -> UInt64 {
      *
      * Use events stored in database
      */
-open func reconcile(filter: Filter, opts: NegentropyOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_reconcile(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),
-        FfiConverterTypeNegentropyOptions.lower(opts),$0
-    )
-}
+open func reconcile(filter: Filter, opts: NegentropyOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_reconcile(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter),FfiConverterTypeNegentropyOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Negentropy reconciliation with custom items
      */
-open func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_reconcile_with_items(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),
-        FfiConverterSequenceTypeNegentropyItem.lower(items),
-        FfiConverterTypeNegentropyOptions.lower(opts),$0
-    )
-}
+open func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_reconcile_with_items(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter),FfiConverterSequenceTypeNegentropyItem.lower(items),FfiConverterTypeNegentropyOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send event and wait for `OK` relay msg
      */
-open func sendEvent(event: Event, opts: RelaySendOptions)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_send_event(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-})
+open func sendEvent(event: Event, opts: RelaySendOptions)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_send_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send msg to relay
      */
-open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_send_msg(self.uniffiClonePointer(),
-        FfiConverterTypeClientMessage_lower(msg),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_send_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeClientMessage_lower(msg),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
 open func stats() -> RelayConnectionStats {
@@ -3942,20 +5790,42 @@ open func stats() -> RelayConnectionStats {
     /**
      * Get relay status
      */
-open func status() -> RelayStatus {
-    return try!  FfiConverterTypeRelayStatus.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_status(self.uniffiClonePointer(),$0
-    )
-})
+open func status()async  -> RelayStatus {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_status(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeRelayStatus.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Disconnect from relay and set status to 'Stopped'
      */
-open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_stop(self.uniffiClonePointer(),$0
-    )
-}
+open func stop()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_stop(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -3969,13 +5839,21 @@ open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lif
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-open func subscribe(filters: [Filter], opts: SubscribeOptions)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_subscribe(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-})
+open func subscribe(filters: [Filter], opts: SubscribeOptions)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_subscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -3987,71 +5865,140 @@ open func subscribe(filters: [Filter], opts: SubscribeOptions)throws  -> String 
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_subscribe_with_id(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-}
+open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_subscribe_with_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get filters by subscription ID
      */
-open func subscription(id: String) -> [Filter]? {
-    return try!  FfiConverterOptionSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_subscription(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),$0
-    )
-})
+open func subscription(id: String)async  -> [Filter]? {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_subscription(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
-open func subscriptions() -> [String: [Filter]] {
-    return try!  FfiConverterDictionaryStringSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_subscriptions(self.uniffiClonePointer(),$0
-    )
-})
+open func subscriptions()async  -> [String: [Filter]] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_subscriptions(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterDictionaryStringSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Check if relay support negentropy protocol
      */
-open func supportNegentropy()throws  -> Bool {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_support_negentropy(self.uniffiClonePointer(),$0
-    )
-})
+open func supportNegentropy()async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_support_negentropy(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Disconnect from relay and set status to 'Terminated'
      */
-open func terminate()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_terminate(self.uniffiClonePointer(),$0
-    )
-}
+open func terminate()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_terminate(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Unsubscribe
      */
-open func unsubscribe(id: String, opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_unsubscribe(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func unsubscribe(id: String, opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_unsubscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Unsubscribe from all subscriptions
      */
-open func unsubscribeAll(opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relay_unsubscribe_all(self.uniffiClonePointer(),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func unsubscribeAll(opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relay_unsubscribe_all(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -4117,47 +6064,47 @@ public protocol RelayBlacklistProtocol : AnyObject {
     /**
      * Add event IDs to blacklist
      */
-    func addIds(ids: [EventId]) 
+    func addIds(ids: [EventId]) async 
     
     /**
      * Add public keys to blacklist
      */
-    func addPublicKeys(publicKeys: [PublicKey]) 
+    func addPublicKeys(publicKeys: [PublicKey]) async 
     
     /**
      * Remove everything
      */
-    func clear() 
+    func clear() async 
     
     /**
      * Check if blacklist contains event ID
      */
-    func hasId(id: EventId)  -> Bool
+    func hasId(id: EventId) async  -> Bool
     
     /**
      * Check if blacklist contains public key
      */
-    func hasPublicKey(publicKey: PublicKey)  -> Bool
+    func hasPublicKey(publicKey: PublicKey) async  -> Bool
     
     /**
      * Remove event ID from blacklist
      */
-    func removeId(id: EventId) 
+    func removeId(id: EventId) async 
     
     /**
      * Remove event IDs from blacklist
      */
-    func removeIds(ids: [EventId]) 
+    func removeIds(ids: [EventId]) async 
     
     /**
      * Remove public key from blacklist
      */
-    func removePublicKey(publicKey: PublicKey) 
+    func removePublicKey(publicKey: PublicKey) async 
     
     /**
      * Remove event IDs from blacklist
      */
-    func removePublicKeys(ids: [PublicKey]) 
+    func removePublicKeys(ids: [PublicKey]) async 
     
 }
 
@@ -4224,92 +6171,190 @@ public static func empty() -> RelayBlacklist {
     /**
      * Add event IDs to blacklist
      */
-open func addIds(ids: [EventId]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_ids(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEventId.lower(ids),$0
-    )
-}
+open func addIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Add public keys to blacklist
      */
-open func addPublicKeys(publicKeys: [PublicKey]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_public_keys(self.uniffiClonePointer(),
-        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
-    )
-}
+open func addPublicKeys(publicKeys: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Remove everything
      */
-open func clear() {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_clear(self.uniffiClonePointer(),$0
-    )
-}
+open func clear()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_clear(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Check if blacklist contains event ID
      */
-open func hasId(id: EventId) -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_id(self.uniffiClonePointer(),
-        FfiConverterTypeEventId_lower(id),$0
-    )
-})
+open func hasId(id: EventId)async  -> Bool {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Check if blacklist contains public key
      */
-open func hasPublicKey(publicKey: PublicKey) -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_public_key(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),$0
-    )
-})
+open func hasPublicKey(publicKey: PublicKey)async  -> Bool {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_public_key(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Remove event ID from blacklist
      */
-open func removeId(id: EventId) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_id(self.uniffiClonePointer(),
-        FfiConverterTypeEventId_lower(id),$0
-    )
-}
+open func removeId(id: EventId)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Remove event IDs from blacklist
      */
-open func removeIds(ids: [EventId]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_ids(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEventId.lower(ids),$0
-    )
-}
+open func removeIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Remove public key from blacklist
      */
-open func removePublicKey(publicKey: PublicKey) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_key(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey_lower(publicKey),$0
-    )
-}
+open func removePublicKey(publicKey: PublicKey)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_key(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Remove event IDs from blacklist
      */
-open func removePublicKeys(ids: [PublicKey]) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_keys(self.uniffiClonePointer(),
-        FfiConverterSequenceTypePublicKey.lower(ids),$0
-    )
-}
+open func removePublicKeys(ids: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
 
@@ -4387,7 +6432,7 @@ public protocol RelayConnectionStatsProtocol : AnyObject {
      */
     func firstConnectionTimestamp()  -> Timestamp
     
-    func latency()  -> TimeInterval?
+    func latency() async  -> TimeInterval?
     
     /**
      * The number of times a connection has been successfully established
@@ -4492,11 +6537,22 @@ open func firstConnectionTimestamp() -> Timestamp {
 })
 }
     
-open func latency() -> TimeInterval? {
-    return try!  FfiConverterOptionDuration.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_latency(self.uniffiClonePointer(),$0
-    )
-})
+open func latency()async  -> TimeInterval? {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_latency(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionDuration.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -4578,9 +6634,19 @@ public protocol RelayLimitsProtocol : AnyObject {
     func eventMaxNumTags(maxNumTags: UInt16?)  -> RelayLimits
     
     /**
+     * Maximum number of tags allowed per kind
+     */
+    func eventMaxNumTagsPerKind(kind: Kind, maxNumTags: UInt16?)  -> RelayLimits
+    
+    /**
      * Maximum size of normalised JSON, in bytes (default: 70_000)
      */
     func eventMaxSize(maxSize: UInt32?)  -> RelayLimits
+    
+    /**
+     * Maximum size per kind of normalised JSON, in bytes.
+     */
+    func eventMaxSizePerKind(kind: Kind, maxSize: UInt32?)  -> RelayLimits
     
     /**
      * Maximum size of normalised JSON, in bytes (default: 5_250_000)
@@ -4667,11 +6733,35 @@ open func eventMaxNumTags(maxNumTags: UInt16?) -> RelayLimits {
 }
     
     /**
+     * Maximum number of tags allowed per kind
+     */
+open func eventMaxNumTagsPerKind(kind: Kind, maxNumTags: UInt16?) -> RelayLimits {
+    return try!  FfiConverterTypeRelayLimits.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relaylimits_event_max_num_tags_per_kind(self.uniffiClonePointer(),
+        FfiConverterTypeKind_lower(kind),
+        FfiConverterOptionUInt16.lower(maxNumTags),$0
+    )
+})
+}
+    
+    /**
      * Maximum size of normalised JSON, in bytes (default: 70_000)
      */
 open func eventMaxSize(maxSize: UInt32?) -> RelayLimits {
     return try!  FfiConverterTypeRelayLimits.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relaylimits_event_max_size(self.uniffiClonePointer(),
+        FfiConverterOptionUInt32.lower(maxSize),$0
+    )
+})
+}
+    
+    /**
+     * Maximum size per kind of normalised JSON, in bytes.
+     */
+open func eventMaxSizePerKind(kind: Kind, maxSize: UInt32?) -> RelayLimits {
+    return try!  FfiConverterTypeRelayLimits.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relaylimits_event_max_size_per_kind(self.uniffiClonePointer(),
+        FfiConverterTypeKind_lower(kind),
         FfiConverterOptionUInt32.lower(maxSize),$0
     )
 })
@@ -5072,29 +7162,29 @@ public func FfiConverterTypeRelayOptions_lower(_ value: RelayOptions) -> UnsafeM
 
 public protocol RelayPoolProtocol : AnyObject {
     
-    func addRelay(url: String, opts: RelayOptions) throws  -> Bool
+    func addRelay(url: String, opts: RelayOptions) async throws  -> Bool
     
     /**
      * Send multiple `Event` at once to **all connected relays** and wait for `OK` message
      */
-    func batchEvent(events: [Event], opts: RelaySendOptions) throws 
+    func batchEvent(events: [Event], opts: RelaySendOptions) async throws 
     
     /**
      * Send multiple events at once to **specific relays** and wait for `OK` message
      */
-    func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions) throws 
+    func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions) async throws 
     
     /**
      * Send multiple client messages at once to all connected relays
      */
-    func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) throws 
+    func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) async throws 
     
     /**
      * Send multiple client messages at once to specific relays
      *
      * Note: **the relays must already be added!**
      */
-    func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions) throws 
+    func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions) async throws 
     
     /**
      * Get blacklist
@@ -5104,12 +7194,12 @@ public protocol RelayPoolProtocol : AnyObject {
     /**
      * Connect to all added relays and keep connection alive
      */
-    func connect(connectionTimeout: TimeInterval?) 
+    func connect(connectionTimeout: TimeInterval?) async 
     
     /**
      * Connect to relay
      */
-    func connectRelay(url: String, connectionTimeout: TimeInterval?) throws 
+    func connectRelay(url: String, connectionTimeout: TimeInterval?) async throws 
     
     /**
      * Get database
@@ -5119,24 +7209,26 @@ public protocol RelayPoolProtocol : AnyObject {
     /**
      * Disconnect from all relays
      */
-    func disconnect() throws 
+    func disconnect() async throws 
     
     /**
      * Get events of filters from **specific relays**
      *
      * Get events both from **local database** and **relays**
      */
-    func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions) throws  -> [Event]
+    func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions) async throws  -> [Event]
     
     /**
      * Get events of filters
      *
      * Get events both from **local database** and **relays**
      */
-    func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions) throws  -> [Event]
+    func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions) async throws  -> [Event]
     
     /**
      * Handle relay pool notifications
+     *
+     * <div class="warning">Python bindings needs to call `uniffi_set_event_loop(asyncio.get_running_loop())` before this method!</div>
      */
     func handleNotifications(handler: HandleNotification) throws 
     
@@ -5145,67 +7237,67 @@ public protocol RelayPoolProtocol : AnyObject {
      *
      * Use events stored in database
      */
-    func reconcile(filter: Filter, opts: NegentropyOptions) throws 
+    func reconcile(filter: Filter, opts: NegentropyOptions) async throws 
     
     /**
      * Negentropy reconciliation with custom items
      */
-    func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions) throws 
+    func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions) async throws 
     
     /**
      * Get relay
      */
-    func relay(url: String) throws  -> Relay
+    func relay(url: String) async throws  -> Relay
     
     /**
      * Get relays
      */
-    func relays()  -> [String: Relay]
+    func relays() async  -> [String: Relay]
     
-    func removeAllRelay() throws 
+    func removeAllRelay() async throws 
     
-    func removeRelay(url: String) throws 
+    func removeRelay(url: String) async throws 
     
     /**
      * Send event to **all connected relays** and wait for `OK` message
      */
-    func sendEvent(event: Event, opts: RelaySendOptions) throws  -> EventId
+    func sendEvent(event: Event, opts: RelaySendOptions) async throws  -> EventId
     
     /**
      * Send event to **specific relays** and wait for `OK` message
      */
-    func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions) throws  -> EventId
+    func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions) async throws  -> EventId
     
     /**
      * Send client message to all connected relays
      */
-    func sendMsg(msg: ClientMessage, opts: RelaySendOptions) throws 
+    func sendMsg(msg: ClientMessage, opts: RelaySendOptions) async throws 
     
     /**
      * Send client message to specific relays
      *
      * Note: **the relays must already be added!**
      */
-    func sendMsgTo(urls: [String], msg: ClientMessage, opts: RelaySendOptions) throws 
+    func sendMsgTo(urls: [String], msg: ClientMessage, opts: RelaySendOptions) async throws 
     
     /**
      * Completely shutdown pool
      */
-    func shutdown() throws 
+    func shutdown() async throws 
     
     /**
      * Start
      *
      * Internally call `connect` without wait for connection.
      */
-    func start() 
+    func start() async 
     
     /**
      * Stop
      *
      * Call `connect` to re-start relays connections
      */
-    func stop() throws 
+    func stop() async throws 
     
     /**
      * Subscribe to filters to all connected relays
@@ -5216,7 +7308,7 @@ public protocol RelayPoolProtocol : AnyObject {
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-    func subscribe(filters: [Filter], opts: SubscribeOptions)  -> String
+    func subscribe(filters: [Filter], opts: SubscribeOptions) async  -> String
     
     /**
      * Subscribe to filters to specific relays
@@ -5225,7 +7317,7 @@ public protocol RelayPoolProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
      */
-    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions) throws  -> String
+    func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions) async throws  -> String
     
     /**
      * Subscribe with custom subscription ID to all connected relays
@@ -5236,7 +7328,7 @@ public protocol RelayPoolProtocol : AnyObject {
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) 
+    func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) async 
     
     /**
      * Subscribe to filters with custom subscription ID to specific relays
@@ -5245,27 +7337,27 @@ public protocol RelayPoolProtocol : AnyObject {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
      */
-    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions) throws 
+    func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions) async throws 
     
     /**
      * Get filters by subscription ID
      */
-    func subscription(id: String)  -> [Filter]?
+    func subscription(id: String) async  -> [Filter]?
     
     /**
      * Get subscriptions
      */
-    func subscriptions()  -> [String: [Filter]]
+    func subscriptions() async  -> [String: [Filter]]
     
     /**
      * Unsubscribe
      */
-    func unsubscribe(id: String, opts: RelaySendOptions) 
+    func unsubscribe(id: String, opts: RelaySendOptions) async 
     
     /**
      * Unsubscribe from all subscriptions
      */
-    func unsubscribeAll(opts: RelaySendOptions) 
+    func unsubscribeAll(opts: RelaySendOptions) async 
     
 }
 
@@ -5331,47 +7423,81 @@ public static func withDatabase(database: NostrDatabase) -> RelayPool {
     
 
     
-open func addRelay(url: String, opts: RelayOptions)throws  -> Bool {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_add_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),
-        FfiConverterTypeRelayOptions.lower(opts),$0
-    )
-})
+open func addRelay(url: String, opts: RelayOptions)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_add_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url),FfiConverterTypeRelayOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send multiple `Event` at once to **all connected relays** and wait for `OK` message
      */
-open func batchEvent(events: [Event], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_event(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeEvent.lower(events),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchEvent(events: [Event], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEvent.lower(events),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send multiple events at once to **specific relays** and wait for `OK` message
      */
-open func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_event_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeEvent.lower(events),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_event_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeEvent.lower(events),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send multiple client messages at once to all connected relays
      */
-open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_msg(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeClientMessage.lower(msgs),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeClientMessage.lower(msgs),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5379,13 +7505,21 @@ open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)throws  {try ru
      *
      * Note: **the relays must already be added!**
      */
-open func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_msg_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeClientMessage.lower(msgs),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_msg_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeClientMessage.lower(msgs),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5401,22 +7535,42 @@ open func blacklist() -> RelayBlacklist {
     /**
      * Connect to all added relays and keep connection alive
      */
-open func connect(connectionTimeout: TimeInterval?) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_connect(self.uniffiClonePointer(),
-        FfiConverterOptionDuration.lower(connectionTimeout),$0
-    )
-}
+open func connect(connectionTimeout: TimeInterval?)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_connect(
+                    self.uniffiClonePointer(),
+                    FfiConverterOptionDuration.lower(connectionTimeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Connect to relay
      */
-open func connectRelay(url: String, connectionTimeout: TimeInterval?)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_connect_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),
-        FfiConverterOptionDuration.lower(connectionTimeout),$0
-    )
-}
+open func connectRelay(url: String, connectionTimeout: TimeInterval?)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_connect_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url),FfiConverterOptionDuration.lower(connectionTimeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5432,10 +7586,21 @@ open func database() -> NostrDatabase {
     /**
      * Disconnect from all relays
      */
-open func disconnect()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_disconnect(self.uniffiClonePointer(),$0
-    )
-}
+open func disconnect()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_disconnect(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5443,15 +7608,21 @@ open func disconnect()throws  {try rustCallWithError(FfiConverterTypeNostrSdkErr
      *
      * Get events both from **local database** and **relays**
      */
-open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions)throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_get_events_from(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterDuration.lower(timeout),
-        FfiConverterTypeFilterOptions.lower(opts),$0
-    )
-})
+open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions)async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_get_events_from(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterDuration.lower(timeout),FfiConverterTypeFilterOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5459,22 +7630,31 @@ open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval
      *
      * Get events both from **local database** and **relays**
      */
-open func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions)throws  -> [Event] {
-    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_get_events_of(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterDuration.lower(timeout),
-        FfiConverterTypeFilterOptions.lower(opts),$0
-    )
-})
+open func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions)async throws  -> [Event] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_get_events_of(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterDuration.lower(timeout),FfiConverterTypeFilterOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Handle relay pool notifications
+     *
+     * <div class="warning">Python bindings needs to call `uniffi_set_event_loop(asyncio.get_running_loop())` before this method!</div>
      */
 open func handleNotifications(handler: HandleNotification)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_relaypool_handle_notifications(self.uniffiClonePointer(),
-        FfiConverterCallbackInterfaceHandleNotification.lower(handler),$0
+        FfiConverterTypeHandleNotification.lower(handler),$0
     )
 }
 }
@@ -5484,94 +7664,176 @@ open func handleNotifications(handler: HandleNotification)throws  {try rustCallW
      *
      * Use events stored in database
      */
-open func reconcile(filter: Filter, opts: NegentropyOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_reconcile(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),
-        FfiConverterTypeNegentropyOptions.lower(opts),$0
-    )
-}
+open func reconcile(filter: Filter, opts: NegentropyOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_reconcile(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter),FfiConverterTypeNegentropyOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Negentropy reconciliation with custom items
      */
-open func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_reconcile_with_items(self.uniffiClonePointer(),
-        FfiConverterTypeFilter_lower(filter),
-        FfiConverterSequenceTypeNegentropyItem.lower(items),
-        FfiConverterTypeNegentropyOptions.lower(opts),$0
-    )
-}
+open func reconcileWithItems(filter: Filter, items: [NegentropyItem], opts: NegentropyOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_reconcile_with_items(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeFilter_lower(filter),FfiConverterSequenceTypeNegentropyItem.lower(items),FfiConverterTypeNegentropyOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get relay
      */
-open func relay(url: String)throws  -> Relay {
-    return try  FfiConverterTypeRelay.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-})
+open func relay(url: String)async throws  -> Relay {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeRelay.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get relays
      */
-open func relays() -> [String: Relay] {
-    return try!  FfiConverterDictionaryStringTypeRelay.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_relays(self.uniffiClonePointer(),$0
-    )
-})
+open func relays()async  -> [String: Relay] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_relays(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterDictionaryStringTypeRelay.lift,
+            errorHandler: nil
+            
+        )
 }
     
-open func removeAllRelay()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_remove_all_relay(self.uniffiClonePointer(),$0
-    )
-}
+open func removeAllRelay()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_remove_all_relay(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
-open func removeRelay(url: String)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_remove_relay(self.uniffiClonePointer(),
-        FfiConverterString.lower(url),$0
-    )
-}
+open func removeRelay(url: String)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_remove_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send event to **all connected relays** and wait for `OK` message
      */
-open func sendEvent(event: Event, opts: RelaySendOptions)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_send_event(self.uniffiClonePointer(),
-        FfiConverterTypeEvent_lower(event),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-})
+open func sendEvent(event: Event, opts: RelaySendOptions)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_send_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEvent_lower(event),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send event to **specific relays** and wait for `OK` message
      */
-open func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions)throws  -> EventId {
-    return try  FfiConverterTypeEventId_lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_send_event_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterTypeEvent_lower(event),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-})
+open func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions)async throws  -> EventId {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_send_event_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypeEvent_lower(event),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEventId_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Send client message to all connected relays
      */
-open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_send_msg(self.uniffiClonePointer(),
-        FfiConverterTypeClientMessage_lower(msg),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_send_msg(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeClientMessage_lower(msg),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5579,22 +7841,41 @@ open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)throws  {try rustCa
      *
      * Note: **the relays must already be added!**
      */
-open func sendMsgTo(urls: [String], msg: ClientMessage, opts: RelaySendOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_send_msg_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterTypeClientMessage_lower(msg),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func sendMsgTo(urls: [String], msg: ClientMessage, opts: RelaySendOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_send_msg_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypeClientMessage_lower(msg),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Completely shutdown pool
      */
-open func shutdown()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_shutdown(self.uniffiClonePointer(),$0
-    )
-}
+open func shutdown()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_shutdown(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5602,10 +7883,22 @@ open func shutdown()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError
      *
      * Internally call `connect` without wait for connection.
      */
-open func start() {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_start(self.uniffiClonePointer(),$0
-    )
-}
+open func start()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_start(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -5613,10 +7906,21 @@ open func start() {try! rustCall() {
      *
      * Call `connect` to re-start relays connections
      */
-open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_stop(self.uniffiClonePointer(),$0
-    )
-}
+open func stop()async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_stop(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5628,13 +7932,22 @@ open func stop()throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lif
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-open func subscribe(filters: [Filter], opts: SubscribeOptions) -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-})
+open func subscribe(filters: [Filter], opts: SubscribeOptions)async  -> String {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -5644,14 +7957,21 @@ open func subscribe(filters: [Filter], opts: SubscribeOptions) -> String {
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
      */
-open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions)throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-})
+open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
@@ -5663,13 +7983,22 @@ open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions)
      *
      * Note: auto-closing subscriptions aren't saved in subscriptions map!
      */
-open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-}
+open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -5679,56 +8008,105 @@ open func subscribeWithId(id: String, filters: [Filter], opts: SubscribeOptions)
      *
      * It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
      */
-open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id_to(self.uniffiClonePointer(),
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterString.lower(id),
-        FfiConverterSequenceTypeFilter.lower(filters),
-        FfiConverterTypeSubscribeOptions.lower(opts),$0
-    )
-}
+open func subscribeWithIdTo(urls: [String], id: String, filters: [Filter], opts: SubscribeOptions)async throws  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscribe_with_id_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterString.lower(id),FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeSubscribeOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
     
     /**
      * Get filters by subscription ID
      */
-open func subscription(id: String) -> [Filter]? {
-    return try!  FfiConverterOptionSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscription(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),$0
-    )
-})
+open func subscription(id: String)async  -> [Filter]? {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscription(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Get subscriptions
      */
-open func subscriptions() -> [String: [Filter]] {
-    return try!  FfiConverterDictionaryStringSequenceTypeFilter.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_subscriptions(self.uniffiClonePointer(),$0
-    )
-})
+open func subscriptions()async  -> [String: [Filter]] {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_subscriptions(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterDictionaryStringSequenceTypeFilter.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Unsubscribe
      */
-open func unsubscribe(id: String, opts: RelaySendOptions) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_unsubscribe(self.uniffiClonePointer(),
-        FfiConverterString.lower(id),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func unsubscribe(id: String, opts: RelaySendOptions)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_unsubscribe(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(id),FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
     /**
      * Unsubscribe from all subscriptions
      */
-open func unsubscribeAll(opts: RelaySendOptions) {try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_unsubscribe_all(self.uniffiClonePointer(),
-        FfiConverterTypeRelaySendOptions.lower(opts),$0
-    )
-}
+open func unsubscribeAll(opts: RelaySendOptions)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relaypool_unsubscribe_all(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeRelaySendOptions.lower(opts)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
 }
     
 
@@ -6988,577 +9366,6 @@ extension RelayStatus: Equatable, Hashable {}
 
 
 
-
-
-
-public protocol CustomNostrDatabase : AnyObject {
-    
-    /**
-     * Name of backend
-     */
-    func backend()  -> String
-    
-    /**
-     * Save [`Event`] into store
-     *
-     * Return `true` if event was successfully saved into database.
-     *
-     * **This method assume that [`Event`] was already verified**
-     */
-    func saveEvent(event: Event) throws  -> Bool
-    
-    /**
-     * Check if [`Event`] has already been saved
-     */
-    func hasEventAlreadyBeenSaved(eventId: EventId) throws  -> Bool
-    
-    /**
-     * Check if [`EventId`] has already been seen
-     */
-    func hasEventAlreadyBeenSeen(eventId: EventId) throws  -> Bool
-    
-    /**
-     * Check if [`EventId`] has been deleted
-     */
-    func hasEventIdBeenDeleted(eventId: EventId) throws  -> Bool
-    
-    /**
-     * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-     */
-    func hasCoordinateBeenDeleted(coordinate: Coordinate, timestamp: Timestamp) throws  -> Bool
-    
-    /**
-     * Set [`EventId`] as seen by relay
-     *
-     * Useful for NIP65 (aka gossip)
-     */
-    func eventIdSeen(eventId: EventId, relayUrl: String) throws 
-    
-    /**
-     * Get list of relays that have seen the [`EventId`]
-     */
-    func eventSeenOnRelays(eventId: EventId) throws  -> [String]?
-    
-    /**
-     * Get [`Event`] by [`EventId`]
-     */
-    func eventById(eventId: EventId) throws  -> Event
-    
-    /**
-     * Count number of [`Event`] found by filters
-     *
-     * Use `Filter::new()` or `Filter::default()` to count all events.
-     */
-    func count(filters: [Filter]) throws  -> UInt64
-    
-    /**
-     * Query store with filters
-     */
-    func query(filters: [Filter]) throws  -> [Event]
-    
-    /**
-     * Delete all events that match the `Filter`
-     */
-    func delete(filter: Filter) throws 
-    
-    /**
-     * Wipe all data
-     */
-    func wipe() throws 
-    
-}
-
-// Magic number for the Rust proxy to call using the same mechanism as every other method,
-// to free the callback once it's dropped by Rust.
-private let IDX_CALLBACK_FREE: Int32 = 0
-// Callback return codes
-private let UNIFFI_CALLBACK_SUCCESS: Int32 = 0
-private let UNIFFI_CALLBACK_ERROR: Int32 = 1
-private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
-
-// Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
-
-    // Create the VTable using a series of closures.
-    // Swift automatically converts these into C callback functions.
-    static var vtable: UniffiVTableCallbackInterfaceCustomNostrDatabase = UniffiVTableCallbackInterfaceCustomNostrDatabase(
-        backend: { (
-            uniffiHandle: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> String in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return uniffiObj.backend(
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterString.lower($0) }
-            uniffiTraitInterfaceCall(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn
-            )
-        },
-        saveEvent: { (
-            uniffiHandle: UInt64,
-            event: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<Int8>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Bool in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.saveEvent(
-                     event: try FfiConverterTypeEvent_lift(event)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        hasEventAlreadyBeenSaved: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<Int8>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Bool in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.hasEventAlreadyBeenSaved(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        hasEventAlreadyBeenSeen: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<Int8>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Bool in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.hasEventAlreadyBeenSeen(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        hasEventIdBeenDeleted: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<Int8>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Bool in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.hasEventIdBeenDeleted(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        hasCoordinateBeenDeleted: { (
-            uniffiHandle: UInt64,
-            coordinate: UnsafeMutableRawPointer,
-            timestamp: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<Int8>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Bool in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.hasCoordinateBeenDeleted(
-                     coordinate: try FfiConverterTypeCoordinate_lift(coordinate),
-                     timestamp: try FfiConverterTypeTimestamp_lift(timestamp)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        eventIdSeen: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            relayUrl: RustBuffer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.eventIdSeen(
-                     eventId: try FfiConverterTypeEventId_lift(eventId),
-                     relayUrl: try FfiConverterString.lift(relayUrl)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        eventSeenOnRelays: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> [String]? in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.eventSeenOnRelays(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionSequenceString.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        eventById: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutablePointer<UnsafeMutableRawPointer>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> Event in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.eventById(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterTypeEvent_lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        count: { (
-            uniffiHandle: UInt64,
-            filters: RustBuffer,
-            uniffiOutReturn: UnsafeMutablePointer<UInt64>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> UInt64 in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.count(
-                     filters: try FfiConverterSequenceTypeFilter.lift(filters)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterUInt64.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        query: { (
-            uniffiHandle: UInt64,
-            filters: RustBuffer,
-            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> [Event] in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.query(
-                     filters: try FfiConverterSequenceTypeFilter.lift(filters)
-                )
-            }
-
-            
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterSequenceTypeEvent.lower($0) }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        delete: { (
-            uniffiHandle: UInt64,
-            filter: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.delete(
-                     filter: try FfiConverterTypeFilter_lift(filter)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        wipe: { (
-            uniffiHandle: UInt64,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try uniffiObj.wipe(
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCallWithError(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-        },
-        uniffiFree: { (uniffiHandle: UInt64) -> () in
-            let result = try? FfiConverterCallbackInterfaceCustomNostrDatabase.handleMap.remove(handle: uniffiHandle)
-            if result == nil {
-                print("Uniffi callback interface CustomNostrDatabase: handle missing in uniffiFree")
-            }
-        }
-    )
-}
-
-private func uniffiCallbackInitCustomNostrDatabase() {
-    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_customnostrdatabase(&UniffiCallbackInterfaceCustomNostrDatabase.vtable)
-}
-
-// FfiConverter protocol for callback interfaces
-fileprivate struct FfiConverterCallbackInterfaceCustomNostrDatabase {
-    fileprivate static var handleMap = UniffiHandleMap<CustomNostrDatabase>()
-}
-
-extension FfiConverterCallbackInterfaceCustomNostrDatabase : FfiConverter {
-    typealias SwiftType = CustomNostrDatabase
-    typealias FfiType = UInt64
-
-    public static func lift(_ handle: UInt64) throws -> SwiftType {
-        try handleMap.get(handle: handle)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        let handle: UInt64 = try readInt(&buf)
-        return try lift(handle)
-    }
-
-    public static func lower(_ v: SwiftType) -> UInt64 {
-        return handleMap.insert(obj: v)
-    }
-
-    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(v))
-    }
-}
-
-
-
-
-public protocol HandleNotification : AnyObject {
-    
-    func handleMsg(relayUrl: String, msg: RelayMessage) 
-    
-    func handle(relayUrl: String, subscriptionId: String, event: Event) 
-    
-}
-
-
-
-// Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceHandleNotification {
-
-    // Create the VTable using a series of closures.
-    // Swift automatically converts these into C callback functions.
-    static var vtable: UniffiVTableCallbackInterfaceHandleNotification = UniffiVTableCallbackInterfaceHandleNotification(
-        handleMsg: { (
-            uniffiHandle: UInt64,
-            relayUrl: RustBuffer,
-            msg: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceHandleNotification.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return uniffiObj.handleMsg(
-                     relayUrl: try FfiConverterString.lift(relayUrl),
-                     msg: try FfiConverterTypeRelayMessage_lift(msg)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCall(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn
-            )
-        },
-        handle: { (
-            uniffiHandle: UInt64,
-            relayUrl: RustBuffer,
-            subscriptionId: RustBuffer,
-            event: UnsafeMutableRawPointer,
-            uniffiOutReturn: UnsafeMutableRawPointer,
-            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
-        ) in
-            let makeCall = {
-                () throws -> () in
-                guard let uniffiObj = try? FfiConverterCallbackInterfaceHandleNotification.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return uniffiObj.handle(
-                     relayUrl: try FfiConverterString.lift(relayUrl),
-                     subscriptionId: try FfiConverterString.lift(subscriptionId),
-                     event: try FfiConverterTypeEvent_lift(event)
-                )
-            }
-
-            
-            let writeReturn = { () }
-            uniffiTraitInterfaceCall(
-                callStatus: uniffiCallStatus,
-                makeCall: makeCall,
-                writeReturn: writeReturn
-            )
-        },
-        uniffiFree: { (uniffiHandle: UInt64) -> () in
-            let result = try? FfiConverterCallbackInterfaceHandleNotification.handleMap.remove(handle: uniffiHandle)
-            if result == nil {
-                print("Uniffi callback interface HandleNotification: handle missing in uniffiFree")
-            }
-        }
-    )
-}
-
-private func uniffiCallbackInitHandleNotification() {
-    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_handlenotification(&UniffiCallbackInterfaceHandleNotification.vtable)
-}
-
-// FfiConverter protocol for callback interfaces
-fileprivate struct FfiConverterCallbackInterfaceHandleNotification {
-    fileprivate static var handleMap = UniffiHandleMap<HandleNotification>()
-}
-
-extension FfiConverterCallbackInterfaceHandleNotification : FfiConverter {
-    typealias SwiftType = HandleNotification
-    typealias FfiType = UInt64
-
-    public static func lift(_ handle: UInt64) throws -> SwiftType {
-        try handleMap.get(handle: handle)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        let handle: UInt64 = try readInt(&buf)
-        return try lift(handle)
-    }
-
-    public static func lower(_ v: SwiftType) -> UInt64 {
-        return handleMap.insert(obj: v)
-    }
-
-    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(v))
-    }
-}
-
 fileprivate struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
     typealias SwiftType = UInt16?
 
@@ -8082,6 +9889,124 @@ fileprivate struct FfiConverterDictionaryStringSequenceTypeFilter: FfiConverterR
 
 
 
+
+
+
+
+
+
+private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
+private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
+
+fileprivate let uniffiContinuationHandleMap = UniffiHandleMap<UnsafeContinuation<Int8, Never>>()
+
+fileprivate func uniffiRustCallAsync<F, T>(
+    rustFutureFunc: () -> UInt64,
+    pollFunc: (UInt64, @escaping UniffiRustFutureContinuationCallback, UInt64) -> (),
+    completeFunc: (UInt64, UnsafeMutablePointer<RustCallStatus>) -> F,
+    freeFunc: (UInt64) -> (),
+    liftFunc: (F) throws -> T,
+    errorHandler: ((RustBuffer) throws -> Error)?
+) async throws -> T {
+    // Make sure to call uniffiEnsureInitialized() since future creation doesn't have a
+    // RustCallStatus param, so doesn't use makeRustCall()
+    uniffiEnsureInitialized()
+    let rustFuture = rustFutureFunc()
+    defer {
+        freeFunc(rustFuture)
+    }
+    var pollResult: Int8;
+    repeat {
+        pollResult = await withUnsafeContinuation {
+            pollFunc(
+                rustFuture,
+                uniffiFutureContinuationCallback,
+                uniffiContinuationHandleMap.insert(obj: $0)
+            )
+        }
+    } while pollResult != UNIFFI_RUST_FUTURE_POLL_READY
+
+    return try liftFunc(makeRustCall(
+        { completeFunc(rustFuture, $0) },
+        errorHandler: errorHandler
+    ))
+}
+
+// Callback handlers for an async calls.  These are invoked by Rust when the future is ready.  They
+// lift the return value or error and resume the suspended function.
+fileprivate func uniffiFutureContinuationCallback(handle: UInt64, pollResult: Int8) {
+    if let continuation = try? uniffiContinuationHandleMap.remove(handle: handle) {
+        continuation.resume(returning: pollResult)
+    } else {
+        print("uniffiFutureContinuationCallback invalid handle")
+    }
+}
+private func uniffiTraitInterfaceCallAsync<T>(
+    makeCall: @escaping () async throws -> T,
+    handleSuccess: @escaping (T) -> (),
+    handleError: @escaping (Int8, RustBuffer) -> ()
+) -> UniffiForeignFuture {
+    let task = Task {
+        do {
+            handleSuccess(try await makeCall())
+        } catch {
+            handleError(CALL_UNEXPECTED_ERROR, FfiConverterString.lower(String(describing: error)))
+        }
+    }
+    let handle = UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.insert(obj: task)
+    return UniffiForeignFuture(handle: handle, free: uniffiForeignFutureFree)
+
+}
+
+private func uniffiTraitInterfaceCallAsyncWithError<T, E>(
+    makeCall: @escaping () async throws -> T,
+    handleSuccess: @escaping (T) -> (),
+    handleError: @escaping (Int8, RustBuffer) -> (),
+    lowerError: @escaping (E) -> RustBuffer
+) -> UniffiForeignFuture {
+    let task = Task {
+        do {
+            handleSuccess(try await makeCall())
+        } catch let error as E {
+            handleError(CALL_ERROR, lowerError(error))
+        } catch {
+            handleError(CALL_UNEXPECTED_ERROR, FfiConverterString.lower(String(describing: error)))
+        }
+    }
+    let handle = UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.insert(obj: task)
+    return UniffiForeignFuture(handle: handle, free: uniffiForeignFutureFree)
+}
+
+// Borrow the callback handle map implementation to store foreign future handles
+// TODO: consolidate the handle-map code (https://github.com/mozilla/uniffi-rs/pull/1823)
+fileprivate var UNIFFI_FOREIGN_FUTURE_HANDLE_MAP = UniffiHandleMap<UniffiForeignFutureTask>()
+
+// Protocol for tasks that handle foreign futures.
+//
+// Defining a protocol allows all tasks to be stored in the same handle map.  This can't be done
+// with the task object itself, since has generic parameters.
+protocol UniffiForeignFutureTask {
+    func cancel()
+}
+
+extension Task: UniffiForeignFutureTask {}
+
+private func uniffiForeignFutureFree(handle: UInt64) {
+    do {
+        let task = try UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.remove(handle: handle)
+        // Set the cancellation flag on the task.  If it's still running, the code can check the
+        // cancellation flag or call `Task.checkCancellation()`.  If the task has completed, this is
+        // a no-op.
+        task.cancel()
+    } catch {
+        print("uniffiForeignFutureFree: handle missing from handlemap")
+    }
+}
+
+// For testing
+public func uniffiForeignFutureHandleCountNostrSdkFfi() -> Int {
+    UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
+}
 public func initLogger(level: LogLevel) {try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_func_init_logger(
         FfiConverterTypeLogLevel.lower(level),$0
@@ -8113,151 +10038,151 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_aborthandle_is_aborted() != 57233) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 49) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 58887) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay_with_opts() != 12575) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay_with_opts() != 36241) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 59820) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 46859) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_blacklist() != 3155) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 58188) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 30312) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 56847) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 31242) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_with_timeout() != 62841) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_with_timeout() != 16188) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_database() != 35722) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect() != 38433) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect() != 21461) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect_relay() != 40874) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect_relay() != 63825) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_dislike() != 64607) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_dislike() != 45018) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 18115) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 184) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_from() != 62752) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_from() != 26170) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 44675) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 65200) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 18998) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 2702) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 16945) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 28993) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_like() != 55130) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_like() != 15887) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_ids() != 48617) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_ids() != 26708) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_public_keys() != 11521) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_public_keys() != 39159) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_reaction() != 48411) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_reaction() != 22977) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_reconcile() != 3186) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_reconcile() != 20435) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 36119) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 53414) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 48003) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 25563) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 222) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 5421) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 27770) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 40218) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 44479) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 1848) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 10342) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 21572) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 61169) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 45356) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 7515) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 10153) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 13155) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 46323) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg() != 258) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg() != 23270) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 48694) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 33600) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 47492) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 36975) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 18910) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 62641) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 18928) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 16786) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_sign_event_builder() != 40727) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_sign_event_builder() != 47615) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 55907) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 31951) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_start() != 10767) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_start() != 56287) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_stop() != 46184) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_stop() != 5883) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 26024) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 42253) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 56417) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 52934) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 1639) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 40087) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 48827) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 23017) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscription() != 64265) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscription() != 1946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 25974) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 20072) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_ids() != 23766) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_ids() != 55190) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_public_keys() != 41508) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_public_keys() != 32497) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 33797) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 16499) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe_all() != 27202) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe_all() != 37740) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 12551) {
@@ -8266,7 +10191,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_update_min_pow_difficulty() != 58908) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 7374) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 33763) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_build() != 61424) {
@@ -8284,25 +10209,70 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_zapper() != 2114) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_balance() != 36444) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_backend() != 43310) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_info() != 38523) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_save_event() != 44808) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_list_transactions() != 25126) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_saved() != 31021) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_lookup_invoice() != 11572) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_seen() != 60236) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_make_invoice() != 9387) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_id_been_deleted() != 63072) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_invoice() != 34897) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_coordinate_been_deleted() != 45636) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_keysend() != 7706) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_id_seen() != 22968) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_seen_on_relays() != 3595) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_by_id() != 18741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_count() != 39553) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_query() != 55160) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_delete() != 41600) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_wipe() != 8668) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 15446) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 58660) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_balance() != 30742) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_info() != 13299) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_list_transactions() != 27417) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_lookup_invoice() != 14000) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_make_invoice() != 26233) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_invoice() != 28548) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_keysend() != 7487) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_negentropyoptions_direction() != 49635) {
@@ -8311,64 +10281,79 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_negentropyoptions_initial_timeout() != 40199) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_nostr_connect_uri() != 2988) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_nostr_connect_uri() != 42112) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_relays() != 17292) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_relays() != 52111) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nip46signer_signer_public_key() != 60994) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 29275) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_nostr_connect_uri() != 15397) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_delete() != 38412) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_relays() != 20744) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 13951) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_serve() != 40586) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_seen_on_relays() != 50082) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectsigneractions_approve() != 33577) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_profile() != 1798) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 63911) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_query() != 32625) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_delete() != 19224) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_save_event() != 2944) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 15873) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_wipe() != 31282) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_seen_on_relays() != 47905) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_decrypt() != 14262) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_profile() != 30385) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_encrypt() != 50191) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_query() != 20702) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_decrypt() != 32958) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_save_event() != 62854) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_encrypt() != 41961) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_wipe() != 58001) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_public_key() != 8592) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_decrypt() != 13688) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event() != 56917) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_encrypt() != 22096) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event_builder() != 45366) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_decrypt() != 16401) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_encrypt() != 37397) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_public_key() != 58772) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event() != 49886) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event_builder() != 4087) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_proxy() != 51105) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_timeout() != 18259) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_automatic_authentication() != 33238) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_connection_timeout() != 57708) {
@@ -8416,28 +10401,28 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_proxy_target() != 3274) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_event() != 50645) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_event() != 30109) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 7075) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 15403) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_blacklist() != 35021) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 65283) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 15421) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_count_events_of() != 30433) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_count_events_of() != 10925) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 59362) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 55628) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 9342) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 45379) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 18284) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 50961) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_opts() != 21198) {
@@ -8449,79 +10434,79 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 23174) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_reconcile() != 21720) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_reconcile() != 28623) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_reconcile_with_items() != 54896) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_reconcile_with_items() != 36069) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_event() != 31892) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_event() != 20786) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_msg() != 36151) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_msg() != 20244) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_stats() != 58574) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_status() != 27198) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_status() != 14630) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_stop() != 57079) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_stop() != 30140) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe() != 49075) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe() != 7870) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe_with_id() != 31136) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe_with_id() != 33573) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscription() != 19975) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscription() != 14346) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscriptions() != 42295) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscriptions() != 24939) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_support_negentropy() != 24573) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_support_negentropy() != 5020) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_terminate() != 8947) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_terminate() != 14116) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe() != 40808) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe() != 20812) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe_all() != 27135) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe_all() != 32815) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 1351) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_ids() != 39906) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_ids() != 56523) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_public_keys() != 49994) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_public_keys() != 28791) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_clear() != 54680) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_clear() != 40843) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_id() != 19398) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_id() != 25951) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_public_key() != 44714) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_public_key() != 23755) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_id() != 64401) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_id() != 32469) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_ids() != 29502) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_ids() != 19470) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_key() != 52685) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_key() != 59175) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_keys() != 25) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_keys() != 53857) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 52060) {
@@ -8539,7 +10524,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_first_connection_timestamp() != 30824) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_latency() != 14031) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_latency() != 43153) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success() != 52759) {
@@ -8551,7 +10536,13 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags() != 29781) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags_per_kind() != 24819) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size() != 63930) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size_per_kind() != 61881) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_message_max_size() != 9957) {
@@ -8596,106 +10587,106 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_write() != 45946) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_add_relay() != 8583) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_add_relay() != 60070) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 34872) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 42567) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 43807) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 41056) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg() != 25834) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg() != 64663) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 4853) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 28777) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_blacklist() != 51161) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 1941) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 31806) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect_relay() != 25665) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect_relay() != 36418) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_database() != 4532) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 50009) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 51163) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_from() != 6791) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_from() != 4190) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_of() != 28280) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_of() != 43124) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_handle_notifications() != 16655) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_handle_notifications() != 30926) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_reconcile() != 45175) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_reconcile() != 23893) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_reconcile_with_items() != 45346) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_reconcile_with_items() != 24471) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relay() != 18458) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relay() != 11676) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 1591) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 54295) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_all_relay() != 18940) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_all_relay() != 16039) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_relay() != 52499) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_relay() != 40859) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 64654) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 42595) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 54866) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 2470) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg() != 49690) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg() != 42206) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg_to() != 21347) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg_to() != 32868) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 56982) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 24603) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_start() != 10745) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_start() != 5721) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_stop() != 37084) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_stop() != 12232) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 63291) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 14801) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 13626) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 43114) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 36090) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 64497) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 26652) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 64099) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscription() != 46314) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscription() != 18304) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscriptions() != 32801) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscriptions() != 34853) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe() != 53170) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe() != 28366) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe_all() != 51928) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe_all() != 15780) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaysendoptions_skip_disconnected() != 4190) {
@@ -8731,25 +10722,31 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 11332) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 39796) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 26100) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_with_opts() != 31044) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_with_opts() != 18653) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_negentropyoptions_new() != 15449) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip46signer_new() != 61017) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip46signer_init() != 34524) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_custom() != 22316) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_from_uri() != 28026) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_init() != 6872) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_custom() != 2448) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_ndb() != 25092) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 10843) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 42455) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_keys() != 51910) {
@@ -8761,7 +10758,7 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnectoptions_new() != 35456) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrzapper_nwc() != 62259) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrzapper_nwc() != 65346) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_options_new() != 30503) {
@@ -8821,54 +10818,9 @@ private var initializationResult: InitializationResult {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_zapentity_public_key() != 56616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_backend() != 43310) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_save_event() != 35737) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_saved() != 17970) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_seen() != 32737) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_id_been_deleted() != 18305) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_coordinate_been_deleted() != 21374) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_id_seen() != 31417) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_seen_on_relays() != 47225) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_by_id() != 16633) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_count() != 14898) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_query() != 38513) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_delete() != 55000) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_wipe() != 65517) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 55169) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 9914) {
-        return InitializationResult.apiChecksumMismatch
-    }
 
-    uniffiCallbackInitCustomNostrDatabase()
     uniffiCallbackInitHandleNotification()
+    uniffiCallbackInitNostrConnectSignerActions()
     return InitializationResult.ok
 }
 
