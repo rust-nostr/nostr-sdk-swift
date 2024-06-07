@@ -6546,21 +6546,6 @@ public convenience init() {
     }
 
     
-public static func get(url: String, proxy: String? = nil)async throws  -> RelayInformationDocument {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_ffi_fn_constructor_relayinformationdocument_get(FfiConverterString.lower(url),FfiConverterOptionString.lower(proxy)
-                )
-            },
-            pollFunc: ffi_nostr_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeRelayInformationDocument.lift,
-            errorHandler: FfiConverterTypeNostrError.lift
-        )
-}
-    
 
     
 open func contact() -> String? {
@@ -18720,6 +18705,20 @@ public func nip04Encrypt(secretKey: SecretKey, publicKey: PublicKey, content: St
     )
 })
 }
+public func nip11GetInformationDocument(url: String, proxy: String? = nil)async throws  -> RelayInformationDocument {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_ffi_fn_func_nip11_get_information_document(FfiConverterString.lower(url),FfiConverterOptionString.lower(proxy)
+                )
+            },
+            pollFunc: ffi_nostr_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeRelayInformationDocument.lift,
+            errorHandler: FfiConverterTypeNostrError.lift
+        )
+}
 public func nip44Decrypt(secretKey: SecretKey, publicKey: PublicKey, payload: String)throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_func_nip44_decrypt(
@@ -18863,6 +18862,9 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_func_nip04_encrypt() != 24648) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_func_nip11_get_information_document() != 42127) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_func_nip44_decrypt() != 37647) {
@@ -19862,9 +19864,6 @@ private var initializationResult: InitializationResult {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_rawevent_from_record() != 51955) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_constructor_relayinformationdocument_get() != 5909) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_relayinformationdocument_new() != 46265) {
