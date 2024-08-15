@@ -1441,6 +1441,13 @@ public protocol EventProtocol : AnyObject {
     func isParameterizedReplaceable()  -> Bool
     
     /**
+     * Check if it's a protected event
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+    func isProtected()  -> Bool
+    
+    /**
      * Check if event `Kind` is `Regular`
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -1714,6 +1721,18 @@ open func isParameterizedReplaceable() -> Bool {
 }
     
     /**
+     * Check if it's a protected event
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+open func isProtected() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_event_is_protected(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
      * Check if event `Kind` is `Regular`
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -1978,11 +1997,11 @@ public static func auth(challenge: String, relayUrl: String)throws  -> EventBuil
      *
      * <https://github.com/nostr-protocol/nips/blob/master/58.md>
      */
-public static func awardBadge(badgeDefinition: Event, awardedPubkeys: [Tag])throws  -> EventBuilder {
+public static func awardBadge(badgeDefinition: Event, awardedPublicKeys: [PublicKey])throws  -> EventBuilder {
     return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_eventbuilder_award_badge(
         FfiConverterTypeEvent.lower(badgeDefinition),
-        FfiConverterSequenceTypeTag.lower(awardedPubkeys),$0
+        FfiConverterSequenceTypePublicKey.lower(awardedPublicKeys),$0
     )
 })
 }
@@ -2157,22 +2176,6 @@ public static func emojis(list: Emojis) -> EventBuilder {
 }
     
     /**
-     * Create encrypted direct msg event
-     *
-     * <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP-17!</div>
-     */
-public static func encryptedDirectMsg(senderKeys: Keys, receiverPubkey: PublicKey, content: String, replyTo: EventId? = nil)throws  -> EventBuilder {
-    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_constructor_eventbuilder_encrypted_direct_msg(
-        FfiConverterTypeKeys.lower(senderKeys),
-        FfiConverterTypePublicKey.lower(receiverPubkey),
-        FfiConverterString.lower(content),
-        FfiConverterOptionTypeEventId.lower(replyTo),$0
-    )
-})
-}
-    
-    /**
      * File metadata
      *
      * <https://github.com/nostr-protocol/nips/blob/master/94.md>
@@ -2291,11 +2294,12 @@ public static func jobRequest(kind: Kind, tags: [Tag])throws  -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/90.md>
      */
-public static func jobResult(jobRequest: Event, amountMillisats: UInt64, bolt11: String? = nil)throws  -> EventBuilder {
+public static func jobResult(jobRequest: Event, payload: String, millisats: UInt64, bolt11: String? = nil)throws  -> EventBuilder {
     return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_constructor_eventbuilder_job_result(
         FfiConverterTypeEvent.lower(jobRequest),
-        FfiConverterUInt64.lower(amountMillisats),
+        FfiConverterString.lower(payload),
+        FfiConverterUInt64.lower(millisats),
         FfiConverterOptionString.lower(bolt11),$0
     )
 })
@@ -2585,6 +2589,21 @@ public static func repost(event: Event, relayUrl: String? = nil) -> EventBuilder
     uniffi_nostr_ffi_fn_constructor_eventbuilder_repost(
         FfiConverterTypeEvent.lower(event),
         FfiConverterOptionString.lower(relayUrl),$0
+    )
+})
+}
+    
+    /**
+     * Seal
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+     */
+public static func seal(senderKeys: Keys, receiverPublicKey: PublicKey, rumor: UnsignedEvent)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
+    uniffi_nostr_ffi_fn_constructor_eventbuilder_seal(
+        FfiConverterTypeKeys.lower(senderKeys),
+        FfiConverterTypePublicKey.lower(receiverPublicKey),
+        FfiConverterTypeUnsignedEvent.lower(rumor),$0
     )
 })
 }
@@ -3235,12 +3254,16 @@ public protocol FilterProtocol : AnyObject {
     /**
      * Add coordinate
      *
+     * Query for `a` tag.
+     *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
     func coordinate(coordinate: Coordinate)  -> Filter
     
     /**
      * Add coordinates
+     *
+     * Query for `a` tags.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
@@ -3280,8 +3303,6 @@ public protocol FilterProtocol : AnyObject {
     
     /**
      * Determine if `Filter` match given `Event`.
-     *
-     * The `search` filed is not supported yet!
      */
     func matchEvent(event: Event)  -> Bool
     
@@ -3303,6 +3324,8 @@ public protocol FilterProtocol : AnyObject {
     
     /**
      * Remove coordinates
+     *
+     * Remove `a` tags.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
@@ -3442,6 +3465,8 @@ open func authors(authors: [PublicKey]) -> Filter {
     /**
      * Add coordinate
      *
+     * Query for `a` tag.
+     *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
 open func coordinate(coordinate: Coordinate) -> Filter {
@@ -3454,6 +3479,8 @@ open func coordinate(coordinate: Coordinate) -> Filter {
     
     /**
      * Add coordinates
+     *
+     * Query for `a` tags.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
@@ -3577,8 +3604,6 @@ open func limit(limit: UInt64) -> Filter {
     
     /**
      * Determine if `Filter` match given `Event`.
-     *
-     * The `search` filed is not supported yet!
      */
 open func matchEvent(event: Event) -> Bool {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -3636,6 +3661,8 @@ open func removeAuthors(authors: [PublicKey]) -> Filter {
     
     /**
      * Remove coordinates
+     *
+     * Remove `a` tags.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
@@ -5355,179 +5382,6 @@ public func FfiConverterTypeNip19Profile_lift(_ pointer: UnsafeMutableRawPointer
 
 public func FfiConverterTypeNip19Profile_lower(_ value: Nip19Profile) -> UnsafeMutableRawPointer {
     return FfiConverterTypeNip19Profile.lower(value)
-}
-
-
-
-
-public protocol Nip19RelayProtocol : AnyObject {
-    
-    func toBech32() throws  -> String
-    
-    func toNostrUri() throws  -> String
-    
-    func url()  -> String
-    
-}
-
-open class Nip19Relay:
-    CustomDebugStringConvertible,
-    Equatable,
-    Hashable,
-    Nip19RelayProtocol {
-    fileprivate let pointer: UnsafeMutableRawPointer!
-
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
-    public struct NoPointer {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
-    }
-
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
-    }
-
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_nostr_ffi_fn_clone_nip19relay(self.pointer, $0) }
-    }
-public convenience init(url: String)throws  {
-    let pointer =
-        try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_constructor_nip19relay_new(
-        FfiConverterString.lower(url),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
-
-    deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_nostr_ffi_fn_free_nip19relay(pointer, $0) }
-    }
-
-    
-public static func fromBech32(bech32: String)throws  -> Nip19Relay {
-    return try  FfiConverterTypeNip19Relay.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_constructor_nip19relay_from_bech32(
-        FfiConverterString.lower(bech32),$0
-    )
-})
-}
-    
-public static func fromNostrUri(uri: String)throws  -> Nip19Relay {
-    return try  FfiConverterTypeNip19Relay.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_constructor_nip19relay_from_nostr_uri(
-        FfiConverterString.lower(uri),$0
-    )
-})
-}
-    
-
-    
-open func toBech32()throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_method_nip19relay_to_bech32(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-open func toNostrUri()throws  -> String {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_method_nip19relay_to_nostr_uri(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-open func url() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_nip19relay_url(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    open var debugDescription: String {
-        return try!  FfiConverterString.lift(
-            try! rustCall() {
-    uniffi_nostr_ffi_fn_method_nip19relay_uniffi_trait_debug(self.uniffiClonePointer(),$0
-    )
-}
-        )
-    }
-    public static func == (self: Nip19Relay, other: Nip19Relay) -> Bool {
-        return try!  FfiConverterBool.lift(
-            try! rustCall() {
-    uniffi_nostr_ffi_fn_method_nip19relay_uniffi_trait_eq_eq(self.uniffiClonePointer(),
-        FfiConverterTypeNip19Relay.lower(other),$0
-    )
-}
-        )
-    }
-    open func hash(into hasher: inout Hasher) {
-        let val = try!  FfiConverterUInt64.lift(
-            try! rustCall() {
-    uniffi_nostr_ffi_fn_method_nip19relay_uniffi_trait_hash(self.uniffiClonePointer(),$0
-    )
-}
-        )
-        hasher.combine(val)
-    }
-
-}
-
-public struct FfiConverterTypeNip19Relay: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = Nip19Relay
-
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Nip19Relay {
-        return Nip19Relay(unsafeFromRawPointer: pointer)
-    }
-
-    public static func lower(_ value: Nip19Relay) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Nip19Relay {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
-    }
-
-    public static func write(_ value: Nip19Relay, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
-    }
-}
-
-
-
-
-public func FfiConverterTypeNip19Relay_lift(_ pointer: UnsafeMutableRawPointer) throws -> Nip19Relay {
-    return try FfiConverterTypeNip19Relay.lift(pointer)
-}
-
-public func FfiConverterTypeNip19Relay_lower(_ value: Nip19Relay) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeNip19Relay.lower(value)
 }
 
 
@@ -8191,6 +8045,13 @@ public protocol TagProtocol : AnyObject {
     func content()  -> String?
     
     /**
+     * Check if it's a protected event tag
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+    func isProtected()  -> Bool
+    
+    /**
      * Check if is a standard event tag with `reply` marker
      */
     func isReply()  -> Bool
@@ -8256,6 +8117,21 @@ open class Tag:
         try! rustCall { uniffi_nostr_ffi_fn_free_tag(pointer, $0) }
     }
 
+    
+    /**
+     * A short human-readable plaintext summary of what that event is about
+     *
+     * JSON: `["alt", "<summary>"]`
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/31.md>
+     */
+public static func alt(summary: String) -> Tag {
+    return try!  FfiConverterTypeTag.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_constructor_tag_alt(
+        FfiConverterString.lower(summary),$0
+    )
+})
+}
     
     /**
      * Compose `["a", "<coordinate>"]` tag
@@ -8410,6 +8286,20 @@ public static func pow(nonce: UInt64, difficulty: UInt8) -> Tag {
 }
     
     /**
+     * Protected event
+     *
+     * JSON: `["-"]`
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+public static func protected() -> Tag {
+    return try!  FfiConverterTypeTag.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_constructor_tag_protected($0
+    )
+})
+}
+    
+    /**
      * Compose `["p", "<public-key>"]` tag
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -8489,6 +8379,18 @@ open func asVec() -> [String] {
 open func content() -> String? {
     return try!  FfiConverterOptionString.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_tag_content(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's a protected event tag
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+open func isProtected() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_tag_is_protected(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -14945,11 +14847,6 @@ public enum Nip19Enum {
      */
     case coord(coordinate: Coordinate
     )
-    /**
-     * nrelay
-     */
-    case relay(relay: Nip19Relay
-    )
 }
 
 
@@ -14979,9 +14876,6 @@ public struct FfiConverterTypeNip19Enum: FfiConverterRustBuffer {
         )
         
         case 7: return .coord(coordinate: try FfiConverterTypeCoordinate.read(from: &buf)
-        )
-        
-        case 8: return .relay(relay: try FfiConverterTypeNip19Relay.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -15025,11 +14919,6 @@ public struct FfiConverterTypeNip19Enum: FfiConverterRustBuffer {
         case let .coord(coordinate):
             writeInt(&buf, Int32(7))
             FfiConverterTypeCoordinate.write(coordinate, into: &buf)
-            
-        
-        case let .relay(relay):
-            writeInt(&buf, Int32(8))
-            FfiConverterTypeNip19Relay.write(relay, into: &buf)
             
         }
     }
@@ -15082,11 +14971,6 @@ public enum Nip21Enum {
      */
     case coord(coordinate: Coordinate
     )
-    /**
-     * nostr::naddr
-     */
-    case relay(relay: Nip19Relay
-    )
 }
 
 
@@ -15110,9 +14994,6 @@ public struct FfiConverterTypeNip21Enum: FfiConverterRustBuffer {
         )
         
         case 5: return .coord(coordinate: try FfiConverterTypeCoordinate.read(from: &buf)
-        )
-        
-        case 6: return .relay(relay: try FfiConverterTypeNip19Relay.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -15147,11 +15028,6 @@ public struct FfiConverterTypeNip21Enum: FfiConverterRustBuffer {
             writeInt(&buf, Int32(5))
             FfiConverterTypeCoordinate.write(coordinate, into: &buf)
             
-        
-        case let .relay(relay):
-            writeInt(&buf, Int32(6))
-            FfiConverterTypeNip19Relay.write(relay, into: &buf)
-            
         }
     }
 }
@@ -15177,10 +15053,6 @@ public func FfiConverterTypeNip21Enum_lower(_ value: Nip21Enum) -> RustBuffer {
 public enum Nip44Version {
     
     /**
-     * V1 (deprecated)
-     */
-    case deprecated
-    /**
      * V2 - Secp256k1 ECDH, HKDF, padding, ChaCha20, HMAC-SHA256 and base64
      */
     case v2
@@ -15194,9 +15066,7 @@ public struct FfiConverterTypeNip44Version: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .deprecated
-        
-        case 2: return .v2
+        case 1: return .v2
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -15206,12 +15076,8 @@ public struct FfiConverterTypeNip44Version: FfiConverterRustBuffer {
         switch value {
         
         
-        case .deprecated:
-            writeInt(&buf, Int32(1))
-        
-        
         case .v2:
-            writeInt(&buf, Int32(2))
+            writeInt(&buf, Int32(1))
         
         }
     }
@@ -16324,6 +16190,18 @@ public enum TagKind {
     case singleLetter(singleLetter: SingleLetterTag
     )
     /**
+     * Protected event
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+    case protected
+    /**
+     * Human-readable plaintext summary of what that event is about
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/31.md>
+     */
+    case alt
+    /**
      * Relay
      */
     case relayUrl
@@ -16483,87 +16361,91 @@ public struct FfiConverterTypeTagKind: FfiConverterRustBuffer {
         case 1: return .singleLetter(singleLetter: try FfiConverterTypeSingleLetterTag.read(from: &buf)
         )
         
-        case 2: return .relayUrl
+        case 2: return .protected
         
-        case 3: return .nonce
+        case 3: return .alt
         
-        case 4: return .delegation
+        case 4: return .relayUrl
         
-        case 5: return .contentWarning
+        case 5: return .nonce
         
-        case 6: return .expiration
+        case 6: return .delegation
         
-        case 7: return .subject
+        case 7: return .contentWarning
         
-        case 8: return .challenge
+        case 8: return .expiration
         
-        case 9: return .title
+        case 9: return .subject
         
-        case 10: return .image
+        case 10: return .challenge
         
-        case 11: return .thumb
+        case 11: return .title
         
-        case 12: return .summary
+        case 12: return .image
         
-        case 13: return .publishedAt
+        case 13: return .thumb
         
-        case 14: return .description
+        case 14: return .summary
         
-        case 15: return .bolt11
+        case 15: return .publishedAt
         
-        case 16: return .preimage
+        case 16: return .description
         
-        case 17: return .relays
+        case 17: return .bolt11
         
-        case 18: return .amount
+        case 18: return .preimage
         
-        case 19: return .lnurl
+        case 19: return .relays
         
-        case 20: return .name
+        case 20: return .amount
         
-        case 21: return .url
+        case 21: return .lnurl
         
-        case 22: return .aes256Gcm
+        case 22: return .name
         
-        case 23: return .size
+        case 23: return .url
         
-        case 24: return .dim
+        case 24: return .aes256Gcm
         
-        case 25: return .magnet
+        case 25: return .size
         
-        case 26: return .blurhash
+        case 26: return .dim
         
-        case 27: return .streaming
+        case 27: return .magnet
         
-        case 28: return .recording
+        case 28: return .blurhash
         
-        case 29: return .starts
+        case 29: return .streaming
         
-        case 30: return .ends
+        case 30: return .recording
         
-        case 31: return .status
+        case 31: return .starts
         
-        case 32: return .currentParticipants
+        case 32: return .ends
         
-        case 33: return .totalParticipants
+        case 33: return .status
         
-        case 34: return .method
+        case 34: return .currentParticipants
         
-        case 35: return .payload
+        case 35: return .totalParticipants
         
-        case 36: return .anon
+        case 36: return .method
         
-        case 37: return .proxy
+        case 37: return .payload
         
-        case 38: return .emoji
+        case 38: return .anon
         
-        case 39: return .encrypted
+        case 39: return .proxy
         
-        case 40: return .request
+        case 40: return .emoji
         
-        case 41: return .word
+        case 41: return .encrypted
         
-        case 42: return .unknown(unknown: try FfiConverterString.read(from: &buf)
+        case 42: return .request
+        
+        case 43: return .word
+        
+        case 44: return .unknown(unknown: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -16579,168 +16461,176 @@ public struct FfiConverterTypeTagKind: FfiConverterRustBuffer {
             FfiConverterTypeSingleLetterTag.write(singleLetter, into: &buf)
             
         
-        case .relayUrl:
+        case .protected:
             writeInt(&buf, Int32(2))
         
         
-        case .nonce:
+        case .alt:
             writeInt(&buf, Int32(3))
         
         
-        case .delegation:
+        case .relayUrl:
             writeInt(&buf, Int32(4))
         
         
-        case .contentWarning:
+        case .nonce:
             writeInt(&buf, Int32(5))
         
         
-        case .expiration:
+        case .delegation:
             writeInt(&buf, Int32(6))
         
         
-        case .subject:
+        case .contentWarning:
             writeInt(&buf, Int32(7))
         
         
-        case .challenge:
+        case .expiration:
             writeInt(&buf, Int32(8))
         
         
-        case .title:
+        case .subject:
             writeInt(&buf, Int32(9))
         
         
-        case .image:
+        case .challenge:
             writeInt(&buf, Int32(10))
         
         
-        case .thumb:
+        case .title:
             writeInt(&buf, Int32(11))
         
         
-        case .summary:
+        case .image:
             writeInt(&buf, Int32(12))
         
         
-        case .publishedAt:
+        case .thumb:
             writeInt(&buf, Int32(13))
         
         
-        case .description:
+        case .summary:
             writeInt(&buf, Int32(14))
         
         
-        case .bolt11:
+        case .publishedAt:
             writeInt(&buf, Int32(15))
         
         
-        case .preimage:
+        case .description:
             writeInt(&buf, Int32(16))
         
         
-        case .relays:
+        case .bolt11:
             writeInt(&buf, Int32(17))
         
         
-        case .amount:
+        case .preimage:
             writeInt(&buf, Int32(18))
         
         
-        case .lnurl:
+        case .relays:
             writeInt(&buf, Int32(19))
         
         
-        case .name:
+        case .amount:
             writeInt(&buf, Int32(20))
         
         
-        case .url:
+        case .lnurl:
             writeInt(&buf, Int32(21))
         
         
-        case .aes256Gcm:
+        case .name:
             writeInt(&buf, Int32(22))
         
         
-        case .size:
+        case .url:
             writeInt(&buf, Int32(23))
         
         
-        case .dim:
+        case .aes256Gcm:
             writeInt(&buf, Int32(24))
         
         
-        case .magnet:
+        case .size:
             writeInt(&buf, Int32(25))
         
         
-        case .blurhash:
+        case .dim:
             writeInt(&buf, Int32(26))
         
         
-        case .streaming:
+        case .magnet:
             writeInt(&buf, Int32(27))
         
         
-        case .recording:
+        case .blurhash:
             writeInt(&buf, Int32(28))
         
         
-        case .starts:
+        case .streaming:
             writeInt(&buf, Int32(29))
         
         
-        case .ends:
+        case .recording:
             writeInt(&buf, Int32(30))
         
         
-        case .status:
+        case .starts:
             writeInt(&buf, Int32(31))
         
         
-        case .currentParticipants:
+        case .ends:
             writeInt(&buf, Int32(32))
         
         
-        case .totalParticipants:
+        case .status:
             writeInt(&buf, Int32(33))
         
         
-        case .method:
+        case .currentParticipants:
             writeInt(&buf, Int32(34))
         
         
-        case .payload:
+        case .totalParticipants:
             writeInt(&buf, Int32(35))
         
         
-        case .anon:
+        case .method:
             writeInt(&buf, Int32(36))
         
         
-        case .proxy:
+        case .payload:
             writeInt(&buf, Int32(37))
         
         
-        case .emoji:
+        case .anon:
             writeInt(&buf, Int32(38))
         
         
-        case .encrypted:
+        case .proxy:
             writeInt(&buf, Int32(39))
         
         
-        case .request:
+        case .emoji:
             writeInt(&buf, Int32(40))
         
         
-        case .word:
+        case .encrypted:
             writeInt(&buf, Int32(41))
         
         
-        case let .unknown(unknown):
+        case .request:
             writeInt(&buf, Int32(42))
+        
+        
+        case .word:
+            writeInt(&buf, Int32(43))
+        
+        
+        case let .unknown(unknown):
+            writeInt(&buf, Int32(44))
             FfiConverterString.write(unknown, into: &buf)
             
         }
@@ -16892,6 +16782,19 @@ public enum TagStandard {
     case labelNamespace(namespace: String
     )
     case label(label: [String]
+    )
+    /**
+     * Protected event
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     */
+    case protected
+    /**
+     * A short human-readable plaintext summary of what that event is about
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/31.md>
+     */
+    case alt(summary: String
     )
 }
 
@@ -17077,6 +16980,11 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         )
         
         case 59: return .label(label: try FfiConverterSequenceString.read(from: &buf)
+        )
+        
+        case 60: return .protected
+        
+        case 61: return .alt(summary: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -17402,6 +17310,15 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         case let .label(label):
             writeInt(&buf, Int32(59))
             FfiConverterSequenceString.write(label, into: &buf)
+            
+        
+        case .protected:
+            writeInt(&buf, Int32(60))
+        
+        
+        case let .alt(summary):
+            writeInt(&buf, Int32(61))
+            FfiConverterString.write(summary, into: &buf)
             
         }
     }
@@ -19252,6 +19169,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_event_is_parameterized_replaceable() != 17253) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_method_event_is_protected() != 548) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_method_event_is_regular() != 8941) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19336,10 +19256,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_filter_authors() != 56938) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_filter_coordinate() != 36342) {
+    if (uniffi_nostr_ffi_checksum_method_filter_coordinate() != 59164) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_filter_coordinates() != 14646) {
+    if (uniffi_nostr_ffi_checksum_method_filter_coordinates() != 12047) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_custom_tag() != 53153) {
@@ -19381,7 +19301,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_filter_limit() != 10602) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_filter_match_event() != 9337) {
+    if (uniffi_nostr_ffi_checksum_method_filter_match_event() != 40588) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_pubkey() != 49251) {
@@ -19399,7 +19319,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_filter_remove_authors() != 19914) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_filter_remove_coordinates() != 20263) {
+    if (uniffi_nostr_ffi_checksum_method_filter_remove_coordinates() != 36342) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_filter_remove_custom_tag() != 9906) {
@@ -19579,15 +19499,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_nip19profile_to_nostr_uri() != 7355) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_nip19relay_to_bech32() != 32959) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_nip19relay_to_nostr_uri() != 30353) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_nip19relay_url() != 35619) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_ffi_checksum_method_nip21_as_enum() != 62859) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19753,6 +19664,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_tag_content() != 16124) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_method_tag_is_protected() != 4223) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_method_tag_is_reply() != 40577) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19867,7 +19781,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_auth() != 51513) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_award_badge() != 60315) {
+    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_award_badge() != 55681) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_blocked_relays() != 35361) {
@@ -19906,9 +19820,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_emojis() != 32679) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_encrypted_direct_msg() != 36477) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_file_metadata() != 32311) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19933,7 +19844,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_request() != 45432) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_result() != 12934) {
+    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_result() != 25909) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_label() != 47535) {
@@ -19997,6 +19908,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_repost() != 34826) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_seal() != 51174) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_search_relays() != 35576) {
@@ -20102,15 +20016,6 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_nip19profile_new() != 43655) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_constructor_nip19relay_from_bech32() != 32471) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_constructor_nip19relay_from_nostr_uri() != 50691) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_constructor_nip19relay_new() != 39879) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_nip21_parse() != 30203) {
@@ -20221,6 +20126,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_stalldata_new() != 34499) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_constructor_tag_alt() != 24075) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_constructor_tag_coordinate() != 27758) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -20255,6 +20163,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_tag_pow() != 65247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_constructor_tag_protected() != 59462) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_tag_public_key() != 422) {

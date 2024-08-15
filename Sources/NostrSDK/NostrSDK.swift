@@ -620,19 +620,24 @@ public protocol ClientProtocol : AnyObject {
     
     /**
      * Get events of filters from specific relays
-     *
-     * Get events both from **local database** and **relays**
      */
     func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?) async throws  -> [Event]
     
-    func getEventsOf(filters: [Filter], timeout: TimeInterval?) async throws  -> [Event]
+    func getEventsOf(filters: [Filter], source: EventSource) async throws  -> [Event]
     
     /**
-     * Gift Wrap
+     * Construct Gift Wrap and send to all relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
     func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) async throws  -> SendEventOutput
+    
+    /**
+     * Construct Gift Wrap and send to specific relays
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+     */
+    func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) async throws  -> SendEventOutput
     
     /**
      * Handle notifications
@@ -684,15 +689,6 @@ public protocol ClientProtocol : AnyObject {
      */
     func repost(event: Event, relayUrl: String?) async throws  -> SendEventOutput
     
-    /**
-     * Encrypted direct msg
-     *
-     * <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/04.md>
-     */
-    func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?) async throws  -> SendEventOutput
-    
     func sendEvent(event: Event) async throws  -> SendEventOutput
     
     /**
@@ -716,11 +712,18 @@ public protocol ClientProtocol : AnyObject {
     func sendMsgTo(urls: [String], msg: ClientMessage) async throws  -> Output
     
     /**
-     * Send private direct message
+     * Send private direct message to all relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
     func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?) async throws  -> SendEventOutput
+    
+    /**
+     * Send private direct message to specific relays
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+     */
+    func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, replyTo: EventId?) async throws  -> SendEventOutput
     
     func setMetadata(metadata: Metadata) async throws  -> SendEventOutput
     
@@ -1132,8 +1135,6 @@ open func fileMetadata(description: String, metadata: FileMetadata)async throws 
     
     /**
      * Get events of filters from specific relays
-     *
-     * Get events both from **local database** and **relays**
      */
 open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?)async throws  -> [Event] {
     return
@@ -1152,13 +1153,13 @@ open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval
         )
 }
     
-open func getEventsOf(filters: [Filter], timeout: TimeInterval?)async throws  -> [Event] {
+open func getEventsOf(filters: [Filter], source: EventSource)async throws  -> [Event] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_client_get_events_of(
                     self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterOptionDuration.lower(timeout)
+                    FfiConverterSequenceTypeFilter.lower(filters),FfiConverterTypeEventSource.lower(source)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1170,7 +1171,7 @@ open func getEventsOf(filters: [Filter], timeout: TimeInterval?)async throws  ->
 }
     
     /**
-     * Gift Wrap
+     * Construct Gift Wrap and send to all relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
@@ -1181,6 +1182,28 @@ open func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timesta
                 uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap(
                     self.uniffiClonePointer(),
                     FfiConverterTypePublicKey_lower(receiver),FfiConverterTypeEventBuilder_lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSendEventOutput.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Construct Gift Wrap and send to specific relays
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+     */
+open func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?)async throws  -> SendEventOutput {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey_lower(receiver),FfiConverterTypeEventBuilder_lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1394,30 +1417,6 @@ open func repost(event: Event, relayUrl: String?)async throws  -> SendEventOutpu
         )
 }
     
-    /**
-     * Encrypted direct msg
-     *
-     * <div class="warning"><strong>Unsecure!</strong> Use `send_private_msg` instead!</div>
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/04.md>
-     */
-open func sendDirectMsg(receiver: PublicKey, msg: String, reply: EventId?)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_send_direct_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey_lower(receiver),FfiConverterString.lower(msg),FfiConverterOptionTypeEventId.lower(reply)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
 open func sendEvent(event: Event)async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
@@ -1531,7 +1530,7 @@ open func sendMsgTo(urls: [String], msg: ClientMessage)async throws  -> Output {
 }
     
     /**
-     * Send private direct message
+     * Send private direct message to all relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
@@ -1542,6 +1541,28 @@ open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?
                 uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg(
                     self.uniffiClonePointer(),
                     FfiConverterTypePublicKey_lower(receiver),FfiConverterString.lower(message),FfiConverterOptionTypeEventId.lower(replyTo)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSendEventOutput.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Send private direct message to specific relays
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+     */
+open func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, replyTo: EventId? = nil)async throws  -> SendEventOutput {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg_to(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey_lower(receiver),FfiConverterString.lower(message),FfiConverterOptionTypeEventId.lower(replyTo)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -2114,6 +2135,204 @@ public func FfiConverterTypeClientBuilder_lift(_ pointer: UnsafeMutableRawPointe
 
 public func FfiConverterTypeClientBuilder_lower(_ value: ClientBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeClientBuilder.lower(value)
+}
+
+
+
+
+/**
+ * Connection
+ */
+public protocol ConnectionProtocol : AnyObject {
+    
+    /**
+     * Set proxy (ex. `127.0.0.1:9050`)
+     */
+    func addr(addr: String) throws  -> Connection
+    
+    /**
+     * Use embedded tor client
+     */
+    func embeddedTor()  -> Connection
+    
+    /**
+     * Set connection mode (default: direct)
+     */
+    func mode(mode: ConnectionMode) throws  -> Connection
+    
+    /**
+     * Set connection target (default: all)
+     */
+    func target(target: ConnectionTarget)  -> Connection
+    
+}
+
+/**
+ * Connection
+ */
+open class Connection:
+    CustomDebugStringConvertible,
+    Equatable,
+    Hashable,
+    ConnectionProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_connection(self.pointer, $0) }
+    }
+public convenience init() {
+    let pointer =
+        try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_connection_new($0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_connection(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * Set proxy (ex. `127.0.0.1:9050`)
+     */
+open func addr(addr: String)throws  -> Connection {
+    return try  FfiConverterTypeConnection.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_connection_addr(self.uniffiClonePointer(),
+        FfiConverterString.lower(addr),$0
+    )
+})
+}
+    
+    /**
+     * Use embedded tor client
+     */
+open func embeddedTor() -> Connection {
+    return try!  FfiConverterTypeConnection.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_connection_embedded_tor(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Set connection mode (default: direct)
+     */
+open func mode(mode: ConnectionMode)throws  -> Connection {
+    return try  FfiConverterTypeConnection.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_connection_mode(self.uniffiClonePointer(),
+        FfiConverterTypeConnectionMode.lower(mode),$0
+    )
+})
+}
+    
+    /**
+     * Set connection target (default: all)
+     */
+open func target(target: ConnectionTarget) -> Connection {
+    return try!  FfiConverterTypeConnection.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_connection_target(self.uniffiClonePointer(),
+        FfiConverterTypeConnectionTarget.lower(target),$0
+    )
+})
+}
+    
+    open var debugDescription: String {
+        return try!  FfiConverterString.lift(
+            try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_connection_uniffi_trait_debug(self.uniffiClonePointer(),$0
+    )
+}
+        )
+    }
+    public static func == (self: Connection, other: Connection) -> Bool {
+        return try!  FfiConverterBool.lift(
+            try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_connection_uniffi_trait_eq_eq(self.uniffiClonePointer(),
+        FfiConverterTypeConnection.lower(other),$0
+    )
+}
+        )
+    }
+    open func hash(into hasher: inout Hasher) {
+        let val = try!  FfiConverterUInt64.lift(
+            try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_connection_uniffi_trait_hash(self.uniffiClonePointer(),$0
+    )
+}
+        )
+        hasher.combine(val)
+    }
+
+}
+
+public struct FfiConverterTypeConnection: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Connection
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Connection {
+        return Connection(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Connection) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Connection {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Connection, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeConnection_lift(_ pointer: UnsafeMutableRawPointer) throws -> Connection {
+    return try FfiConverterTypeConnection.lift(pointer)
+}
+
+public func FfiConverterTypeConnection_lower(_ value: Connection) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeConnection.lower(value)
 }
 
 
@@ -3034,6 +3253,155 @@ public func FfiConverterTypeCustomNostrDatabase_lift(_ pointer: UnsafeMutableRaw
 
 public func FfiConverterTypeCustomNostrDatabase_lower(_ value: CustomNostrDatabase) -> UnsafeMutableRawPointer {
     return FfiConverterTypeCustomNostrDatabase.lower(value)
+}
+
+
+
+
+public protocol EventSourceProtocol : AnyObject {
+    
+}
+
+open class EventSource:
+    EventSourceProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_eventsource(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_eventsource(pointer, $0) }
+    }
+
+    
+    /**
+     * Both from database and relays
+     */
+public static func both(timeout: TimeInterval? = nil) -> EventSource {
+    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_both(
+        FfiConverterOptionDuration.lower(timeout),$0
+    )
+})
+}
+    
+    /**
+     * Both from database and specific relays
+     */
+public static func bothWithSpecificRelays(urls: [String], timeout: TimeInterval? = nil) -> EventSource {
+    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_both_with_specific_relays(
+        FfiConverterSequenceString.lower(urls),
+        FfiConverterOptionDuration.lower(timeout),$0
+    )
+})
+}
+    
+    /**
+     * Database only
+     */
+public static func database() -> EventSource {
+    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_database($0
+    )
+})
+}
+    
+    /**
+     * Relays only
+     */
+public static func relays(timeout: TimeInterval? = nil) -> EventSource {
+    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_relays(
+        FfiConverterOptionDuration.lower(timeout),$0
+    )
+})
+}
+    
+    /**
+     * From specific relays only
+     */
+public static func specificRelays(urls: [String], timeout: TimeInterval? = nil) -> EventSource {
+    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_specific_relays(
+        FfiConverterSequenceString.lower(urls),
+        FfiConverterOptionDuration.lower(timeout),$0
+    )
+})
+}
+    
+
+    
+
+}
+
+public struct FfiConverterTypeEventSource: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = EventSource
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> EventSource {
+        return EventSource(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: EventSource) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EventSource {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: EventSource, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeEventSource_lift(_ pointer: UnsafeMutableRawPointer) throws -> EventSource {
+    return try FfiConverterTypeEventSource.lift(pointer)
+}
+
+public func FfiConverterTypeEventSource_lower(_ value: EventSource) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeEventSource.lower(value)
 }
 
 
@@ -4384,11 +4752,32 @@ public static func ndb(path: String)throws  -> NostrDatabase {
 })
 }
     
+    /**
+     * Open database with **unlimited** capacity
+     */
 public static func sqlite(path: String)async throws  -> NostrDatabase {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite(FfiConverterString.lower(path)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeNostrDatabase.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Open database with **limited** capacity
+     */
+public static func sqliteBounded(path: String, maxCapacity: UInt64)async throws  -> NostrDatabase {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite_bounded(FfiConverterString.lower(path),FfiConverterUInt64.lower(maxCapacity)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
@@ -4907,9 +5296,9 @@ public func FfiConverterTypeNostrSigner_lower(_ value: NostrSigner) -> UnsafeMut
 public protocol NostrWalletConnectOptionsProtocol : AnyObject {
     
     /**
-     * Set proxy
+     * Set connection mode
      */
-    func proxy(proxy: String?) throws  -> NostrWalletConnectOptions
+    func connectionMode(mode: ConnectionMode) throws  -> NostrWalletConnectOptions
     
     /**
      * Set NWC requests timeout (default: 10 secs)
@@ -4973,12 +5362,12 @@ public convenience init() {
 
     
     /**
-     * Set proxy
+     * Set connection mode
      */
-open func proxy(proxy: String?)throws  -> NostrWalletConnectOptions {
+open func connectionMode(mode: ConnectionMode)throws  -> NostrWalletConnectOptions {
     return try  FfiConverterTypeNostrWalletConnectOptions.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_nostrwalletconnectoptions_proxy(self.uniffiClonePointer(),
-        FfiConverterOptionString.lower(proxy),$0
+    uniffi_nostr_sdk_ffi_fn_method_nostrwalletconnectoptions_connection_mode(self.uniffiClonePointer(),
+        FfiConverterTypeConnectionMode.lower(mode),$0
     )
 })
 }
@@ -5152,11 +5541,23 @@ public func FfiConverterTypeNostrZapper_lower(_ value: NostrZapper) -> UnsafeMut
 public protocol OptionsProtocol : AnyObject {
     
     /**
+     * Automatically start connection with relays (default: false)
+     *
+     * When set to `true`, there isn't the need of calling the connect methods.
+     */
+    func autoconnect(val: Bool)  -> Options
+    
+    /**
      * Auto authenticate to relays (default: true)
      *
      * <https://github.com/nostr-protocol/nips/blob/master/42.md>
      */
     func automaticAuthentication(enabled: Bool)  -> Options
+    
+    /**
+     * Connection
+     */
+    func connection(connection: Connection)  -> Options
     
     /**
      * Connection timeout (default: None)
@@ -5168,14 +5569,16 @@ public protocol OptionsProtocol : AnyObject {
     func difficulty(difficulty: UInt8)  -> Options
     
     /**
+     * Set max latency (default: None)
+     *
+     * Relays with an avg. latency greater that this value will be skipped.
+     */
+    func maxAvgLatency(max: TimeInterval)  -> Options
+    
+    /**
      * Minimum POW difficulty for received events
      */
     func minPow(difficulty: UInt8)  -> Options
-    
-    /**
-     * Proxy
-     */
-    func proxy(proxy: Proxy)  -> Options
     
     /**
      * Set custom relay limits
@@ -5245,6 +5648,19 @@ public convenience init() {
 
     
     /**
+     * Automatically start connection with relays (default: false)
+     *
+     * When set to `true`, there isn't the need of calling the connect methods.
+     */
+open func autoconnect(val: Bool) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_autoconnect(self.uniffiClonePointer(),
+        FfiConverterBool.lower(val),$0
+    )
+})
+}
+    
+    /**
      * Auto authenticate to relays (default: true)
      *
      * <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -5253,6 +5669,17 @@ open func automaticAuthentication(enabled: Bool) -> Options {
     return try!  FfiConverterTypeOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_options_automatic_authentication(self.uniffiClonePointer(),
         FfiConverterBool.lower(enabled),$0
+    )
+})
+}
+    
+    /**
+     * Connection
+     */
+open func connection(connection: Connection) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_connection(self.uniffiClonePointer(),
+        FfiConverterTypeConnection.lower(connection),$0
     )
 })
 }
@@ -5279,23 +5706,25 @@ open func difficulty(difficulty: UInt8) -> Options {
 }
     
     /**
+     * Set max latency (default: None)
+     *
+     * Relays with an avg. latency greater that this value will be skipped.
+     */
+open func maxAvgLatency(max: TimeInterval) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_max_avg_latency(self.uniffiClonePointer(),
+        FfiConverterDuration.lower(max),$0
+    )
+})
+}
+    
+    /**
      * Minimum POW difficulty for received events
      */
 open func minPow(difficulty: UInt8) -> Options {
     return try!  FfiConverterTypeOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_options_min_pow(self.uniffiClonePointer(),
         FfiConverterUInt8.lower(difficulty),$0
-    )
-})
-}
-    
-    /**
-     * Proxy
-     */
-open func proxy(proxy: Proxy) -> Options {
-    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_options_proxy(self.uniffiClonePointer(),
-        FfiConverterTypeProxy.lower(proxy),$0
     )
 })
 }
@@ -5596,161 +6025,6 @@ public func FfiConverterTypeProfile_lower(_ value: Profile) -> UnsafeMutableRawP
 
 
 
-/**
- * Proxy
- */
-public protocol ProxyProtocol : AnyObject {
-    
-    /**
-     * Set proxy target (default: all)
-     */
-    func target(target: ProxyTarget)  -> Proxy
-    
-}
-
-/**
- * Proxy
- */
-open class Proxy:
-    CustomDebugStringConvertible,
-    Equatable,
-    Hashable,
-    ProxyProtocol {
-    fileprivate let pointer: UnsafeMutableRawPointer!
-
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
-    public struct NoPointer {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
-    }
-
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
-    }
-
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_proxy(self.pointer, $0) }
-    }
-    /**
-     * Compose proxy (ex. `127.0.0.1:9050`)
-     */
-public convenience init(addr: String)throws  {
-    let pointer =
-        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_constructor_proxy_new(
-        FfiConverterString.lower(addr),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
-
-    deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_proxy(pointer, $0) }
-    }
-
-    
-
-    
-    /**
-     * Set proxy target (default: all)
-     */
-open func target(target: ProxyTarget) -> Proxy {
-    return try!  FfiConverterTypeProxy.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_proxy_target(self.uniffiClonePointer(),
-        FfiConverterTypeProxyTarget.lower(target),$0
-    )
-})
-}
-    
-    open var debugDescription: String {
-        return try!  FfiConverterString.lift(
-            try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_proxy_uniffi_trait_debug(self.uniffiClonePointer(),$0
-    )
-}
-        )
-    }
-    public static func == (self: Proxy, other: Proxy) -> Bool {
-        return try!  FfiConverterBool.lift(
-            try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_proxy_uniffi_trait_eq_eq(self.uniffiClonePointer(),
-        FfiConverterTypeProxy.lower(other),$0
-    )
-}
-        )
-    }
-    open func hash(into hasher: inout Hasher) {
-        let val = try!  FfiConverterUInt64.lift(
-            try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_proxy_uniffi_trait_hash(self.uniffiClonePointer(),$0
-    )
-}
-        )
-        hasher.combine(val)
-    }
-
-}
-
-public struct FfiConverterTypeProxy: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = Proxy
-
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Proxy {
-        return Proxy(unsafeFromRawPointer: pointer)
-    }
-
-    public static func lower(_ value: Proxy) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Proxy {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
-    }
-
-    public static func write(_ value: Proxy, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
-    }
-}
-
-
-
-
-public func FfiConverterTypeProxy_lift(_ pointer: UnsafeMutableRawPointer) throws -> Proxy {
-    return try FfiConverterTypeProxy.lift(pointer)
-}
-
-public func FfiConverterTypeProxy_lower(_ value: Proxy) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeProxy.lower(value)
-}
-
-
-
-
 public protocol RelayProtocol : AnyObject {
     
     /**
@@ -5774,6 +6048,11 @@ public protocol RelayProtocol : AnyObject {
     func connect(connectionTimeout: TimeInterval?) async 
     
     /**
+     * Get connection mode
+     */
+    func connectionMode()  -> ConnectionMode
+    
+    /**
      * Count events of filters
      */
     func countEventsOf(filters: [Filter], timeout: TimeInterval) async throws  -> UInt64
@@ -5787,8 +6066,6 @@ public protocol RelayProtocol : AnyObject {
     
     /**
      * Get events of filters
-     *
-     * Get events from local database and relay
      */
     func getEventsOf(filters: [Filter], timeout: TimeInterval) async throws  -> [Event]
     
@@ -5798,11 +6075,6 @@ public protocol RelayProtocol : AnyObject {
     func isConnected() async  -> Bool
     
     func opts()  -> RelayOptions
-    
-    /**
-     * Get proxy
-     */
-    func proxy()  -> String?
     
     /**
      * Get number of messages in queue
@@ -6041,6 +6313,16 @@ open func connect(connectionTimeout: TimeInterval?)async  {
 }
     
     /**
+     * Get connection mode
+     */
+open func connectionMode() -> ConnectionMode {
+    return try!  FfiConverterTypeConnectionMode.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relay_connection_mode(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
      * Count events of filters
      */
 open func countEventsOf(filters: [Filter], timeout: TimeInterval)async throws  -> UInt64 {
@@ -6100,8 +6382,6 @@ open func document()async  -> RelayInformationDocument {
     
     /**
      * Get events of filters
-     *
-     * Get events from local database and relay
      */
 open func getEventsOf(filters: [Filter], timeout: TimeInterval)async throws  -> [Event] {
     return
@@ -6144,16 +6424,6 @@ open func isConnected()async  -> Bool {
 open func opts() -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relay_opts(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
-     * Get proxy
-     */
-open func proxy() -> String? {
-    return try!  FfiConverterOptionString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_proxy(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -7284,9 +7554,21 @@ public protocol RelayOptionsProtocol : AnyObject {
     func adjustRetrySec(adjustRetrySec: Bool)  -> RelayOptions
     
     /**
+     * Set connection mode
+     */
+    func connectionMode(mode: ConnectionMode) throws  -> RelayOptions
+    
+    /**
      * Set custom limits
      */
     func limits(limits: RelayLimits)  -> RelayOptions
+    
+    /**
+     * Set max latency (default: None)
+     *
+     * Relay with an avg. latency greater that this value will be skipped.
+     */
+    func maxAvgLatency(max: TimeInterval?)  -> RelayOptions
     
     /**
      * Set ping flag
@@ -7297,11 +7579,6 @@ public protocol RelayOptionsProtocol : AnyObject {
      * Minimum POW for received events (default: 0)
      */
     func pow(difficulty: UInt8)  -> RelayOptions
-    
-    /**
-     * Set proxy
-     */
-    func proxy(proxy: String?) throws  -> RelayOptions
     
     /**
      * Set read flag
@@ -7413,12 +7690,36 @@ open func adjustRetrySec(adjustRetrySec: Bool) -> RelayOptions {
 }
     
     /**
+     * Set connection mode
+     */
+open func connectionMode(mode: ConnectionMode)throws  -> RelayOptions {
+    return try  FfiConverterTypeRelayOptions.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_relayoptions_connection_mode(self.uniffiClonePointer(),
+        FfiConverterTypeConnectionMode.lower(mode),$0
+    )
+})
+}
+    
+    /**
      * Set custom limits
      */
 open func limits(limits: RelayLimits) -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relayoptions_limits(self.uniffiClonePointer(),
         FfiConverterTypeRelayLimits.lower(limits),$0
+    )
+})
+}
+    
+    /**
+     * Set max latency (default: None)
+     *
+     * Relay with an avg. latency greater that this value will be skipped.
+     */
+open func maxAvgLatency(max: TimeInterval?) -> RelayOptions {
+    return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayoptions_max_avg_latency(self.uniffiClonePointer(),
+        FfiConverterOptionDuration.lower(max),$0
     )
 })
 }
@@ -7441,17 +7742,6 @@ open func pow(difficulty: UInt8) -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_relayoptions_pow(self.uniffiClonePointer(),
         FfiConverterUInt8.lower(difficulty),$0
-    )
-})
-}
-    
-    /**
-     * Set proxy
-     */
-open func proxy(proxy: String?)throws  -> RelayOptions {
-    return try  FfiConverterTypeRelayOptions.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_method_relayoptions_proxy(self.uniffiClonePointer(),
-        FfiConverterOptionString.lower(proxy),$0
     )
 })
 }
@@ -7643,15 +7933,11 @@ public protocol RelayPoolProtocol : AnyObject {
     
     /**
      * Get events of filters from **specific relays**
-     *
-     * Get events both from **local database** and **relays**
      */
     func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions) async throws  -> [Event]
     
     /**
      * Get events of filters
-     *
-     * Get events both from **local database** and **relays**
      */
     func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions) async throws  -> [Event]
     
@@ -8019,8 +8305,6 @@ open func disconnect()async throws  {
     
     /**
      * Get events of filters from **specific relays**
-     *
-     * Get events both from **local database** and **relays**
      */
 open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval, opts: FilterOptions)async throws  -> [Event] {
     return
@@ -8041,8 +8325,6 @@ open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval
     
     /**
      * Get events of filters
-     *
-     * Get events both from **local database** and **relays**
      */
 open func getEventsOf(filters: [Filter], timeout: TimeInterval, opts: FilterOptions)async throws  -> [Event] {
     return
@@ -9661,6 +9943,135 @@ public func FfiConverterTypeSubscribeOutput_lower(_ value: SubscribeOutput) -> R
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum ConnectionMode {
+    
+    case direct
+    case proxy(addr: String
+    )
+    case tor
+}
+
+
+public struct FfiConverterTypeConnectionMode: FfiConverterRustBuffer {
+    typealias SwiftType = ConnectionMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ConnectionMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .direct
+        
+        case 2: return .proxy(addr: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .tor
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ConnectionMode, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .direct:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .proxy(addr):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(addr, into: &buf)
+            
+        
+        case .tor:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeConnectionMode_lift(_ buf: RustBuffer) throws -> ConnectionMode {
+    return try FfiConverterTypeConnectionMode.lift(buf)
+}
+
+public func FfiConverterTypeConnectionMode_lower(_ value: ConnectionMode) -> RustBuffer {
+    return FfiConverterTypeConnectionMode.lower(value)
+}
+
+
+
+extension ConnectionMode: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Connection target
+ */
+
+public enum ConnectionTarget {
+    
+    /**
+     * Use proxy for all relays
+     */
+    case all
+    /**
+     * Use proxy only for `.onion` relays
+     */
+    case onion
+}
+
+
+public struct FfiConverterTypeConnectionTarget: FfiConverterRustBuffer {
+    typealias SwiftType = ConnectionTarget
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ConnectionTarget {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .all
+        
+        case 2: return .onion
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ConnectionTarget, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .all:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .onion:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeConnectionTarget_lift(_ buf: RustBuffer) throws -> ConnectionTarget {
+    return try FfiConverterTypeConnectionTarget.lift(buf)
+}
+
+public func FfiConverterTypeConnectionTarget_lower(_ value: ConnectionTarget) -> RustBuffer {
+    return FfiConverterTypeConnectionTarget.lower(value)
+}
+
+
+
+extension ConnectionTarget: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * Filter options
  */
@@ -9928,70 +10339,6 @@ extension NostrSdkError: Foundation.LocalizedError {
         String(reflecting: self)
     }
 }
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-/**
- * Proxy target
- */
-
-public enum ProxyTarget {
-    
-    /**
-     * Use proxy for all relays
-     */
-    case all
-    /**
-     * Use proxy only for `.onion` relays
-     */
-    case onion
-}
-
-
-public struct FfiConverterTypeProxyTarget: FfiConverterRustBuffer {
-    typealias SwiftType = ProxyTarget
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProxyTarget {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-        
-        case 1: return .all
-        
-        case 2: return .onion
-        
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: ProxyTarget, into buf: inout [UInt8]) {
-        switch value {
-        
-        
-        case .all:
-            writeInt(&buf, Int32(1))
-        
-        
-        case .onion:
-            writeInt(&buf, Int32(2))
-        
-        }
-    }
-}
-
-
-public func FfiConverterTypeProxyTarget_lift(_ buf: RustBuffer) throws -> ProxyTarget {
-    return try FfiConverterTypeProxyTarget.lift(buf)
-}
-
-public func FfiConverterTypeProxyTarget_lower(_ value: ProxyTarget) -> RustBuffer {
-    return FfiConverterTypeProxyTarget.lower(value)
-}
-
-
-
-extension ProxyTarget: Equatable, Hashable {}
-
-
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -10869,13 +11216,16 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 65496) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_from() != 26170) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_from() != 34355) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 65200) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 28254) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 23251) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 52974) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap_to() != 59923) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 8916) {
@@ -10908,9 +11258,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 15487) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_direct_msg() != 40089) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 56846) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10929,7 +11276,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 7643) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 40215) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 65326) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg_to() != 1051) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 37318) {
@@ -10999,6 +11349,18 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_zapper() != 2114) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_connection_addr() != 43068) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_connection_embedded_tor() != 63012) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_connection_mode() != 217) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_connection_target() != 61648) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_backend() != 43310) {
@@ -11145,13 +11507,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_unwrap_gift_wrap() != 27503) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_proxy() != 51105) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_connection_mode() != 29062) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_timeout() != 18259) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_autoconnect() != 15533) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_automatic_authentication() != 33238) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_connection() != 11615) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_connection_timeout() != 57708) {
@@ -11160,10 +11528,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 20804) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_min_pow() != 54102) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_max_avg_latency() != 34264) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_proxy() != 35233) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_min_pow() != 54102) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_relay_limits() != 11682) {
@@ -11196,9 +11564,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_profile_public_key() != 31716) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_proxy_target() != 3274) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_event() != 30109) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11211,6 +11576,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 15421) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connection_mode() != 52002) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_count_events_of() != 10925) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11220,16 +11588,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 55628) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 45379) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 8379) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 50961) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_opts() != 21198) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_proxy() != 64699) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 23174) {
@@ -11346,16 +11711,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_adjust_retry_sec() != 36994) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_connection_mode() != 24699) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_limits() != 10405) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_max_avg_latency() != 58939) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_ping() != 51607) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_pow() != 37387) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_proxy() != 35156) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_read() != 47081) {
@@ -11412,10 +11780,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 51163) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_from() != 4190) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_from() != 53633) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_of() != 43124) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_of() != 56917) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_handle_notifications() != 15285) {
@@ -11511,6 +11879,24 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 11332) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_connection_new() != 32544) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_both() != 16599) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_both_with_specific_relays() != 59547) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_database() != 22588) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_relays() != 8271) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_specific_relays() != 35301) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 26100) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11535,7 +11921,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_ndb() != 25092) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 42455) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 20589) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite_bounded() != 1908) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_keys() != 51910) {
@@ -11554,9 +11943,6 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_new() != 65224) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_proxy_new() != 51726) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 17945) {
