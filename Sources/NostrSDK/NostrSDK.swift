@@ -537,41 +537,47 @@ fileprivate struct FfiConverterDuration: FfiConverterRustBuffer {
 public protocol ClientProtocol : AnyObject {
     
     /**
+     * Add discovery relay
+     *
+     * If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/65.md>
+     */
+    func addDiscoveryRelay(url: String) async throws  -> Bool
+    
+    /**
+     * Add read relay
+     *
+     * If relay already exists, this method add the `READ` flag to it and return `false`.
+     *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     */
+    func addReadRelay(url: String) async throws  -> Bool
+    
+    /**
      * Add new relay
      *
-     * Return `false` if the relay already exists.
+     * Relays added with this method will have both `READ` and `WRITE` flags enabled
+     *
+     * If the relay already exists, the flags will be updated and `false` returned.
      *
      * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
      * to avoid to set pool subscriptions.
      *
      * This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
-     * To use custom `RelayOptions`, check `add_relay_with_opts` method.
+     * To use custom `RelayOptions` use `add_relay` method on `RelayPool`.
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
     func addRelay(url: String) async throws  -> Bool
     
     /**
-     * Add new relay with custom `RelayOptions`
+     * Add write relay
      *
-     * Return `false` if the relay already exists.
-     *
-     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-     * to avoid to set pool subscriptions.
-     *
-     * Connection is **NOT** automatically started with relay, remember to call `connect` method!
+     * If relay already exists, this method add the `WRITE` flag to it and return `false`.
      */
-    func addRelayWithOpts(url: String, opts: RelayOptions) async throws  -> Bool
-    
-    /**
-     * Add multiple relays
-     *
-     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-     * to avoid to set pool subscriptions.
-     *
-     * Connection is **NOT** automatically started with relays, remember to call `connect` method!
-     */
-    func addRelays(relays: [String]) async throws 
+    func addWriteRelay(url: String) async throws  -> Bool
     
     /**
      * Auto authenticate to relays (default: true)
@@ -579,11 +585,6 @@ public protocol ClientProtocol : AnyObject {
      * <https://github.com/nostr-protocol/nips/blob/master/42.md>
      */
     func automaticAuthentication(enable: Bool) 
-    
-    /**
-     * Get blacklist
-     */
-    func blacklist()  -> RelayBlacklist
     
     /**
      * Connect to all added relays
@@ -616,13 +617,36 @@ public protocol ClientProtocol : AnyObject {
      */
     func dislike(event: Event) async throws  -> SendEventOutput
     
+    /**
+     * Fetch the newest public key metadata from database and connected relays.
+     *
+     * If you only want to consult cached data,
+     * consider `client.database().profile(PUBKEY)`.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+    func fetchMetadata(publicKey: PublicKey, timeout: TimeInterval?) async throws  -> Metadata
+    
     func fileMetadata(description: String, metadata: FileMetadata) async throws  -> SendEventOutput
+    
+    /**
+     * Get filtering
+     */
+    func filtering()  -> RelayFiltering
     
     /**
      * Get events of filters from specific relays
      */
     func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval?) async throws  -> [Event]
     
+    /**
+     * Get events of filters
+     *
+     * The returned events are sorted by newest first, if there is a limit only the newest are returned.
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+     */
     func getEventsOf(filters: [Filter], source: EventSource) async throws  -> [Event]
     
     /**
@@ -652,22 +676,9 @@ public protocol ClientProtocol : AnyObject {
     func like(event: Event) async throws  -> SendEventOutput
     
     /**
-     * Mute event IDs
-     *
-     * Add event IDs to blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
+     * Get relay pool
      */
-    func muteIds(ids: [EventId]) async 
-    
-    /**
-     * Mute public keys
-     *
-     * Add public keys to blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-    func mutePublicKeys(publicKeys: [PublicKey]) async 
+    func pool()  -> RelayPool
     
     /**
      * React to an [`Event`]
@@ -680,6 +691,9 @@ public protocol ClientProtocol : AnyObject {
     
     func relay(url: String) async throws  -> Relay
     
+    /**
+     * Get relays with `READ` or `WRITE` flags
+     */
     func relays() async  -> [String: Relay]
     
     func removeRelay(url: String) async throws 
@@ -689,25 +703,32 @@ public protocol ClientProtocol : AnyObject {
      */
     func repost(event: Event, relayUrl: String?) async throws  -> SendEventOutput
     
+    /**
+     * Send event
+     *
+     * Send event to all relays with `WRITE` flag.
+     * If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
+     */
     func sendEvent(event: Event) async throws  -> SendEventOutput
     
     /**
-     * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
+     * Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to relays (check `send_event` method for more details)
      *
-     * Rise an error if the [`NostrSigner`] is not set.
+     * Rise an error if the `NostrSigner` is not set.
      */
     func sendEventBuilder(builder: EventBuilder) async throws  -> SendEventOutput
     
     /**
-     * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
+     * Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to specific relays.
      *
-     * Rise an error if the [`NostrSigner`] is not set.
+     * Rise an error if the `NostrSigner` is not set.
      */
     func sendEventBuilderTo(urls: [String], builder: EventBuilder) async throws  -> SendEventOutput
     
+    /**
+     * Send event to specific relays.
+     */
     func sendEventTo(urls: [String], event: Event) async throws  -> SendEventOutput
-    
-    func sendMsg(msg: ClientMessage) async throws  -> Output
     
     func sendMsgTo(urls: [String], msg: ClientMessage) async throws  -> Output
     
@@ -737,7 +758,10 @@ public protocol ClientProtocol : AnyObject {
     func signer() async throws  -> NostrSigner
     
     /**
-     * Subscribe to filters to all connected relays
+     * Subscribe to filters
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
      *
      * ### Auto-closing subscription
      *
@@ -755,7 +779,10 @@ public protocol ClientProtocol : AnyObject {
     func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoCloseOptions?) async throws  -> SubscribeOutput
     
     /**
-     * Subscribe to filters with custom subscription ID to all connected relays
+     * Subscribe to filters with custom subscription ID
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
      *
      * ### Auto-closing subscription
      *
@@ -775,24 +802,6 @@ public protocol ClientProtocol : AnyObject {
     func subscription(id: String) async  -> [Filter]?
     
     func subscriptions() async  -> [String: [Filter]]
-    
-    /**
-     * Unmute event IDs
-     *
-     * Remove event IDs from blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-    func unmuteIds(ids: [EventId]) async 
-    
-    /**
-     * Unmute public keys
-     *
-     * Remove public keys from blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-    func unmutePublicKeys(publicKeys: [PublicKey]) async 
     
     func unsubscribe(subscriptionId: String) async 
     
@@ -885,15 +894,66 @@ public static func withOpts(signer: NostrSigner?, opts: Options) -> Client {
 
     
     /**
+     * Add discovery relay
+     *
+     * If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/65.md>
+     */
+open func addDiscoveryRelay(url: String)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_add_discovery_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Add read relay
+     *
+     * If relay already exists, this method add the `READ` flag to it and return `false`.
+     *
+     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+     * to avoid to set pool subscriptions.
+     */
+open func addReadRelay(url: String)async throws  -> Bool {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_add_read_relay(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
      * Add new relay
      *
-     * Return `false` if the relay already exists.
+     * Relays added with this method will have both `READ` and `WRITE` flags enabled
+     *
+     * If the relay already exists, the flags will be updated and `false` returned.
      *
      * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
      * to avoid to set pool subscriptions.
      *
      * This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
-     * To use custom `RelayOptions`, check `add_relay_with_opts` method.
+     * To use custom `RelayOptions` use `add_relay` method on `RelayPool`.
      *
      * Connection is **NOT** automatically started with relay, remember to call `connect` method!
      */
@@ -915,53 +975,23 @@ open func addRelay(url: String)async throws  -> Bool {
 }
     
     /**
-     * Add new relay with custom `RelayOptions`
+     * Add write relay
      *
-     * Return `false` if the relay already exists.
-     *
-     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-     * to avoid to set pool subscriptions.
-     *
-     * Connection is **NOT** automatically started with relay, remember to call `connect` method!
+     * If relay already exists, this method add the `WRITE` flag to it and return `false`.
      */
-open func addRelayWithOpts(url: String, opts: RelayOptions)async throws  -> Bool {
+open func addWriteRelay(url: String)async throws  -> Bool {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_add_relay_with_opts(
+                uniffi_nostr_sdk_ffi_fn_method_client_add_write_relay(
                     self.uniffiClonePointer(),
-                    FfiConverterString.lower(url),FfiConverterTypeRelayOptions.lower(opts)
+                    FfiConverterString.lower(url)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
             liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Add multiple relays
-     *
-     * If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-     * to avoid to set pool subscriptions.
-     *
-     * Connection is **NOT** automatically started with relays, remember to call `connect` method!
-     */
-open func addRelays(relays: [String])async throws  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_add_relays(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceString.lower(relays)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -976,16 +1006,6 @@ open func automaticAuthentication(enable: Bool) {try! rustCall() {
         FfiConverterBool.lower(enable),$0
     )
 }
-}
-    
-    /**
-     * Get blacklist
-     */
-open func blacklist() -> RelayBlacklist {
-    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_client_blacklist(self.uniffiClonePointer(),$0
-    )
-})
 }
     
     /**
@@ -1116,6 +1136,31 @@ open func dislike(event: Event)async throws  -> SendEventOutput {
         )
 }
     
+    /**
+     * Fetch the newest public key metadata from database and connected relays.
+     *
+     * If you only want to consult cached data,
+     * consider `client.database().profile(PUBKEY)`.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+open func fetchMetadata(publicKey: PublicKey, timeout: TimeInterval? = nil)async throws  -> Metadata {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_client_fetch_metadata(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey),FfiConverterOptionDuration.lower(timeout)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeMetadata_lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
 open func fileMetadata(description: String, metadata: FileMetadata)async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
@@ -1131,6 +1176,16 @@ open func fileMetadata(description: String, metadata: FileMetadata)async throws 
             liftFunc: FfiConverterTypeSendEventOutput.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
+}
+    
+    /**
+     * Get filtering
+     */
+open func filtering() -> RelayFiltering {
+    return try!  FfiConverterTypeRelayFiltering.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_filtering(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -1153,6 +1208,14 @@ open func getEventsFrom(urls: [String], filters: [Filter], timeout: TimeInterval
         )
 }
     
+    /**
+     * Get events of filters
+     *
+     * The returned events are sorted by newest first, if there is a limit only the newest are returned.
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+     */
 open func getEventsOf(filters: [Filter], source: EventSource)async throws  -> [Event] {
     return
         try  await uniffiRustCallAsync(
@@ -1257,53 +1320,13 @@ open func like(event: Event)async throws  -> SendEventOutput {
 }
     
     /**
-     * Mute event IDs
-     *
-     * Add event IDs to blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
+     * Get relay pool
      */
-open func muteIds(ids: [EventId])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_mute_ids(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeEventId.lower(ids)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Mute public keys
-     *
-     * Add public keys to blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-open func mutePublicKeys(publicKeys: [PublicKey])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_mute_public_keys(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
+open func pool() -> RelayPool {
+    return try!  FfiConverterTypeRelayPool.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_client_pool(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -1362,6 +1385,9 @@ open func relay(url: String)async throws  -> Relay {
         )
 }
     
+    /**
+     * Get relays with `READ` or `WRITE` flags
+     */
 open func relays()async  -> [String: Relay] {
     return
         try!  await uniffiRustCallAsync(
@@ -1417,6 +1443,12 @@ open func repost(event: Event, relayUrl: String?)async throws  -> SendEventOutpu
         )
 }
     
+    /**
+     * Send event
+     *
+     * Send event to all relays with `WRITE` flag.
+     * If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
+     */
 open func sendEvent(event: Event)async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
@@ -1435,9 +1467,9 @@ open func sendEvent(event: Event)async throws  -> SendEventOutput {
 }
     
     /**
-     * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
+     * Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to relays (check `send_event` method for more details)
      *
-     * Rise an error if the [`NostrSigner`] is not set.
+     * Rise an error if the `NostrSigner` is not set.
      */
 open func sendEventBuilder(builder: EventBuilder)async throws  -> SendEventOutput {
     return
@@ -1457,9 +1489,9 @@ open func sendEventBuilder(builder: EventBuilder)async throws  -> SendEventOutpu
 }
     
     /**
-     * Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
+     * Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to specific relays.
      *
-     * Rise an error if the [`NostrSigner`] is not set.
+     * Rise an error if the `NostrSigner` is not set.
      */
 open func sendEventBuilderTo(urls: [String], builder: EventBuilder)async throws  -> SendEventOutput {
     return
@@ -1478,6 +1510,9 @@ open func sendEventBuilderTo(urls: [String], builder: EventBuilder)async throws 
         )
 }
     
+    /**
+     * Send event to specific relays.
+     */
 open func sendEventTo(urls: [String], event: Event)async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
@@ -1491,23 +1526,6 @@ open func sendEventTo(urls: [String], event: Event)async throws  -> SendEventOut
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-open func sendMsg(msg: ClientMessage)async throws  -> Output {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_send_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeClientMessage_lower(msg)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeOutput.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -1645,7 +1663,10 @@ open func signer()async throws  -> NostrSigner {
 }
     
     /**
-     * Subscribe to filters to all connected relays
+     * Subscribe to filters
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
      *
      * ### Auto-closing subscription
      *
@@ -1693,7 +1714,10 @@ open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeAutoClos
 }
     
     /**
-     * Subscribe to filters with custom subscription ID to all connected relays
+     * Subscribe to filters with custom subscription ID
+     *
+     * If `gossip` is enabled (see `Options]) the events will be requested also to
+     * NIP-65 relays (automatically discovered) of public keys included in filters (if any).
      *
      * ### Auto-closing subscription
      *
@@ -1771,56 +1795,6 @@ open func subscriptions()async  -> [String: [Filter]] {
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterDictionaryStringSequenceTypeFilter.lift,
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Unmute event IDs
-     *
-     * Remove event IDs from blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-open func unmuteIds(ids: [EventId])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_unmute_ids(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeEventId.lower(ids)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Unmute public keys
-     *
-     * Remove public keys from blacklist
-     *
-     * <div class="warning">Mute list event is not currently created/updated!</div>
-     */
-open func unmutePublicKeys(publicKeys: [PublicKey])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_unmute_public_keys(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
             errorHandler: nil
             
         )
@@ -2153,7 +2127,7 @@ public protocol ConnectionProtocol : AnyObject {
     /**
      * Use embedded tor client
      */
-    func embeddedTor()  -> Connection
+    func embeddedTor(dataPath: String)  -> Connection
     
     /**
      * Set connection mode (default: direct)
@@ -2235,9 +2209,10 @@ open func addr(addr: String)throws  -> Connection {
     /**
      * Use embedded tor client
      */
-open func embeddedTor() -> Connection {
+open func embeddedTor(dataPath: String) -> Connection {
     return try!  FfiConverterTypeConnection.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_connection_embedded_tor(self.uniffiClonePointer(),$0
+    uniffi_nostr_sdk_ffi_fn_method_connection_embedded_tor(self.uniffiClonePointer(),
+        FfiConverterString.lower(dataPath),$0
     )
 })
 }
@@ -2355,19 +2330,11 @@ public protocol CustomNostrDatabase : AnyObject {
     func saveEvent(event: Event) async throws  -> Bool
     
     /**
-     * Check if [`Event`] has already been saved
+     * Check event status by ID
+     *
+     * Check if the event is saved, deleted or not existent.
      */
-    func hasEventAlreadyBeenSaved(eventId: EventId) async throws  -> Bool
-    
-    /**
-     * Check if [`EventId`] has already been seen
-     */
-    func hasEventAlreadyBeenSeen(eventId: EventId) async throws  -> Bool
-    
-    /**
-     * Check if [`EventId`] has been deleted
-     */
-    func hasEventIdBeenDeleted(eventId: EventId) async throws  -> Bool
+    func checkId(eventId: EventId) async throws  -> DatabaseEventStatus
     
     /**
      * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
@@ -2385,6 +2352,11 @@ public protocol CustomNostrDatabase : AnyObject {
      * Get list of relays that have seen the [`EventId`]
      */
     func eventSeenOnRelays(eventId: EventId) async throws  -> [String]?
+    
+    /**
+     * Get event by ID
+     */
+    func eventById(eventId: EventId) async throws  -> Event?
     
     /**
      * Count number of [`Event`] found by filters
@@ -2486,61 +2458,23 @@ open func saveEvent(event: Event)async throws  -> Bool {
 }
     
     /**
-     * Check if [`Event`] has already been saved
+     * Check event status by ID
+     *
+     * Check if the event is saved, deleted or not existent.
      */
-open func hasEventAlreadyBeenSaved(eventId: EventId)async throws  -> Bool {
+open func checkId(eventId: EventId)async throws  -> DatabaseEventStatus {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_already_been_saved(
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_check_id(
                     self.uniffiClonePointer(),
                     FfiConverterTypeEventId_lower(eventId)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Check if [`EventId`] has already been seen
-     */
-open func hasEventAlreadyBeenSeen(eventId: EventId)async throws  -> Bool {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_already_been_seen(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId_lower(eventId)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Check if [`EventId`] has been deleted
-     */
-open func hasEventIdBeenDeleted(eventId: EventId)async throws  -> Bool {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_event_id_been_deleted(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId_lower(eventId)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeDatabaseEventStatus.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -2603,6 +2537,26 @@ open func eventSeenOnRelays(eventId: EventId)async throws  -> [String]? {
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterOptionSequenceString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * Get event by ID
+     */
+open func eventById(eventId: EventId)async throws  -> Event? {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_by_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(eventId)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeEvent.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -2770,28 +2724,28 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             )
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
-        hasEventAlreadyBeenSaved: { (
+        checkId: { (
             uniffiHandle: UInt64,
             eventId: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteI8,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
-                () async throws -> Bool in
+                () async throws -> DatabaseEventStatus in
                 guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.hasEventAlreadyBeenSaved(
+                return try await uniffiObj.checkId(
                      eventId: try FfiConverterTypeEventId_lift(eventId)
                 )
             }
 
-            let uniffiHandleSuccess = { (returnValue: Bool) in
+            let uniffiHandleSuccess = { (returnValue: DatabaseEventStatus) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: FfiConverterBool.lower(returnValue),
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: FfiConverterTypeDatabaseEventStatus.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -2799,94 +2753,8 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             let uniffiHandleError = { (statusCode, errorBuf) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: 0,
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        hasEventAlreadyBeenSeen: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteI8,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> Bool in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.hasEventAlreadyBeenSeen(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: Bool) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: FfiConverterBool.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: 0,
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        hasEventIdBeenDeleted: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteI8,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> Bool in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.hasEventIdBeenDeleted(
-                     eventId: try FfiConverterTypeEventId_lift(eventId)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: Bool) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: FfiConverterBool.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: 0,
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: RustBuffer.empty(),
                         callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
                     )
                 )
@@ -3009,6 +2877,49 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
                     uniffiCallbackData,
                     UniffiForeignFutureStructRustBuffer(
                         returnValue: FfiConverterOptionSequenceString.lower(returnValue),
+                        callStatus: RustCallStatus()
+                    )
+                )
+            }
+            let uniffiHandleError = { (statusCode, errorBuf) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: RustBuffer.empty(),
+                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
+                    )
+                )
+            }
+            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
+                makeCall: makeCall,
+                handleSuccess: uniffiHandleSuccess,
+                handleError: uniffiHandleError,
+                lowerError: FfiConverterTypeNostrSdkError.lower
+            )
+            uniffiOutReturn.pointee = uniffiForeignFuture
+        },
+        eventById: { (
+            uniffiHandle: UInt64,
+            eventId: UnsafeMutableRawPointer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
+            uniffiCallbackData: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
+        ) in
+            let makeCall = {
+                () async throws -> Event? in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try await uniffiObj.eventById(
+                     eventId: try FfiConverterTypeEventId_lift(eventId)
+                )
+            }
+
+            let uniffiHandleSuccess = { (returnValue: Event?) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: FfiConverterOptionTypeEvent.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -3645,6 +3556,169 @@ public func FfiConverterTypeHandleNotification_lift(_ pointer: UnsafeMutableRawP
 
 public func FfiConverterTypeHandleNotification_lower(_ value: HandleNotification) -> UnsafeMutableRawPointer {
     return FfiConverterTypeHandleNotification.lower(value)
+}
+
+
+
+
+/**
+ * A mock relay for (unit) tests.
+ */
+public protocol MockRelayProtocol : AnyObject {
+    
+    func none() async 
+    
+    /**
+     * Shutdown relay
+     */
+    func shutdown() 
+    
+    /**
+     * Get url
+     */
+    func url()  -> String
+    
+}
+
+/**
+ * A mock relay for (unit) tests.
+ */
+open class MockRelay:
+    MockRelayProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_mockrelay(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_mockrelay(pointer, $0) }
+    }
+
+    
+public static func run()async throws  -> MockRelay {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_constructor_mockrelay_run(
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeMockRelay.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+
+    
+open func none()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_mockrelay__none(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Shutdown relay
+     */
+open func shutdown() {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_mockrelay_shutdown(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+    /**
+     * Get url
+     */
+open func url() -> String {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_mockrelay_url(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+
+}
+
+public struct FfiConverterTypeMockRelay: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = MockRelay
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> MockRelay {
+        return MockRelay(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: MockRelay) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MockRelay {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: MockRelay, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeMockRelay_lift(_ pointer: UnsafeMutableRawPointer) throws -> MockRelay {
+    return try FfiConverterTypeMockRelay.lift(pointer)
+}
+
+public func FfiConverterTypeMockRelay_lower(_ value: MockRelay) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeMockRelay.lower(value)
 }
 
 
@@ -4657,8 +4731,6 @@ public func FfiConverterTypeNostrConnectSignerActions_lower(_ value: NostrConnec
 
 public protocol NostrDatabaseProtocol : AnyObject {
     
-    func none() async 
-    
     func count(filters: [Filter]) async throws  -> UInt64
     
     /**
@@ -4669,7 +4741,7 @@ public protocol NostrDatabaseProtocol : AnyObject {
     /**
      * Get [`Event`] by [`EventId`]
      */
-    func eventById(eventId: EventId) async throws  -> Event
+    func eventById(eventId: EventId) async throws  -> Event?
     
     /**
      * Get list of relays that have seen the [`EventId`]
@@ -4742,71 +4814,17 @@ public static func custom(database: CustomNostrDatabase) -> NostrDatabase {
 }
     
     /**
-     * [`nostrdb`](https://github.com/damus-io/nostrdb) backend
+     * LMDB backend
      */
-public static func ndb(path: String)throws  -> NostrDatabase {
+public static func lmdb(path: String)throws  -> NostrDatabase {
     return try  FfiConverterTypeNostrDatabase.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
-    uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_ndb(
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_lmdb(
         FfiConverterString.lower(path),$0
     )
 })
 }
     
-    /**
-     * Open database with **unlimited** capacity
-     */
-public static func sqlite(path: String)async throws  -> NostrDatabase {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite(FfiConverterString.lower(path)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeNostrDatabase.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Open database with **limited** capacity
-     */
-public static func sqliteBounded(path: String, maxCapacity: UInt64)async throws  -> NostrDatabase {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_sqlite_bounded(FfiConverterString.lower(path),FfiConverterUInt64.lower(maxCapacity)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeNostrDatabase.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
 
-    
-open func none()async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase__none(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
     
 open func count(filters: [Filter])async throws  -> UInt64 {
     return
@@ -4848,7 +4866,7 @@ open func delete(filter: Filter)async throws  {
     /**
      * Get [`Event`] by [`EventId`]
      */
-open func eventById(eventId: EventId)async throws  -> Event {
+open func eventById(eventId: EventId)async throws  -> Event? {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -4857,10 +4875,10 @@ open func eventById(eventId: EventId)async throws  -> Event {
                     FfiConverterTypeEventId_lower(eventId)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeEvent_lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeEvent.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -5569,6 +5587,16 @@ public protocol OptionsProtocol : AnyObject {
     func difficulty(difficulty: UInt8)  -> Options
     
     /**
+     * Set filtering mode (default: blacklist)
+     */
+    func filteringMode(mode: RelayFilteringMode)  -> Options
+    
+    /**
+     * Enable gossip model (default: false)
+     */
+    func gossip(enabled: Bool)  -> Options
+    
+    /**
      * Set max latency (default: None)
      *
      * Relays with an avg. latency greater that this value will be skipped.
@@ -5701,6 +5729,28 @@ open func difficulty(difficulty: UInt8) -> Options {
     return try!  FfiConverterTypeOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_options_difficulty(self.uniffiClonePointer(),
         FfiConverterUInt8.lower(difficulty),$0
+    )
+})
+}
+    
+    /**
+     * Set filtering mode (default: blacklist)
+     */
+open func filteringMode(mode: RelayFilteringMode) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_filtering_mode(self.uniffiClonePointer(),
+        FfiConverterTypeRelayFilteringMode.lower(mode),$0
+    )
+})
+}
+    
+    /**
+     * Enable gossip model (default: false)
+     */
+open func gossip(enabled: Bool) -> Options {
+    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_options_gossip(self.uniffiClonePointer(),
+        FfiConverterBool.lower(enabled),$0
     )
 })
 }
@@ -6038,11 +6088,6 @@ public protocol RelayProtocol : AnyObject {
     func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) async throws 
     
     /**
-     * Get blacklist
-     */
-    func blacklist()  -> RelayBlacklist
-    
-    /**
      * Connect to relay and keep alive connection
      */
     func connect(connectionTimeout: TimeInterval?) async 
@@ -6063,6 +6108,11 @@ public protocol RelayProtocol : AnyObject {
     func disconnect() async throws 
     
     func document() async  -> RelayInformationDocument
+    
+    /**
+     * Get relay filtering
+     */
+    func filtering()  -> RelayFiltering
     
     /**
      * Get events of filters
@@ -6214,14 +6264,13 @@ public convenience init(url: String)throws  {
 
     
     /**
-     * Create new `Relay` with **custom** `options` and/or `database`
+     * Create new `Relay` with **custom** `database` and/or `options`
      */
-public static func custom(url: String, database: NostrDatabase, blacklist: RelayBlacklist, opts: RelayOptions)throws  -> Relay {
+public static func custom(url: String, database: NostrDatabase, opts: RelayOptions)throws  -> Relay {
     return try  FfiConverterTypeRelay.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_relay_custom(
         FfiConverterString.lower(url),
         FfiConverterTypeNostrDatabase.lower(database),
-        FfiConverterTypeRelayBlacklist.lower(blacklist),
         FfiConverterTypeRelayOptions.lower(opts),$0
     )
 })
@@ -6279,16 +6328,6 @@ open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)async throws  {
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
-}
-    
-    /**
-     * Get blacklist
-     */
-open func blacklist() -> RelayBlacklist {
-    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relay_blacklist(self.uniffiClonePointer(),$0
-    )
-})
 }
     
     /**
@@ -6378,6 +6417,16 @@ open func document()async  -> RelayInformationDocument {
             errorHandler: nil
             
         )
+}
+    
+    /**
+     * Get relay filtering
+     */
+open func filtering() -> RelayFiltering {
+    return try!  FfiConverterTypeRelayFiltering.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relay_filtering(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -6759,352 +6808,6 @@ public func FfiConverterTypeRelay_lower(_ value: Relay) -> UnsafeMutableRawPoint
 
 
 
-public protocol RelayBlacklistProtocol : AnyObject {
-    
-    /**
-     * Add event IDs to blacklist
-     */
-    func addIds(ids: [EventId]) async 
-    
-    /**
-     * Add public keys to blacklist
-     */
-    func addPublicKeys(publicKeys: [PublicKey]) async 
-    
-    /**
-     * Remove everything
-     */
-    func clear() async 
-    
-    /**
-     * Check if blacklist contains event ID
-     */
-    func hasId(id: EventId) async  -> Bool
-    
-    /**
-     * Check if blacklist contains public key
-     */
-    func hasPublicKey(publicKey: PublicKey) async  -> Bool
-    
-    /**
-     * Remove event ID from blacklist
-     */
-    func removeId(id: EventId) async 
-    
-    /**
-     * Remove event IDs from blacklist
-     */
-    func removeIds(ids: [EventId]) async 
-    
-    /**
-     * Remove public key from blacklist
-     */
-    func removePublicKey(publicKey: PublicKey) async 
-    
-    /**
-     * Remove event IDs from blacklist
-     */
-    func removePublicKeys(ids: [PublicKey]) async 
-    
-}
-
-open class RelayBlacklist:
-    RelayBlacklistProtocol {
-    fileprivate let pointer: UnsafeMutableRawPointer!
-
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
-    public struct NoPointer {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
-    }
-
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
-    }
-
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_relayblacklist(self.pointer, $0) }
-    }
-public convenience init(ids: [EventId] = [], publicKeys: [PublicKey] = []) {
-    let pointer =
-        try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_relayblacklist_new(
-        FfiConverterSequenceTypeEventId.lower(ids),
-        FfiConverterSequenceTypePublicKey.lower(publicKeys),$0
-    )
-}
-    self.init(unsafeFromRawPointer: pointer)
-}
-
-    deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relayblacklist(pointer, $0) }
-    }
-
-    
-    /**
-     * construct new empty blacklist
-     */
-public static func empty() -> RelayBlacklist {
-    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_relayblacklist_empty($0
-    )
-})
-}
-    
-
-    
-    /**
-     * Add event IDs to blacklist
-     */
-open func addIds(ids: [EventId])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_ids(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeEventId.lower(ids)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Add public keys to blacklist
-     */
-open func addPublicKeys(publicKeys: [PublicKey])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_add_public_keys(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Remove everything
-     */
-open func clear()async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_clear(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Check if blacklist contains event ID
-     */
-open func hasId(id: EventId)async  -> Bool {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_id(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId_lower(id)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Check if blacklist contains public key
-     */
-open func hasPublicKey(publicKey: PublicKey)async  -> Bool {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_has_public_key(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey_lower(publicKey)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Remove event ID from blacklist
-     */
-open func removeId(id: EventId)async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_id(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId_lower(id)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Remove event IDs from blacklist
-     */
-open func removeIds(ids: [EventId])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_ids(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeEventId.lower(ids)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Remove public key from blacklist
-     */
-open func removePublicKey(publicKey: PublicKey)async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_key(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey_lower(publicKey)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-    /**
-     * Remove event IDs from blacklist
-     */
-open func removePublicKeys(ids: [PublicKey])async  {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayblacklist_remove_public_keys(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypePublicKey.lower(ids)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
-}
-    
-
-}
-
-public struct FfiConverterTypeRelayBlacklist: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = RelayBlacklist
-
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayBlacklist {
-        return RelayBlacklist(unsafeFromRawPointer: pointer)
-    }
-
-    public static func lower(_ value: RelayBlacklist) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RelayBlacklist {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
-    }
-
-    public static func write(_ value: RelayBlacklist, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
-    }
-}
-
-
-
-
-public func FfiConverterTypeRelayBlacklist_lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayBlacklist {
-    return try FfiConverterTypeRelayBlacklist.lift(pointer)
-}
-
-public func FfiConverterTypeRelayBlacklist_lower(_ value: RelayBlacklist) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeRelayBlacklist.lower(value)
-}
-
-
-
-
 public protocol RelayConnectionStatsProtocol : AnyObject {
     
     /**
@@ -7318,6 +7021,395 @@ public func FfiConverterTypeRelayConnectionStats_lift(_ pointer: UnsafeMutableRa
 
 public func FfiConverterTypeRelayConnectionStats_lower(_ value: RelayConnectionStats) -> UnsafeMutableRawPointer {
     return FfiConverterTypeRelayConnectionStats.lower(value)
+}
+
+
+
+
+public protocol RelayFilteringProtocol : AnyObject {
+    
+    /**
+     * Add event IDs
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+    func addIds(ids: [EventId]) async 
+    
+    /**
+     * Add public keys
+     */
+    func addPublicKeys(publicKeys: [PublicKey]) async 
+    
+    /**
+     * Remove everything
+     */
+    func clear() async 
+    
+    /**
+     * Check if has event ID
+     */
+    func hasId(id: EventId) async  -> Bool
+    
+    /**
+     * Check if has public key
+     */
+    func hasPublicKey(publicKey: PublicKey) async  -> Bool
+    
+    /**
+     * Get filtering mode
+     */
+    func mode()  -> RelayFilteringMode
+    
+    /**
+     * Remove event ID
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+    func removeId(id: EventId) async 
+    
+    /**
+     * Remove event IDs
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+    func removeIds(ids: [EventId]) async 
+    
+    /**
+     * Remove public key
+     */
+    func removePublicKey(publicKey: PublicKey) async 
+    
+    /**
+     * Remove public keys
+     */
+    func removePublicKeys(ids: [PublicKey]) async 
+    
+    /**
+     * Update filtering mode
+     */
+    func updateMode(mode: RelayFilteringMode) 
+    
+}
+
+open class RelayFiltering:
+    RelayFilteringProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_relayfiltering(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_relayfiltering(pointer, $0) }
+    }
+
+    
+    /**
+     * Construct new filtering in blacklist mode
+     */
+public static func blacklist() -> RelayFiltering {
+    return try!  FfiConverterTypeRelayFiltering.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_relayfiltering_blacklist($0
+    )
+})
+}
+    
+    /**
+     * Construct new filtering in whitelist mode
+     */
+public static func whitelist() -> RelayFiltering {
+    return try!  FfiConverterTypeRelayFiltering.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_relayfiltering_whitelist($0
+    )
+})
+}
+    
+
+    
+    /**
+     * Add event IDs
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+open func addIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_add_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Add public keys
+     */
+open func addPublicKeys(publicKeys: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_add_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(publicKeys)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Remove everything
+     */
+open func clear()async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_clear(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Check if has event ID
+     */
+open func hasId(id: EventId)async  -> Bool {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_has_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Check if has public key
+     */
+open func hasPublicKey(publicKey: PublicKey)async  -> Bool {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_has_public_key(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Get filtering mode
+     */
+open func mode() -> RelayFilteringMode {
+    return try!  FfiConverterTypeRelayFilteringMode.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayfiltering_mode(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Remove event ID
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+open func removeId(id: EventId)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_remove_id(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeEventId_lower(id)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Remove event IDs
+     *
+     * Note: IDs are ignored in whitelist mode!
+     */
+open func removeIds(ids: [EventId])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_remove_ids(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypeEventId.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Remove public key
+     */
+open func removePublicKey(publicKey: PublicKey)async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_remove_public_key(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey_lower(publicKey)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Remove public keys
+     */
+open func removePublicKeys(ids: [PublicKey])async  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_relayfiltering_remove_public_keys(
+                    self.uniffiClonePointer(),
+                    FfiConverterSequenceTypePublicKey.lower(ids)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+    /**
+     * Update filtering mode
+     */
+open func updateMode(mode: RelayFilteringMode) {try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayfiltering_update_mode(self.uniffiClonePointer(),
+        FfiConverterTypeRelayFilteringMode.lower(mode),$0
+    )
+}
+}
+    
+
+}
+
+public struct FfiConverterTypeRelayFiltering: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = RelayFiltering
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayFiltering {
+        return RelayFiltering(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: RelayFiltering) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RelayFiltering {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: RelayFiltering, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeRelayFiltering_lift(_ pointer: UnsafeMutableRawPointer) throws -> RelayFiltering {
+    return try FfiConverterTypeRelayFiltering.lift(pointer)
+}
+
+public func FfiConverterTypeRelayFiltering_lower(_ value: RelayFiltering) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeRelayFiltering.lower(value)
 }
 
 
@@ -7559,6 +7651,11 @@ public protocol RelayOptionsProtocol : AnyObject {
     func connectionMode(mode: ConnectionMode) throws  -> RelayOptions
     
     /**
+     * Set filtering mode (default: blacklist)
+     */
+    func filteringMode(mode: RelayFilteringMode)  -> RelayOptions
+    
+    /**
      * Set custom limits
      */
     func limits(limits: RelayLimits)  -> RelayOptions
@@ -7696,6 +7793,17 @@ open func connectionMode(mode: ConnectionMode)throws  -> RelayOptions {
     return try  FfiConverterTypeRelayOptions.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_relayoptions_connection_mode(self.uniffiClonePointer(),
         FfiConverterTypeConnectionMode.lower(mode),$0
+    )
+})
+}
+    
+    /**
+     * Set filtering mode (default: blacklist)
+     */
+open func filteringMode(mode: RelayFilteringMode) -> RelayOptions {
+    return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayoptions_filtering_mode(self.uniffiClonePointer(),
+        FfiConverterTypeRelayFilteringMode.lower(mode),$0
     )
 })
 }
@@ -7885,19 +7993,14 @@ public protocol RelayPoolProtocol : AnyObject {
     func addRelay(url: String, opts: RelayOptions) async throws  -> Bool
     
     /**
-     * Send multiple `Event` at once to **all connected relays** and wait for `OK` message
+     * Send multiple events at once to all relays with `WRITE` flag
      */
     func batchEvent(events: [Event], opts: RelaySendOptions) async throws  -> Output
     
     /**
-     * Send multiple events at once to **specific relays** and wait for `OK` message
+     * Send multiple events at once to specific relays
      */
     func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions) async throws  -> Output
-    
-    /**
-     * Send multiple client messages at once to all connected relays
-     */
-    func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions) async throws  -> Output
     
     /**
      * Send multiple client messages at once to specific relays
@@ -7905,11 +8008,6 @@ public protocol RelayPoolProtocol : AnyObject {
      * Note: **the relays must already be added!**
      */
     func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptions) async throws  -> Output
-    
-    /**
-     * Get blacklist
-     */
-    func blacklist()  -> RelayBlacklist
     
     /**
      * Connect to all added relays and keep connection alive
@@ -7930,6 +8028,11 @@ public protocol RelayPoolProtocol : AnyObject {
      * Disconnect from all relays
      */
     func disconnect() async throws 
+    
+    /**
+     * Get relay filtering
+     */
+    func filtering()  -> RelayFiltering
     
     /**
      * Get events of filters from **specific relays**
@@ -7964,7 +8067,7 @@ public protocol RelayPoolProtocol : AnyObject {
     func relay(url: String) async throws  -> Relay
     
     /**
-     * Get relays
+     * Get relays with `READ` or `WRITE` flags
      */
     func relays() async  -> [String: Relay]
     
@@ -7973,19 +8076,14 @@ public protocol RelayPoolProtocol : AnyObject {
     func removeRelay(url: String) async throws 
     
     /**
-     * Send event to **all connected relays** and wait for `OK` message
+     * Send event to all relays with `WRITE` flag
      */
     func sendEvent(event: Event, opts: RelaySendOptions) async throws  -> SendEventOutput
     
     /**
-     * Send event to **specific relays** and wait for `OK` message
+     * Send event to specific relays
      */
     func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions) async throws  -> SendEventOutput
-    
-    /**
-     * Send client message to all connected relays
-     */
-    func sendMsg(msg: ClientMessage, opts: RelaySendOptions) async throws  -> Output
     
     /**
      * Send client message to specific relays
@@ -8000,7 +8098,7 @@ public protocol RelayPoolProtocol : AnyObject {
     func shutdown() async throws 
     
     /**
-     * Subscribe to filters to all connected relays
+     * Subscribe to filters to relays with `READ` flag.
      *
      * ### Auto-closing subscription
      *
@@ -8020,7 +8118,7 @@ public protocol RelayPoolProtocol : AnyObject {
     func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions) async throws  -> SubscribeOutput
     
     /**
-     * Subscribe with custom subscription ID to all connected relays
+     * Subscribe with custom subscription ID to relays with `READ` flag.
      *
      * ### Auto-closing subscription
      *
@@ -8141,7 +8239,7 @@ open func addRelay(url: String, opts: RelayOptions)async throws  -> Bool {
 }
     
     /**
-     * Send multiple `Event` at once to **all connected relays** and wait for `OK` message
+     * Send multiple events at once to all relays with `WRITE` flag
      */
 open func batchEvent(events: [Event], opts: RelaySendOptions)async throws  -> Output {
     return
@@ -8161,7 +8259,7 @@ open func batchEvent(events: [Event], opts: RelaySendOptions)async throws  -> Ou
 }
     
     /**
-     * Send multiple events at once to **specific relays** and wait for `OK` message
+     * Send multiple events at once to specific relays
      */
 open func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions)async throws  -> Output {
     return
@@ -8170,26 +8268,6 @@ open func batchEventTo(urls: [String], events: [Event], opts: RelaySendOptions)a
                 uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_event_to(
                     self.uniffiClonePointer(),
                     FfiConverterSequenceString.lower(urls),FfiConverterSequenceTypeEvent.lower(events),FfiConverterTypeRelaySendOptions.lower(opts)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Send multiple client messages at once to all connected relays
-     */
-open func batchMsg(msgs: [ClientMessage], opts: RelaySendOptions)async throws  -> Output {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relaypool_batch_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeClientMessage.lower(msgs),FfiConverterTypeRelaySendOptions.lower(opts)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -8220,16 +8298,6 @@ open func batchMsgTo(urls: [String], msgs: [ClientMessage], opts: RelaySendOptio
             liftFunc: FfiConverterTypeOutput.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
-}
-    
-    /**
-     * Get blacklist
-     */
-open func blacklist() -> RelayBlacklist {
-    return try!  FfiConverterTypeRelayBlacklist.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relaypool_blacklist(self.uniffiClonePointer(),$0
-    )
-})
 }
     
     /**
@@ -8301,6 +8369,16 @@ open func disconnect()async throws  {
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
+}
+    
+    /**
+     * Get relay filtering
+     */
+open func filtering() -> RelayFiltering {
+    return try!  FfiConverterTypeRelayFiltering.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relaypool_filtering(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -8426,7 +8504,7 @@ open func relay(url: String)async throws  -> Relay {
 }
     
     /**
-     * Get relays
+     * Get relays with `READ` or `WRITE` flags
      */
 open func relays()async  -> [String: Relay] {
     return
@@ -8481,7 +8559,7 @@ open func removeRelay(url: String)async throws  {
 }
     
     /**
-     * Send event to **all connected relays** and wait for `OK` message
+     * Send event to all relays with `WRITE` flag
      */
 open func sendEvent(event: Event, opts: RelaySendOptions)async throws  -> SendEventOutput {
     return
@@ -8501,7 +8579,7 @@ open func sendEvent(event: Event, opts: RelaySendOptions)async throws  -> SendEv
 }
     
     /**
-     * Send event to **specific relays** and wait for `OK` message
+     * Send event to specific relays
      */
 open func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions)async throws  -> SendEventOutput {
     return
@@ -8516,26 +8594,6 @@ open func sendEventTo(urls: [String], event: Event, opts: RelaySendOptions)async
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Send client message to all connected relays
-     */
-open func sendMsg(msg: ClientMessage, opts: RelaySendOptions)async throws  -> Output {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relaypool_send_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeClientMessage_lower(msg),FfiConverterTypeRelaySendOptions.lower(opts)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeOutput.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8583,7 +8641,7 @@ open func shutdown()async throws  {
 }
     
     /**
-     * Subscribe to filters to all connected relays
+     * Subscribe to filters to relays with `READ` flag.
      *
      * ### Auto-closing subscription
      *
@@ -8633,7 +8691,7 @@ open func subscribeTo(urls: [String], filters: [Filter], opts: SubscribeOptions)
 }
     
     /**
-     * Subscribe with custom subscription ID to all connected relays
+     * Subscribe with custom subscription ID to relays with `READ` flag.
      *
      * ### Auto-closing subscription
      *
@@ -9949,7 +10007,8 @@ public enum ConnectionMode {
     case direct
     case proxy(addr: String
     )
-    case tor
+    case tor(customPath: String?
+    )
 }
 
 
@@ -9965,7 +10024,8 @@ public struct FfiConverterTypeConnectionMode: FfiConverterRustBuffer {
         case 2: return .proxy(addr: try FfiConverterString.read(from: &buf)
         )
         
-        case 3: return .tor
+        case 3: return .tor(customPath: try FfiConverterOptionString.read(from: &buf)
+        )
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -9984,9 +10044,10 @@ public struct FfiConverterTypeConnectionMode: FfiConverterRustBuffer {
             FfiConverterString.write(addr, into: &buf)
             
         
-        case .tor:
+        case let .tor(customPath):
             writeInt(&buf, Int32(3))
-        
+            FfiConverterOptionString.write(customPath, into: &buf)
+            
         }
     }
 }
@@ -10067,6 +10128,68 @@ public func FfiConverterTypeConnectionTarget_lower(_ value: ConnectionTarget) ->
 
 
 extension ConnectionTarget: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum DatabaseEventStatus {
+    
+    case saved
+    case deleted
+    case notExistent
+}
+
+
+public struct FfiConverterTypeDatabaseEventStatus: FfiConverterRustBuffer {
+    typealias SwiftType = DatabaseEventStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DatabaseEventStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .saved
+        
+        case 2: return .deleted
+        
+        case 3: return .notExistent
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DatabaseEventStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .saved:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .deleted:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .notExistent:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeDatabaseEventStatus_lift(_ buf: RustBuffer) throws -> DatabaseEventStatus {
+    return try FfiConverterTypeDatabaseEventStatus.lift(buf)
+}
+
+public func FfiConverterTypeDatabaseEventStatus_lower(_ value: DatabaseEventStatus) -> RustBuffer {
+    return FfiConverterTypeDatabaseEventStatus.lower(value)
+}
+
+
+
+extension DatabaseEventStatus: Equatable, Hashable {}
 
 
 
@@ -10339,6 +10462,67 @@ extension NostrSdkError: Foundation.LocalizedError {
         String(reflecting: self)
     }
 }
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum RelayFilteringMode {
+    
+    /**
+     * Only the matching values will be allowed
+     */
+    case whitelist
+    /**
+     * All matching values will be discarded
+     */
+    case blacklist
+}
+
+
+public struct FfiConverterTypeRelayFilteringMode: FfiConverterRustBuffer {
+    typealias SwiftType = RelayFilteringMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RelayFilteringMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .whitelist
+        
+        case 2: return .blacklist
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RelayFilteringMode, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .whitelist:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .blacklist:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+public func FfiConverterTypeRelayFilteringMode_lift(_ buf: RustBuffer) throws -> RelayFilteringMode {
+    return try FfiConverterTypeRelayFilteringMode.lift(buf)
+}
+
+public func FfiConverterTypeRelayFilteringMode_lower(_ value: RelayFilteringMode) -> RustBuffer {
+    return FfiConverterTypeRelayFilteringMode.lower(value)
+}
+
+
+
+extension RelayFilteringMode: Equatable, Hashable {}
+
+
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
@@ -10646,6 +10830,27 @@ fileprivate struct FfiConverterOptionSequenceTypeFilter: FfiConverterRustBuffer 
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterSequenceTypeFilter.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionTypeEvent: FfiConverterRustBuffer {
+    typealias SwiftType = Event?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeEvent.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeEvent.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -11177,19 +11382,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_func_init_logger() != 38847) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 58887) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_discovery_relay() != 57691) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay_with_opts() != 36241) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_read_relay() != 52565) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relays() != 46859) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 33779) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_write_relay() != 6818) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_automatic_authentication() != 51347) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_blacklist() != 3155) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 30312) {
@@ -11213,13 +11418,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_dislike() != 15515) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_metadata() != 24983) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 65496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_filtering() != 62979) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_from() != 34355) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 28254) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_get_events_of() != 44667) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 52974) {
@@ -11234,10 +11445,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_like() != 17749) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_ids() != 26708) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_mute_public_keys() != 39159) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_pool() != 3145) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_reaction() != 13847) {
@@ -11249,7 +11457,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 53414) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 25563) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 53935) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 5421) {
@@ -11258,19 +11466,16 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 15487) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 56846) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 36678) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 57135) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 28604) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 63065) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 34972) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 29322) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg() != 26109) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 40531) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 7643) {
@@ -11294,13 +11499,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 31951) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 27244) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 20608) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 26336) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 53663) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 13157) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 27069) {
@@ -11310,12 +11515,6 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 20072) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_ids() != 55190) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unmute_public_keys() != 32497) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 16499) {
@@ -11354,7 +11553,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_connection_addr() != 43068) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_connection_embedded_tor() != 63012) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_connection_embedded_tor() != 51580) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_connection_mode() != 217) {
@@ -11369,40 +11568,46 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_save_event() != 44808) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_saved() != 31021) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_check_id() != 33847) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_already_been_seen() != 60236) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_coordinate_been_deleted() != 8731) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_event_id_been_deleted() != 63072) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_id_seen() != 48961) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_coordinate_been_deleted() != 45636) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_seen_on_relays() != 64294) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_id_seen() != 22968) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_by_id() != 63015) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_seen_on_relays() != 3595) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_count() != 29484) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_count() != 49398) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_query() != 33233) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_query() != 32414) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_delete() != 56179) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_delete() != 48524) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_wipe() != 13488) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_wipe() != 62100) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 15446) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 58660) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay__none() != 40990) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_shutdown() != 1736) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_url() != 63169) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_balance() != 30742) {
@@ -11456,16 +11661,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectsigneractions_approve() != 33577) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase__none() != 38126) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 63911) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_delete() != 19224) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 15873) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 13180) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_seen_on_relays() != 47905) {
@@ -11528,6 +11730,12 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 20804) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_filtering_mode() != 33603) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_options_gossip() != 22162) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_options_max_avg_latency() != 34264) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11570,9 +11778,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 15403) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_blacklist() != 35021) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 15421) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11586,6 +11791,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 55628) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relay_filtering() != 16293) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_get_events_of() != 8379) {
@@ -11642,33 +11850,6 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 1351) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_ids() != 56523) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_add_public_keys() != 28791) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_clear() != 40843) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_id() != 25951) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_has_public_key() != 23755) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_id() != 32469) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_ids() != 19470) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_key() != 59175) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayblacklist_remove_public_keys() != 53857) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 52060) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11693,6 +11874,39 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_uptime() != 29449) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_ids() != 37238) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_public_keys() != 16552) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_clear() != 53904) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_id() != 884) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_public_key() != 9857) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_mode() != 29749) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_id() != 62305) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_ids() != 35650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_key() != 61695) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_keys() != 54891) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_update_mode() != 20763) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags() != 29781) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11712,6 +11926,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_connection_mode() != 24699) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_filtering_mode() != 53101) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_limits() != 10405) {
@@ -11753,19 +11970,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_add_relay() != 60070) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 37555) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 30015) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 15226) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg() != 33910) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 65135) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 33822) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_blacklist() != 51161) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 31806) {
@@ -11778,6 +11989,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 51163) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_filtering() != 46575) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_get_events_from() != 53633) {
@@ -11798,7 +12012,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relay() != 11676) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 54295) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 16476) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_all_relay() != 16039) {
@@ -11807,13 +12021,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_relay() != 40859) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 60050) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 16615) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 59933) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg() != 65023) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 14653) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg_to() != 65436) {
@@ -11822,13 +12033,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 24603) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 60735) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 63089) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 20032) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 28475) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 5916) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 46946) {
@@ -11897,6 +12108,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_specific_relays() != 35301) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_mockrelay_run() != 52562) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 26100) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11918,13 +12132,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_custom() != 63992) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_ndb() != 25092) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite() != 20589) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_sqlite_bounded() != 1908) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_lmdb() != 21752) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_keys() != 51910) {
@@ -11945,7 +12153,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_new() != 65224) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 17945) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 38370) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_new() != 3279) {
@@ -11954,10 +12162,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_with_opts() != 9335) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayblacklist_empty() != 38614) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_blacklist() != 16765) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayblacklist_new() != 62518) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_whitelist() != 49922) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_disable() != 39641) {

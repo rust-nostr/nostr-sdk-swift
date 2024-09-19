@@ -950,6 +950,7 @@ public protocol CoordinateProtocol : AnyObject {
  */
 open class Coordinate:
     CustomDebugStringConvertible,
+    CustomStringConvertible,
     Equatable,
     Hashable,
     CoordinateProtocol {
@@ -1073,6 +1074,14 @@ open func toNostrUri()throws  -> String {
         return try!  FfiConverterString.lift(
             try! rustCall() {
     uniffi_nostr_ffi_fn_method_coordinate_uniffi_trait_debug(self.uniffiClonePointer(),$0
+    )
+}
+        )
+    }
+    open var description: String {
+        return try!  FfiConverterString.lift(
+            try! rustCall() {
+    uniffi_nostr_ffi_fn_method_coordinate_uniffi_trait_display(self.uniffiClonePointer(),$0
     )
 }
         )
@@ -1352,6 +1361,8 @@ public protocol EventProtocol : AnyObject {
     
     func asJson() throws  -> String
     
+    func asPrettyJson() throws  -> String
+    
     /**
      * Get event author (`pubkey` field)
      */
@@ -1405,13 +1416,6 @@ public protocol EventProtocol : AnyObject {
     func identifier()  -> String?
     
     /**
-     * Check if event `Kind` is `Ephemeral`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-    func isEphemeral()  -> Bool
-    
-    /**
      * Returns `true` if the event has an expiration tag that is expired.
      * If an event has no `Expiration` tag, then it will return `false`.
      *
@@ -1420,46 +1424,11 @@ public protocol EventProtocol : AnyObject {
     func isExpired()  -> Bool
     
     /**
-     * Check if `Kind` is a NIP90 job request
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
-     */
-    func isJobRequest()  -> Bool
-    
-    /**
-     * Check if `Kind` is a NIP90 job result
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
-     */
-    func isJobResult()  -> Bool
-    
-    /**
-     * Check if event `Kind` is `Parameterized replaceable`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-    func isParameterizedReplaceable()  -> Bool
-    
-    /**
      * Check if it's a protected event
      *
      * <https://github.com/nostr-protocol/nips/blob/master/70.md>
      */
     func isProtected()  -> Bool
-    
-    /**
-     * Check if event `Kind` is `Regular`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-    func isRegular()  -> Bool
-    
-    /**
-     * Check if event `Kind` is `Replaceable`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-    func isReplaceable()  -> Bool
     
     func kind()  -> Kind
     
@@ -1482,12 +1451,12 @@ public protocol EventProtocol : AnyObject {
     /**
      * Verify if the `EventId` it's composed correctly
      */
-    func verifyId() throws 
+    func verifyId()  -> Bool
     
     /**
      * Verify only event `Signature`
      */
-    func verifySignature() throws 
+    func verifySignature()  -> Bool
     
 }
 
@@ -1546,6 +1515,13 @@ public static func fromJson(json: String)throws  -> Event {
 open func asJson()throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_event_as_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func asPrettyJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
+    uniffi_nostr_ffi_fn_method_event_as_pretty_json(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1660,18 +1636,6 @@ open func identifier() -> String? {
 }
     
     /**
-     * Check if event `Kind` is `Ephemeral`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-open func isEphemeral() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_ephemeral(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
      * Returns `true` if the event has an expiration tag that is expired.
      * If an event has no `Expiration` tag, then it will return `false`.
      *
@@ -1685,42 +1649,6 @@ open func isExpired() -> Bool {
 }
     
     /**
-     * Check if `Kind` is a NIP90 job request
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
-     */
-open func isJobRequest() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_job_request(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
-     * Check if `Kind` is a NIP90 job result
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
-     */
-open func isJobResult() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_job_result(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
-     * Check if event `Kind` is `Parameterized replaceable`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-open func isParameterizedReplaceable() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_parameterized_replaceable(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
      * Check if it's a protected event
      *
      * <https://github.com/nostr-protocol/nips/blob/master/70.md>
@@ -1728,30 +1656,6 @@ open func isParameterizedReplaceable() -> Bool {
 open func isProtected() -> Bool {
     return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_event_is_protected(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
-     * Check if event `Kind` is `Regular`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-open func isRegular() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_regular(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
-    /**
-     * Check if event `Kind` is `Replaceable`
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
-     */
-open func isReplaceable() -> Bool {
-    return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_event_is_replaceable(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1802,19 +1706,21 @@ open func verify() -> Bool {
     /**
      * Verify if the `EventId` it's composed correctly
      */
-open func verifyId()throws  {try rustCallWithError(FfiConverterTypeNostrError.lift) {
+open func verifyId() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_event_verify_id(self.uniffiClonePointer(),$0
     )
-}
+})
 }
     
     /**
      * Verify only event `Signature`
      */
-open func verifySignature()throws  {try rustCallWithError(FfiConverterTypeNostrError.lift) {
+open func verifySignature() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_event_verify_signature(self.uniffiClonePointer(),$0
     )
-}
+})
 }
     
     open var debugDescription: String {
@@ -1903,13 +1809,16 @@ public protocol EventBuilderProtocol : AnyObject {
      */
     func customCreatedAt(createdAt: Timestamp)  -> EventBuilder
     
+    /**
+     * Set POW difficulty
+     *
+     * Only values `> 0` are accepted!
+     */
+    func pow(difficulty: UInt8)  -> EventBuilder
+    
     func toEvent(keys: Keys) throws  -> Event
     
-    func toPowEvent(keys: Keys, difficulty: UInt8) throws  -> Event
-    
     func toUnsignedEvent(publicKey: PublicKey)  -> UnsignedEvent
-    
-    func toUnsignedPowEvent(publicKey: PublicKey, difficulty: UInt8)  -> UnsignedEvent
     
 }
 
@@ -2262,15 +2171,10 @@ public static func interests(list: Interests) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/90.md>
      */
-public static func jobFeedback(jobRequest: Event, status: DataVendingMachineStatus, extraInfo: String?, amountMillisats: UInt64, bolt11: String? = nil, payload: String? = nil) -> EventBuilder {
+public static func jobFeedback(data: JobFeedbackData) -> EventBuilder {
     return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_constructor_eventbuilder_job_feedback(
-        FfiConverterTypeEvent.lower(jobRequest),
-        FfiConverterTypeDataVendingMachineStatus.lower(status),
-        FfiConverterOptionString.lower(extraInfo),
-        FfiConverterUInt64.lower(amountMillisats),
-        FfiConverterOptionString.lower(bolt11),
-        FfiConverterOptionString.lower(payload),$0
+        FfiConverterTypeJobFeedbackData.lower(data),$0
     )
 })
 }
@@ -2719,6 +2623,19 @@ open func customCreatedAt(createdAt: Timestamp) -> EventBuilder {
 })
 }
     
+    /**
+     * Set POW difficulty
+     *
+     * Only values `> 0` are accepted!
+     */
+open func pow(difficulty: UInt8) -> EventBuilder {
+    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_eventbuilder_pow(self.uniffiClonePointer(),
+        FfiConverterUInt8.lower(difficulty),$0
+    )
+})
+}
+    
 open func toEvent(keys: Keys)throws  -> Event {
     return try  FfiConverterTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_eventbuilder_to_event(self.uniffiClonePointer(),
@@ -2727,28 +2644,10 @@ open func toEvent(keys: Keys)throws  -> Event {
 })
 }
     
-open func toPowEvent(keys: Keys, difficulty: UInt8)throws  -> Event {
-    return try  FfiConverterTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
-    uniffi_nostr_ffi_fn_method_eventbuilder_to_pow_event(self.uniffiClonePointer(),
-        FfiConverterTypeKeys.lower(keys),
-        FfiConverterUInt8.lower(difficulty),$0
-    )
-})
-}
-    
 open func toUnsignedEvent(publicKey: PublicKey) -> UnsignedEvent {
     return try!  FfiConverterTypeUnsignedEvent.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_eventbuilder_to_unsigned_event(self.uniffiClonePointer(),
         FfiConverterTypePublicKey.lower(publicKey),$0
-    )
-})
-}
-    
-open func toUnsignedPowEvent(publicKey: PublicKey, difficulty: UInt8) -> UnsignedEvent {
-    return try!  FfiConverterTypeUnsignedEvent.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_eventbuilder_to_unsigned_pow_event(self.uniffiClonePointer(),
-        FfiConverterTypePublicKey.lower(publicKey),
-        FfiConverterUInt8.lower(difficulty),$0
     )
 })
 }
@@ -4005,16 +3904,197 @@ public func FfiConverterTypeImageDimensions_lower(_ value: ImageDimensions) -> U
 
 
 
+/**
+ * Data Vending Machine (DVM) - Job Feedback data
+ *
+ * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+ */
+public protocol JobFeedbackDataProtocol : AnyObject {
+    
+    /**
+     * Add payment amount
+     */
+    func amount(millisats: UInt64, bolt11: String?)  -> JobFeedbackData
+    
+    /**
+     * Add extra info
+     */
+    func extraInfo(info: String)  -> JobFeedbackData
+    
+    /**
+     * Add payload
+     */
+    func payload(payload: String)  -> JobFeedbackData
+    
+}
+
+/**
+ * Data Vending Machine (DVM) - Job Feedback data
+ *
+ * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+ */
+open class JobFeedbackData:
+    JobFeedbackDataProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    /// This constructor can be used to instantiate a fake object.
+    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    ///
+    /// - Warning:
+    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_nostr_ffi_fn_clone_jobfeedbackdata(self.pointer, $0) }
+    }
+    /**
+     * Construct new Job Feedback
+     */
+public convenience init(jobRequest: Event, status: DataVendingMachineStatus) {
+    let pointer =
+        try! rustCall() {
+    uniffi_nostr_ffi_fn_constructor_jobfeedbackdata_new(
+        FfiConverterTypeEvent.lower(jobRequest),
+        FfiConverterTypeDataVendingMachineStatus.lower(status),$0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_nostr_ffi_fn_free_jobfeedbackdata(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * Add payment amount
+     */
+open func amount(millisats: UInt64, bolt11: String?) -> JobFeedbackData {
+    return try!  FfiConverterTypeJobFeedbackData.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_jobfeedbackdata_amount(self.uniffiClonePointer(),
+        FfiConverterUInt64.lower(millisats),
+        FfiConverterOptionString.lower(bolt11),$0
+    )
+})
+}
+    
+    /**
+     * Add extra info
+     */
+open func extraInfo(info: String) -> JobFeedbackData {
+    return try!  FfiConverterTypeJobFeedbackData.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_jobfeedbackdata_extra_info(self.uniffiClonePointer(),
+        FfiConverterString.lower(info),$0
+    )
+})
+}
+    
+    /**
+     * Add payload
+     */
+open func payload(payload: String) -> JobFeedbackData {
+    return try!  FfiConverterTypeJobFeedbackData.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_jobfeedbackdata_payload(self.uniffiClonePointer(),
+        FfiConverterString.lower(payload),$0
+    )
+})
+}
+    
+
+}
+
+public struct FfiConverterTypeJobFeedbackData: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = JobFeedbackData
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> JobFeedbackData {
+        return JobFeedbackData(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: JobFeedbackData) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JobFeedbackData {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: JobFeedbackData, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+public func FfiConverterTypeJobFeedbackData_lift(_ pointer: UnsafeMutableRawPointer) throws -> JobFeedbackData {
+    return try FfiConverterTypeJobFeedbackData.lift(pointer)
+}
+
+public func FfiConverterTypeJobFeedbackData_lower(_ value: JobFeedbackData) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeJobFeedbackData.lower(value)
+}
+
+
+
+
+/**
+ * Nostr keys
+ */
 public protocol KeysProtocol : AnyObject {
     
+    /**
+     * Get public key
+     */
     func publicKey()  -> PublicKey
     
-    func secretKey() throws  -> SecretKey
+    /**
+     * Get secret key
+     */
+    func secretKey()  -> SecretKey
     
+    /**
+     * Creates a schnorr signature of a message.
+     *
+     * This method use a random number generator that retrieves randomness from the operating system.
+     */
     func signSchnorr(message: Data) throws  -> String
     
 }
 
+/**
+ * Nostr keys
+ */
 open class Keys:
     CustomDebugStringConvertible,
     Equatable,
@@ -4045,6 +4125,9 @@ open class Keys:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_ffi_fn_clone_keys(self.pointer, $0) }
     }
+    /**
+     * Initialize nostr keys from secret key.
+     */
 public convenience init(secretKey: SecretKey) {
     let pointer =
         try! rustCall() {
@@ -4065,7 +4148,7 @@ public convenience init(secretKey: SecretKey) {
 
     
     /**
-     * Derive `Keys` from BIP-39 mnemonics (ENGLISH wordlist).
+     * Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
      *
      * <https://github.com/nostr-protocol/nips/blob/master/06.md>
      */
@@ -4081,16 +4164,14 @@ public static func fromMnemonic(mnemonic: String, passphrase: String? = nil, acc
 })
 }
     
-public static func fromPublicKey(publicKey: PublicKey) -> Keys {
-    return try!  FfiConverterTypeKeys.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_constructor_keys_from_public_key(
-        FfiConverterTypePublicKey.lower(publicKey),$0
-    )
-})
-}
-    
     /**
-     * Generate random `Keys`
+     * Generate random keys
+     *
+     * This constructor use a random number generator that retrieves randomness from the operating system.
+     *
+     * Generate random keys **without** construct the `Keypair`.
+     * This allows faster keys generation (i.e. for vanity pubkey mining).
+     * The `Keypair` will be automatically created when needed and stored in a cell.
      */
 public static func generate() -> Keys {
     return try!  FfiConverterTypeKeys.lift(try! rustCall() {
@@ -4100,7 +4181,7 @@ public static func generate() -> Keys {
 }
     
     /**
-     * Try to parse keys from **secret key** `hex` or `bech32`
+     * Parse secret key from `hex` or `bech32` and compose keys
      */
 public static func parse(secretKey: String)throws  -> Keys {
     return try  FfiConverterTypeKeys.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
@@ -4122,6 +4203,9 @@ public static func vanity(prefixes: [String], bech32: Bool, numCores: UInt8)thro
     
 
     
+    /**
+     * Get public key
+     */
 open func publicKey() -> PublicKey {
     return try!  FfiConverterTypePublicKey.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_keys_public_key(self.uniffiClonePointer(),$0
@@ -4129,13 +4213,21 @@ open func publicKey() -> PublicKey {
 })
 }
     
-open func secretKey()throws  -> SecretKey {
-    return try  FfiConverterTypeSecretKey.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
+    /**
+     * Get secret key
+     */
+open func secretKey() -> SecretKey {
+    return try!  FfiConverterTypeSecretKey.lift(try! rustCall() {
     uniffi_nostr_ffi_fn_method_keys_secret_key(self.uniffiClonePointer(),$0
     )
 })
 }
     
+    /**
+     * Creates a schnorr signature of a message.
+     *
+     * This method use a random number generator that retrieves randomness from the operating system.
+     */
 open func signSchnorr(message: Data)throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_keys_sign_schnorr(self.uniffiClonePointer(),
@@ -4217,14 +4309,61 @@ public protocol KindProtocol : AnyObject {
     func asEnum()  -> KindEnum
     
     /**
-     * Get kind as 16-bit unsigned number
+     * Get as 16-bit unsigned integer
      */
     func asU16()  -> UInt16
     
     /**
-     * Get kind as 64-bit unsigned number
+     * Check if it's ephemeral
+     *
+     * Ephemeral means that event is not expected to be stored by relays.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
-    func asU64()  -> UInt64
+    func isEphemeral()  -> Bool
+    
+    /**
+     * Check if it's a NIP-90 job request
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+     */
+    func isJobRequest()  -> Bool
+    
+    /**
+     * Check if it's a NIP-90 job result
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+     */
+    func isJobResult()  -> Bool
+    
+    /**
+     * Check if it's parameterized replaceable
+     *
+     * Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+     * only the latest event MUST be stored by relays, older versions MAY be discarded.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+    func isParameterizedReplaceable()  -> Bool
+    
+    /**
+     * Check if it's regular
+     *
+     * Regular means that event is expected to be stored by relays.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+    func isRegular()  -> Bool
+    
+    /**
+     * Check if it's replaceable
+     *
+     * Replaceable means that, for each combination of `pubkey` and `kind`,
+     * only the latest event MUST be stored by relays, older versions MAY be discarded.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+    func isReplaceable()  -> Bool
     
 }
 
@@ -4299,7 +4438,7 @@ open func asEnum() -> KindEnum {
 }
     
     /**
-     * Get kind as 16-bit unsigned number
+     * Get as 16-bit unsigned integer
      */
 open func asU16() -> UInt16 {
     return try!  FfiConverterUInt16.lift(try! rustCall() {
@@ -4309,11 +4448,83 @@ open func asU16() -> UInt16 {
 }
     
     /**
-     * Get kind as 64-bit unsigned number
+     * Check if it's ephemeral
+     *
+     * Ephemeral means that event is not expected to be stored by relays.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
-open func asU64() -> UInt64 {
-    return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_nostr_ffi_fn_method_kind_as_u64(self.uniffiClonePointer(),$0
+open func isEphemeral() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_ephemeral(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's a NIP-90 job request
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+     */
+open func isJobRequest() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_job_request(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's a NIP-90 job result
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/90.md>
+     */
+open func isJobResult() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_job_result(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's parameterized replaceable
+     *
+     * Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+     * only the latest event MUST be stored by relays, older versions MAY be discarded.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+open func isParameterizedReplaceable() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_parameterized_replaceable(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's regular
+     *
+     * Regular means that event is expected to be stored by relays.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+open func isRegular() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_regular(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Check if it's replaceable
+     *
+     * Replaceable means that, for each combination of `pubkey` and `kind`,
+     * only the latest event MUST be stored by relays, older versions MAY be discarded.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     */
+open func isReplaceable() -> Bool {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_nostr_ffi_fn_method_kind_is_replaceable(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -4395,6 +4606,8 @@ public func FfiConverterTypeKind_lower(_ value: Kind) -> UnsafeMutableRawPointer
 public protocol MetadataProtocol : AnyObject {
     
     func asJson() throws  -> String
+    
+    func asPrettyJson() throws  -> String
     
     func asRecord()  -> MetadataRecord
     
@@ -4509,6 +4722,13 @@ public static func fromRecord(r: MetadataRecord) -> Metadata {
 open func asJson()throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_metadata_as_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func asPrettyJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
+    uniffi_nostr_ffi_fn_method_metadata_as_pretty_json(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -8690,6 +8910,8 @@ public protocol UnsignedEventProtocol : AnyObject {
     
     func asJson() throws  -> String
     
+    func asPrettyJson() throws  -> String
+    
     func author()  -> PublicKey
     
     func content()  -> String
@@ -8779,6 +9001,13 @@ open func addSignature(sig: String)throws  -> Event {
 open func asJson()throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
     uniffi_nostr_ffi_fn_method_unsignedevent_as_json(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func asPrettyJson()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError.lift) {
+    uniffi_nostr_ffi_fn_method_unsignedevent_as_pretty_json(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -12814,8 +13043,8 @@ public enum ClientMessageEnum {
      */
     case negOpen(subscriptionId: String, filter: Filter, 
         /**
-         * ID size (MUST be between 8 and 32, inclusive)
-         */idSize: UInt8, initialMessage: String
+         * ID size (deprecated)
+         */idSize: UInt8?, initialMessage: String
     )
     /**
      * Negentropy Message
@@ -12852,7 +13081,7 @@ public struct FfiConverterTypeClientMessageEnum: FfiConverterRustBuffer {
         case 5: return .auth(event: try FfiConverterTypeEvent.read(from: &buf)
         )
         
-        case 6: return .negOpen(subscriptionId: try FfiConverterString.read(from: &buf), filter: try FfiConverterTypeFilter.read(from: &buf), idSize: try FfiConverterUInt8.read(from: &buf), initialMessage: try FfiConverterString.read(from: &buf)
+        case 6: return .negOpen(subscriptionId: try FfiConverterString.read(from: &buf), filter: try FfiConverterTypeFilter.read(from: &buf), idSize: try FfiConverterOptionUInt8.read(from: &buf), initialMessage: try FfiConverterString.read(from: &buf)
         )
         
         case 7: return .negMsg(subscriptionId: try FfiConverterString.read(from: &buf), message: try FfiConverterString.read(from: &buf)
@@ -12900,7 +13129,7 @@ public struct FfiConverterTypeClientMessageEnum: FfiConverterRustBuffer {
             writeInt(&buf, Int32(6))
             FfiConverterString.write(subscriptionId, into: &buf)
             FfiConverterTypeFilter.write(filter, into: &buf)
-            FfiConverterUInt8.write(idSize, into: &buf)
+            FfiConverterOptionUInt8.write(idSize, into: &buf)
             FfiConverterString.write(initialMessage, into: &buf)
             
         
@@ -17471,6 +17700,27 @@ extension ZapType: Equatable, Hashable {}
 
 
 
+fileprivate struct FfiConverterOptionUInt8: FfiConverterRustBuffer {
+    typealias SwiftType = UInt8?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt8.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt8.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     typealias SwiftType = UInt32?
 
@@ -19121,6 +19371,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_event_as_json() != 6443) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_method_event_as_pretty_json() != 12604) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_method_event_author() != 55205) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19154,28 +19407,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_event_identifier() != 23430) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_event_is_ephemeral() != 21349) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_ffi_checksum_method_event_is_expired() != 57175) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_event_is_job_request() != 26053) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_event_is_job_result() != 54684) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_event_is_parameterized_replaceable() != 17253) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_ffi_checksum_method_event_is_protected() != 548) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_event_is_regular() != 8941) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_event_is_replaceable() != 57468) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_event_kind() != 15262) {
@@ -19193,10 +19428,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_event_verify() != 11448) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_event_verify_id() != 58200) {
+    if (uniffi_nostr_ffi_checksum_method_event_verify_id() != 57588) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_event_verify_signature() != 63925) {
+    if (uniffi_nostr_ffi_checksum_method_event_verify_signature() != 50020) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_eventbuilder_add_tags() != 37368) {
@@ -19205,16 +19440,13 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_eventbuilder_custom_created_at() != 25828) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_method_eventbuilder_pow() != 35800) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_method_eventbuilder_to_event() != 27477) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_eventbuilder_to_pow_event() != 361) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_nostr_ffi_checksum_method_eventbuilder_to_unsigned_event() != 12334) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_ffi_checksum_method_eventbuilder_to_unsigned_pow_event() != 38142) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_eventid_as_bytes() != 42102) {
@@ -19373,25 +19605,52 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_imagedimensions_width() != 1901) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_keys_public_key() != 8351) {
+    if (uniffi_nostr_ffi_checksum_method_jobfeedbackdata_amount() != 59731) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_keys_secret_key() != 10917) {
+    if (uniffi_nostr_ffi_checksum_method_jobfeedbackdata_extra_info() != 5908) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_keys_sign_schnorr() != 38932) {
+    if (uniffi_nostr_ffi_checksum_method_jobfeedbackdata_payload() != 3168) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_keys_public_key() != 55373) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_keys_secret_key() != 40486) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_keys_sign_schnorr() != 22725) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_kind_as_enum() != 37013) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_kind_as_u16() != 42491) {
+    if (uniffi_nostr_ffi_checksum_method_kind_as_u16() != 18194) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_method_kind_as_u64() != 51642) {
+    if (uniffi_nostr_ffi_checksum_method_kind_is_ephemeral() != 50434) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_kind_is_job_request() != 28580) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_kind_is_job_result() != 57920) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_kind_is_parameterized_replaceable() != 993) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_kind_is_regular() != 65478) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_kind_is_replaceable() != 4249) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_metadata_as_json() != 49741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nostr_ffi_checksum_method_metadata_as_pretty_json() != 31827) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_method_metadata_as_record() != 14817) {
@@ -19691,6 +19950,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_method_unsignedevent_as_json() != 44697) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_nostr_ffi_checksum_method_unsignedevent_as_pretty_json() != 44034) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_nostr_ffi_checksum_method_unsignedevent_author() != 15518) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -19838,7 +20100,7 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_interests() != 25709) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_feedback() != 21708) {
+    if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_feedback() != 61541) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_eventbuilder_job_request() != 45432) {
@@ -19964,19 +20226,19 @@ private var initializationResult: InitializationResult = {
     if (uniffi_nostr_ffi_checksum_constructor_imagedimensions_new() != 24393) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_keys_from_mnemonic() != 36491) {
+    if (uniffi_nostr_ffi_checksum_constructor_jobfeedbackdata_new() != 10031) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_keys_from_public_key() != 57552) {
+    if (uniffi_nostr_ffi_checksum_constructor_keys_from_mnemonic() != 10786) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_keys_generate() != 34326) {
+    if (uniffi_nostr_ffi_checksum_constructor_keys_generate() != 3743) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_keys_new() != 32326) {
+    if (uniffi_nostr_ffi_checksum_constructor_keys_new() != 19077) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_ffi_checksum_constructor_keys_parse() != 16239) {
+    if (uniffi_nostr_ffi_checksum_constructor_keys_parse() != 28082) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_ffi_checksum_constructor_keys_vanity() != 20910) {
