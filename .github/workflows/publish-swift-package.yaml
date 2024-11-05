@@ -39,16 +39,16 @@ jobs:
         working-directory: build/bindings/nostr-sdk-ffi
         run: |
           just init
-          just bindings-swift
+          just swift
 
       - name: Compress XCFramework
-        working-directory: build/bindings/nostr-sdk-ffi/bindings-swift
+        working-directory: build/bindings/nostr-sdk-ffi/swift
         run: |
           zip -9 -r nostr_sdkFFI.xcframework.zip nostr_sdkFFI.xcframework
           echo "XCF_CHECKSUM=`swift package compute-checksum nostr_sdkFFI.xcframework.zip`" >> $GITHUB_ENV
 
       - name: Update Swift Package definition
-        working-directory: build/bindings/nostr-sdk-ffi/bindings-swift
+        working-directory: build/bindings/nostr-sdk-ffi/swift
         run: |
           sed 's#.binaryTarget(name: "nostr_sdkFFI", path: "./nostr_sdkFFI.xcframework"),#.binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/rust-nostr/nostr-sdk-swift/releases/download/${{ inputs.version }}/nostr_sdkFFI.xcframework.zip", checksum: "${{ env.XCF_CHECKSUM }}"),#;/.testTarget(name: "NostrSDKTests", dependencies: \["NostrSDK"\]),/d' Package.swift > ../../../../dist/Package.swift
           cp -r Sources ../../../../dist
@@ -68,7 +68,7 @@ jobs:
       - name: Release and attach XCFramework binary artifact
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/bindings/nostr-sdk-ffi/bindings-swift/nostr_sdkFFI.xcframework.zip"
+          artifacts: "build/bindings/nostr-sdk-ffi/swift/nostr_sdkFFI.xcframework.zip"
           tag: ${{ inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           name: ${{ inputs.version }}
