@@ -37,9 +37,7 @@ jobs:
 
       - name: Build Swift bindings
         working-directory: build/bindings/nostr-sdk-ffi
-        run: |
-          just init
-          just swift
+        run: just swift
 
       - name: Compress XCFramework
         working-directory: build/bindings/nostr-sdk-ffi/swift
