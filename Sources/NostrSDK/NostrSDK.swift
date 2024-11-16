@@ -7,8 +7,8 @@ import Foundation
 // Depending on the consumer's build setup, the low-level FFI code
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
-#if canImport(nostr_sdk_ffiFFI)
-import nostr_sdk_ffiFFI
+#if canImport(nostr_sdkFFI)
+import nostr_sdkFFI
 #endif
 
 fileprivate extension RustBuffer {
