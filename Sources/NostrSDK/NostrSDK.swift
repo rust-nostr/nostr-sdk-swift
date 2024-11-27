@@ -652,13 +652,6 @@ public protocol ClientProtocol : AnyObject {
     func disconnectRelay(url: String) async throws 
     
     /**
-     * Disike event
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-    func dislike(event: Event) async throws  -> SendEventOutput
-    
-    /**
      * Get events both from database and relays
      *
      * You can obtain the same result by merging the `Events` from different type of sources.
@@ -697,8 +690,6 @@ public protocol ClientProtocol : AnyObject {
      */
     func fetchMetadata(publicKey: PublicKey, timeout: TimeInterval?) async throws  -> Metadata
     
-    func fileMetadata(description: String, metadata: FileMetadata) async throws  -> SendEventOutput
-    
     /**
      * Get filtering
      */
@@ -723,14 +714,14 @@ public protocol ClientProtocol : AnyObject {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-    func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) async throws  -> SendEventOutput
+    func giftWrap(receiver: PublicKey, rumor: EventBuilder, extraTags: [Tag]) async throws  -> SendEventOutput
     
     /**
      * Construct Gift Wrap and send to specific relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-    func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?) async throws  -> SendEventOutput
+    func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, extraTags: [Tag]) async throws  -> SendEventOutput
     
     /**
      * Handle notifications
@@ -738,23 +729,9 @@ public protocol ClientProtocol : AnyObject {
     func handleNotifications(handler: HandleNotification) async throws 
     
     /**
-     * Like event
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-    func like(event: Event) async throws  -> SendEventOutput
-    
-    /**
      * Get relay pool
      */
     func pool()  -> RelayPool
-    
-    /**
-     * React to an [`Event`]
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-    func reaction(event: Event, reaction: String) async throws  -> SendEventOutput
     
     func relay(url: String) async throws  -> Relay
     
@@ -775,15 +752,10 @@ public protocol ClientProtocol : AnyObject {
     /**
      * Remove and disconnect relay
      *
-     * If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+     * If the relay has `GOSSIP` flag, it will not be removed from the pool and its
      * flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
      */
     func removeRelay(url: String) async throws 
-    
-    /**
-     * Repost
-     */
-    func repost(event: Event, relayUrl: String?) async throws  -> SendEventOutput
     
     /**
      * Send event
@@ -815,18 +787,21 @@ public protocol ClientProtocol : AnyObject {
     func sendMsgTo(urls: [String], msg: ClientMessage) async throws  -> Output
     
     /**
-     * Send private direct message to all relays
+     * Send a private direct message
+     *
+     * If gossip is enabled, the message will be sent to the NIP17 relays (automatically discovered).
+     * If gossip is not enabled will be sent to all relays with WRITE` relay service flag.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-    func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?) async throws  -> SendEventOutput
+    func sendPrivateMsg(receiver: PublicKey, message: String, rumorExtraTags: [Tag]) async throws  -> SendEventOutput
     
     /**
      * Send private direct message to specific relays
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-    func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, replyTo: EventId?) async throws  -> SendEventOutput
+    func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, rumorExtraTags: [Tag]) async throws  -> SendEventOutput
     
     func setMetadata(metadata: Metadata) async throws  -> SendEventOutput
     
@@ -973,15 +948,6 @@ public convenience init(signer: NostrSigner? = nil) {
         try! rustCall { uniffi_nostr_sdk_ffi_fn_free_client(pointer, $0) }
     }
 
-    
-public static func withOpts(signer: NostrSigner?, opts: Options) -> Client {
-    return try!  FfiConverterTypeClient.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_client_with_opts(
-        FfiConverterOptionTypeNostrSigner.lower(signer),
-        FfiConverterTypeOptions.lower(opts),$0
-    )
-})
-}
     
 
     
@@ -1207,28 +1173,6 @@ open func disconnectRelay(url: String)async throws  {
 }
     
     /**
-     * Disike event
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-open func dislike(event: Event)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_dislike(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEvent.lower(event)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
      * Get events both from database and relays
      *
      * You can obtain the same result by merging the `Events` from different type of sources.
@@ -1327,23 +1271,6 @@ open func fetchMetadata(publicKey: PublicKey, timeout: TimeInterval? = nil)async
         )
 }
     
-open func fileMetadata(description: String, metadata: FileMetadata)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_file_metadata(
-                    self.uniffiClonePointer(),
-                    FfiConverterString.lower(description),FfiConverterTypeFileMetadata.lower(metadata)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
     /**
      * Get filtering
      */
@@ -1403,13 +1330,13 @@ open func forceRemoveRelay(url: String)async throws  {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-open func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?)async throws  -> SendEventOutput {
+open func giftWrap(receiver: PublicKey, rumor: EventBuilder, extraTags: [Tag])async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap(
                     self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(receiver),FfiConverterTypeEventBuilder.lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
+                    FfiConverterTypePublicKey.lower(receiver),FfiConverterTypeEventBuilder.lower(rumor),FfiConverterSequenceTypeTag.lower(extraTags)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1425,13 +1352,13 @@ open func giftWrap(receiver: PublicKey, rumor: EventBuilder, expiration: Timesta
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-open func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, expiration: Timestamp?)async throws  -> SendEventOutput {
+open func giftWrapTo(urls: [String], receiver: PublicKey, rumor: EventBuilder, extraTags: [Tag])async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_client_gift_wrap_to(
                     self.uniffiClonePointer(),
-                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey.lower(receiver),FfiConverterTypeEventBuilder.lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey.lower(receiver),FfiConverterTypeEventBuilder.lower(rumor),FfiConverterSequenceTypeTag.lower(extraTags)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1463,28 +1390,6 @@ open func handleNotifications(handler: HandleNotification)async throws  {
 }
     
     /**
-     * Like event
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-open func like(event: Event)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_like(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEvent.lower(event)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
      * Get relay pool
      */
 open func pool() -> RelayPool {
@@ -1492,28 +1397,6 @@ open func pool() -> RelayPool {
     uniffi_nostr_sdk_ffi_fn_method_client_pool(self.uniffiClonePointer(),$0
     )
 })
-}
-    
-    /**
-     * React to an [`Event`]
-     *
-     * <https://github.com/nostr-protocol/nips/blob/master/25.md>
-     */
-open func reaction(event: Event, reaction: String)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_reaction(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEvent.lower(event),FfiConverterString.lower(reaction)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
 }
     
 open func relay(url: String)async throws  -> Relay {
@@ -1581,7 +1464,7 @@ open func removeAllRelays()async throws  {
     /**
      * Remove and disconnect relay
      *
-     * If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+     * If the relay has `GOSSIP` flag, it will not be removed from the pool and its
      * flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
      */
 open func removeRelay(url: String)async throws  {
@@ -1597,26 +1480,6 @@ open func removeRelay(url: String)async throws  {
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
             liftFunc: { $0 },
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Repost
-     */
-open func repost(event: Event, relayUrl: String?)async throws  -> SendEventOutput {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_client_repost(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEvent.lower(event),FfiConverterOptionString.lower(relayUrl)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSendEventOutput.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -1726,17 +1589,20 @@ open func sendMsgTo(urls: [String], msg: ClientMessage)async throws  -> Output {
 }
     
     /**
-     * Send private direct message to all relays
+     * Send a private direct message
+     *
+     * If gossip is enabled, the message will be sent to the NIP17 relays (automatically discovered).
+     * If gossip is not enabled will be sent to all relays with WRITE` relay service flag.
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId? = nil)async throws  -> SendEventOutput {
+open func sendPrivateMsg(receiver: PublicKey, message: String, rumorExtraTags: [Tag] = [])async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg(
                     self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(receiver),FfiConverterString.lower(message),FfiConverterOptionTypeEventId.lower(replyTo)
+                    FfiConverterTypePublicKey.lower(receiver),FfiConverterString.lower(message),FfiConverterSequenceTypeTag.lower(rumorExtraTags)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1752,13 +1618,13 @@ open func sendPrivateMsg(receiver: PublicKey, message: String, replyTo: EventId?
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-open func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, replyTo: EventId? = nil)async throws  -> SendEventOutput {
+open func sendPrivateMsgTo(urls: [String], receiver: PublicKey, message: String, rumorExtraTags: [Tag] = [])async throws  -> SendEventOutput {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_client_send_private_msg_to(
                     self.uniffiClonePointer(),
-                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey.lower(receiver),FfiConverterString.lower(message),FfiConverterOptionTypeEventId.lower(replyTo)
+                    FfiConverterSequenceString.lower(urls),FfiConverterTypePublicKey.lower(receiver),FfiConverterString.lower(message),FfiConverterSequenceTypeTag.lower(rumorExtraTags)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -2774,9 +2640,9 @@ open class Contact:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_contact(self.pointer, $0) }
     }
-public convenience init(pk: PublicKey, relayUrl: String? = nil, alias: String? = nil) {
+public convenience init(pk: PublicKey, relayUrl: String? = nil, alias: String? = nil)throws  {
     let pointer =
-        try! rustCall() {
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_contact_new(
         FfiConverterTypePublicKey.lower(pk),
         FfiConverterOptionString.lower(relayUrl),
@@ -3118,77 +2984,44 @@ public func FfiConverterTypeCoordinate_lower(_ value: Coordinate) -> UnsafeMutab
 
 
 
-public protocol CustomNostrDatabase : AnyObject {
+public protocol CustomNostrSigner : AnyObject {
+    
+    func backend()  -> SignerBackend
     
     /**
-     * Name of backend
+     * Get signer public key
      */
-    func backend()  -> String
+    func getPublicKey() async throws  -> PublicKey?
     
     /**
-     * Save [`Event`] into store
-     *
-     * Return `true` if event was successfully saved into database.
-     *
-     * **This method assume that [`Event`] was already verified**
+     * Sign an unsigned event
      */
-    func saveEvent(event: Event) async throws  -> Bool
+    func signEvent(unsignedEvent: UnsignedEvent) async throws  -> Event?
     
     /**
-     * Check event status by ID
-     *
-     * Check if the event is saved, deleted or not existent.
+     * NIP04 encrypt (deprecate and unsecure)
      */
-    func checkId(eventId: EventId) async throws  -> DatabaseEventStatus
+    func nip04Encrypt(publicKey: PublicKey, content: String) async throws  -> String
     
     /**
-     * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+     * NIP04 decrypt
      */
-    func hasCoordinateBeenDeleted(coordinate: Coordinate, timestamp: Timestamp) async throws  -> Bool
+    func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) async throws  -> String
     
     /**
-     * Set [`EventId`] as seen by relay
-     *
-     * Useful for NIP65 (aka gossip)
+     * NIP44 encrypt
      */
-    func eventIdSeen(eventId: EventId, relayUrl: String) async throws 
+    func nip44Encrypt(publicKey: PublicKey, content: String) async throws  -> String
     
     /**
-     * Get list of relays that have seen the [`EventId`]
+     * NIP44 decrypt
      */
-    func eventSeenOnRelays(eventId: EventId) async throws  -> [String]?
-    
-    /**
-     * Get event by ID
-     */
-    func eventById(eventId: EventId) async throws  -> Event?
-    
-    /**
-     * Count number of [`Event`] found by filters
-     *
-     * Use `Filter::new()` or `Filter::default()` to count all events.
-     */
-    func count(filters: [Filter]) async throws  -> UInt64
-    
-    /**
-     * Query store with filters
-     */
-    func query(filters: [Filter]) async throws  -> [Event]
-    
-    /**
-     * Delete all events that match the `Filter`
-     */
-    func delete(filter: Filter) async throws 
-    
-    /**
-     * Wipe all data
-     */
-    func wipe() async throws 
+    func nip44Decrypt(publicKey: PublicKey, payload: String) async throws  -> String
     
 }
 
-open class CustomNostrDatabaseImpl:
-    CustomNostrDatabase {
+open class CustomNostrSignerImpl:
+    CustomNostrSigner {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -3213,7 +3046,7 @@ open class CustomNostrDatabaseImpl:
     }
 
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_customnostrdatabase(self.pointer, $0) }
+        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_customnostrsigner(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -3222,140 +3055,49 @@ open class CustomNostrDatabaseImpl:
             return
         }
 
-        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_customnostrdatabase(pointer, $0) }
+        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_customnostrsigner(pointer, $0) }
     }
 
     
 
     
-    /**
-     * Name of backend
-     */
-open func backend() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_backend(self.uniffiClonePointer(),$0
+open func backend() -> SignerBackend {
+    return try!  FfiConverterTypeSignerBackend.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_backend(self.uniffiClonePointer(),$0
     )
 })
 }
     
     /**
-     * Save [`Event`] into store
-     *
-     * Return `true` if event was successfully saved into database.
-     *
-     * **This method assume that [`Event`] was already verified**
+     * Get signer public key
      */
-open func saveEvent(event: Event)async throws  -> Bool {
+open func getPublicKey()async throws  -> PublicKey? {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_save_event(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEvent.lower(event)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Check event status by ID
-     *
-     * Check if the event is saved, deleted or not existent.
-     */
-open func checkId(eventId: EventId)async throws  -> DatabaseEventStatus {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_check_id(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId.lower(eventId)
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_get_public_key(
+                    self.uniffiClonePointer()
+                    
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeDatabaseEventStatus.lift,
+            liftFunc: FfiConverterOptionTypePublicKey.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
     /**
-     * Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+     * Sign an unsigned event
      */
-open func hasCoordinateBeenDeleted(coordinate: Coordinate, timestamp: Timestamp)async throws  -> Bool {
+open func signEvent(unsignedEvent: UnsignedEvent)async throws  -> Event? {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_has_coordinate_been_deleted(
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_sign_event(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeCoordinate.lower(coordinate),FfiConverterTypeTimestamp.lower(timestamp)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Set [`EventId`] as seen by relay
-     *
-     * Useful for NIP65 (aka gossip)
-     */
-open func eventIdSeen(eventId: EventId, relayUrl: String)async throws  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_id_seen(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId.lower(eventId),FfiConverterString.lower(relayUrl)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Get list of relays that have seen the [`EventId`]
-     */
-open func eventSeenOnRelays(eventId: EventId)async throws  -> [String]? {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_seen_on_relays(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId.lower(eventId)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionSequenceString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Get event by ID
-     */
-open func eventById(eventId: EventId)async throws  -> Event? {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_event_by_id(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeEventId.lower(eventId)
+                    FfiConverterTypeUnsignedEvent.lower(unsignedEvent)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -3367,83 +3109,81 @@ open func eventById(eventId: EventId)async throws  -> Event? {
 }
     
     /**
-     * Count number of [`Event`] found by filters
-     *
-     * Use `Filter::new()` or `Filter::default()` to count all events.
+     * NIP04 encrypt (deprecate and unsecure)
      */
-open func count(filters: [Filter])async throws  -> UInt64 {
+open func nip04Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_count(
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_nip04_encrypt(
                     self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeFilter.lower(filters)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_u64,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_u64,
-            liftFunc: FfiConverterUInt64.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * Query store with filters
-     */
-open func query(filters: [Filter])async throws  -> [Event] {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_query(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeFilter.lower(filters)
+                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            liftFunc: FfiConverterString.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
     /**
-     * Delete all events that match the `Filter`
+     * NIP04 decrypt
      */
-open func delete(filter: Filter)async throws  {
+open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_delete(
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_nip04_decrypt(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeFilter.lower(filter)
+                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(encryptedContent)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
     /**
-     * Wipe all data
+     * NIP44 encrypt
      */
-open func wipe()async throws  {
+open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_customnostrdatabase_wipe(
-                    self.uniffiClonePointer()
-                    
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_nip44_encrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
+}
+    
+    /**
+     * NIP44 decrypt
+     */
+open func nip44Decrypt(publicKey: PublicKey, payload: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_customnostrsigner_nip44_decrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(payload)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -3459,19 +3199,19 @@ private let UNIFFI_CALLBACK_ERROR: Int32 = 1
 private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 
 // Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
+fileprivate struct UniffiCallbackInterfaceCustomNostrSigner {
 
     // Create the VTable using a series of closures.
     // Swift automatically converts these into C callback functions.
-    static var vtable: UniffiVTableCallbackInterfaceCustomNostrDatabase = UniffiVTableCallbackInterfaceCustomNostrDatabase(
+    static var vtable: UniffiVTableCallbackInterfaceCustomNostrSigner = UniffiVTableCallbackInterfaceCustomNostrSigner(
         backend: { (
             uniffiHandle: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
             uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
         ) in
             let makeCall = {
-                () throws -> String in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                () throws -> SignerBackend in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
                 return uniffiObj.backend(
@@ -3479,78 +3219,33 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             }
 
             
-            let writeReturn = { uniffiOutReturn.pointee = FfiConverterString.lower($0) }
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterTypeSignerBackend.lower($0) }
             uniffiTraitInterfaceCall(
                 callStatus: uniffiCallStatus,
                 makeCall: makeCall,
                 writeReturn: writeReturn
             )
         },
-        saveEvent: { (
+        getPublicKey: { (
             uniffiHandle: UInt64,
-            event: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteI8,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> Bool in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.saveEvent(
-                     event: try FfiConverterTypeEvent.lift(event)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: Bool) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: FfiConverterBool.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: 0,
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        checkId: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
             uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
-                () async throws -> DatabaseEventStatus in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                () async throws -> PublicKey? in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.checkId(
-                     eventId: try FfiConverterTypeEventId.lift(eventId)
+                return try await uniffiObj.getPublicKey(
                 )
             }
 
-            let uniffiHandleSuccess = { (returnValue: DatabaseEventStatus) in
+            let uniffiHandleSuccess = { (returnValue: PublicKey?) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
                     UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterTypeDatabaseEventStatus.lower(returnValue),
+                        returnValue: FfiConverterOptionTypePublicKey.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -3572,151 +3267,20 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             )
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
-        hasCoordinateBeenDeleted: { (
+        signEvent: { (
             uniffiHandle: UInt64,
-            coordinate: UnsafeMutableRawPointer,
-            timestamp: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteI8,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> Bool in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.hasCoordinateBeenDeleted(
-                     coordinate: try FfiConverterTypeCoordinate.lift(coordinate),
-                     timestamp: try FfiConverterTypeTimestamp.lift(timestamp)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: Bool) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: FfiConverterBool.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructI8(
-                        returnValue: 0,
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        eventIdSeen: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            relayUrl: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteVoid,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> () in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.eventIdSeen(
-                     eventId: try FfiConverterTypeEventId.lift(eventId),
-                     relayUrl: try FfiConverterString.lift(relayUrl)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: ()) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        eventSeenOnRelays: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> [String]? in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.eventSeenOnRelays(
-                     eventId: try FfiConverterTypeEventId.lift(eventId)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: [String]?) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterOptionSequenceString.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        eventById: { (
-            uniffiHandle: UInt64,
-            eventId: UnsafeMutableRawPointer,
+            unsignedEvent: UnsafeMutableRawPointer,
             uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
                 () async throws -> Event? in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.eventById(
-                     eventId: try FfiConverterTypeEventId.lift(eventId)
+                return try await uniffiObj.signEvent(
+                     unsignedEvent: try FfiConverterTypeUnsignedEvent.lift(unsignedEvent)
                 )
             }
 
@@ -3746,71 +3310,30 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             )
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
-        count: { (
+        nip04Encrypt: { (
             uniffiHandle: UInt64,
-            filters: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteU64,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> UInt64 in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.count(
-                     filters: try FfiConverterSequenceTypeFilter.lift(filters)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: UInt64) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructU64(
-                        returnValue: FfiConverterUInt64.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructU64(
-                        returnValue: 0,
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        query: { (
-            uniffiHandle: UInt64,
-            filters: RustBuffer,
+            publicKey: UnsafeMutableRawPointer,
+            content: RustBuffer,
             uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
-                () async throws -> [Event] in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                () async throws -> String in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.query(
-                     filters: try FfiConverterSequenceTypeFilter.lift(filters)
+                return try await uniffiObj.nip04Encrypt(
+                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
+                     content: try FfiConverterString.lift(content)
                 )
             }
 
-            let uniffiHandleSuccess = { (returnValue: [Event]) in
+            let uniffiHandleSuccess = { (returnValue: String) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
                     UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterSequenceTypeEvent.lower(returnValue),
+                        returnValue: FfiConverterString.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -3832,27 +3355,30 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             )
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
-        delete: { (
+        nip04Decrypt: { (
             uniffiHandle: UInt64,
-            filter: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteVoid,
+            publicKey: UnsafeMutableRawPointer,
+            encryptedContent: RustBuffer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
-                () async throws -> () in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                () async throws -> String in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.delete(
-                     filter: try FfiConverterTypeFilter.lift(filter)
+                return try await uniffiObj.nip04Decrypt(
+                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
+                     encryptedContent: try FfiConverterString.lift(encryptedContent)
                 )
             }
 
-            let uniffiHandleSuccess = { (returnValue: ()) in
+            let uniffiHandleSuccess = { (returnValue: String) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: FfiConverterString.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -3860,7 +3386,8 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             let uniffiHandleError = { (statusCode, errorBuf) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: RustBuffer.empty(),
                         callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
                     )
                 )
@@ -3873,25 +3400,30 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             )
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
-        wipe: { (
+        nip44Encrypt: { (
             uniffiHandle: UInt64,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteVoid,
+            publicKey: UnsafeMutableRawPointer,
+            content: RustBuffer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
             uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
         ) in
             let makeCall = {
-                () async throws -> () in
-                guard let uniffiObj = try? FfiConverterTypeCustomNostrDatabase.handleMap.get(handle: uniffiHandle) else {
+                () async throws -> String in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
-                return try await uniffiObj.wipe(
+                return try await uniffiObj.nip44Encrypt(
+                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
+                     content: try FfiConverterString.lift(content)
                 )
             }
 
-            let uniffiHandleSuccess = { (returnValue: ()) in
+            let uniffiHandleSuccess = { (returnValue: String) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: FfiConverterString.lower(returnValue),
                         callStatus: RustCallStatus()
                     )
                 )
@@ -3899,7 +3431,53 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             let uniffiHandleError = { (statusCode, errorBuf) in
                 uniffiFutureCallback(
                     uniffiCallbackData,
-                    UniffiForeignFutureStructVoid(
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: RustBuffer.empty(),
+                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
+                    )
+                )
+            }
+            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
+                makeCall: makeCall,
+                handleSuccess: uniffiHandleSuccess,
+                handleError: uniffiHandleError,
+                lowerError: FfiConverterTypeNostrSdkError.lower
+            )
+            uniffiOutReturn.pointee = uniffiForeignFuture
+        },
+        nip44Decrypt: { (
+            uniffiHandle: UInt64,
+            publicKey: UnsafeMutableRawPointer,
+            payload: RustBuffer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
+            uniffiCallbackData: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
+        ) in
+            let makeCall = {
+                () async throws -> String in
+                guard let uniffiObj = try? FfiConverterTypeCustomNostrSigner.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try await uniffiObj.nip44Decrypt(
+                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
+                     payload: try FfiConverterString.lift(payload)
+                )
+            }
+
+            let uniffiHandleSuccess = { (returnValue: String) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: FfiConverterString.lower(returnValue),
+                        callStatus: RustCallStatus()
+                    )
+                )
+            }
+            let uniffiHandleError = { (statusCode, errorBuf) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureStructRustBuffer(
+                        returnValue: RustBuffer.empty(),
                         callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
                     )
                 )
@@ -3913,36 +3491,36 @@ fileprivate struct UniffiCallbackInterfaceCustomNostrDatabase {
             uniffiOutReturn.pointee = uniffiForeignFuture
         },
         uniffiFree: { (uniffiHandle: UInt64) -> () in
-            let result = try? FfiConverterTypeCustomNostrDatabase.handleMap.remove(handle: uniffiHandle)
+            let result = try? FfiConverterTypeCustomNostrSigner.handleMap.remove(handle: uniffiHandle)
             if result == nil {
-                print("Uniffi callback interface CustomNostrDatabase: handle missing in uniffiFree")
+                print("Uniffi callback interface CustomNostrSigner: handle missing in uniffiFree")
             }
         }
     )
 }
 
-private func uniffiCallbackInitCustomNostrDatabase() {
-    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_customnostrdatabase(&UniffiCallbackInterfaceCustomNostrDatabase.vtable)
+private func uniffiCallbackInitCustomNostrSigner() {
+    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_customnostrsigner(&UniffiCallbackInterfaceCustomNostrSigner.vtable)
 }
 
-public struct FfiConverterTypeCustomNostrDatabase: FfiConverter {
-    fileprivate static var handleMap = UniffiHandleMap<CustomNostrDatabase>()
+public struct FfiConverterTypeCustomNostrSigner: FfiConverter {
+    fileprivate static var handleMap = UniffiHandleMap<CustomNostrSigner>()
 
     typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = CustomNostrDatabase
+    typealias SwiftType = CustomNostrSigner
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrDatabase {
-        return CustomNostrDatabaseImpl(unsafeFromRawPointer: pointer)
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrSigner {
+        return CustomNostrSignerImpl(unsafeFromRawPointer: pointer)
     }
 
-    public static func lower(_ value: CustomNostrDatabase) -> UnsafeMutableRawPointer {
+    public static func lower(_ value: CustomNostrSigner) -> UnsafeMutableRawPointer {
         guard let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: handleMap.insert(obj: value))) else {
             fatalError("Cast to UnsafeMutableRawPointer failed")
         }
         return ptr
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomNostrDatabase {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomNostrSigner {
         let v: UInt64 = try readInt(&buf)
         // The Rust code won't compile if a pointer won't fit in a UInt64.
         // We have to go via `UInt` because that's the thing that's the size of a pointer.
@@ -3953,7 +3531,7 @@ public struct FfiConverterTypeCustomNostrDatabase: FfiConverter {
         return try lift(ptr!)
     }
 
-    public static func write(_ value: CustomNostrDatabase, into buf: inout [UInt8]) {
+    public static func write(_ value: CustomNostrSigner, into buf: inout [UInt8]) {
         // This fiddling is because `Int` is the thing that's the same size as a pointer.
         // The Rust code won't compile if a pointer won't fit in a `UInt64`.
         writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
@@ -3963,12 +3541,12 @@ public struct FfiConverterTypeCustomNostrDatabase: FfiConverter {
 
 
 
-public func FfiConverterTypeCustomNostrDatabase_lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrDatabase {
-    return try FfiConverterTypeCustomNostrDatabase.lift(pointer)
+public func FfiConverterTypeCustomNostrSigner_lift(_ pointer: UnsafeMutableRawPointer) throws -> CustomNostrSigner {
+    return try FfiConverterTypeCustomNostrSigner.lift(pointer)
 }
 
-public func FfiConverterTypeCustomNostrDatabase_lower(_ value: CustomNostrDatabase) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeCustomNostrDatabase.lower(value)
+public func FfiConverterTypeCustomNostrSigner_lower(_ value: CustomNostrSigner) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeCustomNostrSigner.lower(value)
 }
 
 
@@ -4485,11 +4063,6 @@ public protocol EventBuilderProtocol : AnyObject {
     
     func none() async 
     
-    /**
-     * Add tags
-     */
-    func addTags(tags: [Tag])  -> EventBuilder
-    
     func build(publicKey: PublicKey)  -> UnsignedEvent
     
     /**
@@ -4507,6 +4080,13 @@ public protocol EventBuilderProtocol : AnyObject {
     func sign(signer: NostrSigner) async throws  -> Event
     
     func signWithKeys(keys: Keys) throws  -> Event
+    
+    /**
+     * Add tags
+     *
+     * This method extend the current tags (if any).
+     */
+    func tags(tags: [Tag])  -> EventBuilder
     
 }
 
@@ -4540,13 +4120,12 @@ open class EventBuilder:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_eventbuilder(self.pointer, $0) }
     }
-public convenience init(kind: Kind, content: String, tags: [Tag]) {
+public convenience init(kind: Kind, content: String) {
     let pointer =
         try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_new(
         FfiConverterTypeKind.lower(kind),
-        FfiConverterString.lower(content),
-        FfiConverterSequenceTypeTag.lower(tags),$0
+        FfiConverterString.lower(content),$0
     )
 }
     self.init(unsafeFromRawPointer: pointer)
@@ -4687,6 +4266,24 @@ public static func channelMsg(channelId: EventId, relayUrl: String, content: Str
 }
     
     /**
+     * Comment
+     *
+     * If no `root` is passed, the `rely_to` will be used for root `e` tag.
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/22.md>
+     */
+public static func comment(content: String, commentTo: Event, root: Event? = nil, relayUrl: String? = nil)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_comment(
+        FfiConverterString.lower(content),
+        FfiConverterTypeEvent.lower(commentTo),
+        FfiConverterOptionTypeEvent.lower(root),
+        FfiConverterOptionString.lower(relayUrl),$0
+    )
+})
+}
+    
+    /**
      * Communities
      *
      * <https://github.com/nostr-protocol/nips/blob/master/51.md>
@@ -4717,8 +4314,8 @@ public static func contactList(list: [Contact]) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/58.md>
      */
-public static func defineBadge(badgeId: String, name: String? = nil, description: String? = nil, image: String? = nil, imageDimensions: ImageDimensions? = nil, thumbnails: [Image] = []) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+public static func defineBadge(badgeId: String, name: String? = nil, description: String? = nil, image: String? = nil, imageDimensions: ImageDimensions? = nil, thumbnails: [Image] = [])throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_define_badge(
         FfiConverterString.lower(badgeId),
         FfiConverterOptionString.lower(name),
@@ -4858,8 +4455,8 @@ public static func hideChannelMsg(messageId: EventId, reason: String? = nil) -> 
      *
      * <https://github.com/nostr-protocol/nips/blob/master/98.md>
      */
-public static func httpAuth(data: HttpData) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+public static func httpAuth(data: HttpData)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_http_auth(
         FfiConverterTypeHttpData.lower(data),$0
     )
@@ -4911,11 +4508,10 @@ public static func jobFeedback(data: JobFeedbackData) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/90.md>
      */
-public static func jobRequest(kind: Kind, tags: [Tag])throws  -> EventBuilder {
+public static func jobRequest(kind: Kind)throws  -> EventBuilder {
     return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_job_request(
-        FfiConverterTypeKind.lower(kind),
-        FfiConverterSequenceTypeTag.lower(tags),$0
+        FfiConverterTypeKind.lower(kind),$0
     )
 })
 }
@@ -4955,8 +4551,8 @@ public static func label(labelNamespace: String, labels: [String]) -> EventBuild
      *
      * <https://github.com/nostr-protocol/nips/blob/master/53.md>
      */
-public static func liveEvent(liveEvent: LiveEvent) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+public static func liveEvent(liveEvent: LiveEvent)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_live_event(
         FfiConverterTypeLiveEvent.lower(liveEvent),$0
     )
@@ -4984,11 +4580,10 @@ public static func liveEventMsg(liveEventId: String, liveEventHost: PublicKey, c
      *
      * <https://github.com/nostr-protocol/nips/blob/master/23.md>
      */
-public static func longFormTextNote(content: String, tags: [Tag]) -> EventBuilder {
+public static func longFormTextNote(content: String) -> EventBuilder {
     return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_long_form_text_note(
-        FfiConverterString.lower(content),
-        FfiConverterSequenceTypeTag.lower(tags),$0
+        FfiConverterString.lower(content),$0
     )
 })
 }
@@ -5071,12 +4666,11 @@ public static func pinnedNotes(ids: [EventId]) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/17.md>
      */
-public static func privateMsgRumor(receiver: PublicKey, message: String, replyTo: EventId? = nil) -> EventBuilder {
+public static func privateMsgRumor(receiver: PublicKey, message: String) -> EventBuilder {
     return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_private_msg_rumor(
         FfiConverterTypePublicKey.lower(receiver),
-        FfiConverterString.lower(message),
-        FfiConverterOptionTypeEventId.lower(replyTo),$0
+        FfiConverterString.lower(message),$0
     )
 })
 }
@@ -5215,8 +4809,8 @@ public static func report(tags: [Tag], content: String) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/18.md>
      */
-public static func repost(event: Event, relayUrl: String? = nil) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+public static func repost(event: Event, relayUrl: String? = nil)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_repost(
         FfiConverterTypeEvent.lower(event),
         FfiConverterOptionString.lower(relayUrl),$0
@@ -5229,11 +4823,11 @@ public static func repost(event: Event, relayUrl: String? = nil) -> EventBuilder
      *
      * <https://github.com/nostr-protocol/nips/blob/master/59.md>
      */
-public static func seal(signer: NostrSigner, receiverPublicKey: PublicKey, rumor: UnsignedEvent)async throws  -> EventBuilder {
+public static func seal(signer: NostrSigner, receiverPublicKey: PublicKey, rumor: EventBuilder)async throws  -> EventBuilder {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_seal(FfiConverterTypeNostrSigner.lower(signer),FfiConverterTypePublicKey.lower(receiverPublicKey),FfiConverterTypeUnsignedEvent.lower(rumor)
+                uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_seal(FfiConverterTypeNostrSigner.lower(signer),FfiConverterTypePublicKey.lower(receiverPublicKey),FfiConverterTypeEventBuilder.lower(rumor)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
@@ -5275,11 +4869,10 @@ public static func stallData(data: StallData) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/01.md>
      */
-public static func textNote(content: String, tags: [Tag]) -> EventBuilder {
+public static func textNote(content: String) -> EventBuilder {
     return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_text_note(
-        FfiConverterString.lower(content),
-        FfiConverterSequenceTypeTag.lower(tags),$0
+        FfiConverterString.lower(content),$0
     )
 })
 }
@@ -5291,8 +4884,8 @@ public static func textNote(content: String, tags: [Tag]) -> EventBuilder {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/10.md>
      */
-public static func textNoteReply(content: String, replyTo: Event, root: Event? = nil, relayUrl: String? = nil) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+public static func textNoteReply(content: String, replyTo: Event, root: Event? = nil, relayUrl: String? = nil)throws  -> EventBuilder {
+    return try  FfiConverterTypeEventBuilder.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_eventbuilder_text_note_reply(
         FfiConverterString.lower(content),
         FfiConverterTypeEvent.lower(replyTo),
@@ -5351,17 +4944,6 @@ open func none()async  {
         )
 }
     
-    /**
-     * Add tags
-     */
-open func addTags(tags: [Tag]) -> EventBuilder {
-    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_add_tags(self.uniffiClonePointer(),
-        FfiConverterSequenceTypeTag.lower(tags),$0
-    )
-})
-}
-    
 open func build(publicKey: PublicKey) -> UnsignedEvent {
     return try!  FfiConverterTypeUnsignedEvent.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_eventbuilder_build(self.uniffiClonePointer(),
@@ -5415,6 +4997,19 @@ open func signWithKeys(keys: Keys)throws  -> Event {
     return try  FfiConverterTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_method_eventbuilder_sign_with_keys(self.uniffiClonePointer(),
         FfiConverterTypeKeys.lower(keys),$0
+    )
+})
+}
+    
+    /**
+     * Add tags
+     *
+     * This method extend the current tags (if any).
+     */
+open func tags(tags: [Tag]) -> EventBuilder {
+    return try!  FfiConverterTypeEventBuilder.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_tags(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeTag.lower(tags),$0
     )
 })
 }
@@ -5692,155 +5287,6 @@ public func FfiConverterTypeEventId_lift(_ pointer: UnsafeMutableRawPointer) thr
 
 public func FfiConverterTypeEventId_lower(_ value: EventId) -> UnsafeMutableRawPointer {
     return FfiConverterTypeEventId.lower(value)
-}
-
-
-
-
-public protocol EventSourceProtocol : AnyObject {
-    
-}
-
-open class EventSource:
-    EventSourceProtocol {
-    fileprivate let pointer: UnsafeMutableRawPointer!
-
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
-    public struct NoPointer {
-        public init() {}
-    }
-
-    // TODO: We'd like this to be `private` but for Swifty reasons,
-    // we can't implement `FfiConverter` without making this `required` and we can't
-    // make it `required` without making it `public`.
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
-    }
-
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
-    }
-
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_eventsource(self.pointer, $0) }
-    }
-    // No primary constructor declared for this class.
-
-    deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_nostr_sdk_ffi_fn_free_eventsource(pointer, $0) }
-    }
-
-    
-    /**
-     * Both from database and relays
-     */
-public static func both(timeout: TimeInterval? = nil) -> EventSource {
-    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_both(
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
-}
-    
-    /**
-     * Both from database and specific relays
-     */
-public static func bothWithSpecificRelays(urls: [String], timeout: TimeInterval? = nil) -> EventSource {
-    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_both_with_specific_relays(
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
-}
-    
-    /**
-     * Database only
-     */
-public static func database() -> EventSource {
-    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_database($0
-    )
-})
-}
-    
-    /**
-     * Relays only
-     */
-public static func relays(timeout: TimeInterval? = nil) -> EventSource {
-    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_relays(
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
-}
-    
-    /**
-     * From specific relays only
-     */
-public static func specificRelays(urls: [String], timeout: TimeInterval? = nil) -> EventSource {
-    return try!  FfiConverterTypeEventSource.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_eventsource_specific_relays(
-        FfiConverterSequenceString.lower(urls),
-        FfiConverterOptionDuration.lower(timeout),$0
-    )
-})
-}
-    
-
-    
-
-}
-
-public struct FfiConverterTypeEventSource: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
-    typealias SwiftType = EventSource
-
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> EventSource {
-        return EventSource(unsafeFromRawPointer: pointer)
-    }
-
-    public static func lower(_ value: EventSource) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EventSource {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
-    }
-
-    public static func write(_ value: EventSource, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
-    }
-}
-
-
-
-
-public func FfiConverterTypeEventSource_lift(_ pointer: UnsafeMutableRawPointer) throws -> EventSource {
-    return try FfiConverterTypeEventSource.lift(pointer)
-}
-
-public func FfiConverterTypeEventSource_lower(_ value: EventSource) -> UnsafeMutableRawPointer {
-    return FfiConverterTypeEventSource.lower(value)
 }
 
 
@@ -7425,16 +6871,6 @@ public func FfiConverterTypeJobFeedbackData_lower(_ value: JobFeedbackData) -> U
  */
 public protocol KeysProtocol : AnyObject {
     
-    func getPublicKey() async throws  -> PublicKey?
-    
-    func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) async throws  -> String
-    
-    func nip04Encrypt(publicKey: PublicKey, content: String) async throws  -> String
-    
-    func nip44Decrypt(publicKey: PublicKey, payload: String) async throws  -> String
-    
-    func nip44Encrypt(publicKey: PublicKey, content: String) async throws  -> String
-    
     /**
      * Get public key
      */
@@ -7444,8 +6880,6 @@ public protocol KeysProtocol : AnyObject {
      * Get secret key
      */
     func secretKey()  -> SecretKey
-    
-    func signEvent(unsigned: UnsignedEvent) async throws  -> Event?
     
     /**
      * Creates a schnorr signature of a message.
@@ -7567,91 +7001,6 @@ public static func vanity(prefixes: [String], bech32: Bool, numCores: UInt8)thro
     
 
     
-open func getPublicKey()async throws  -> PublicKey? {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_get_public_key(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypePublicKey.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)async throws  -> String {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_nip04_decrypt(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(encryptedContent)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-open func nip04Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_nip04_encrypt(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-open func nip44Decrypt(publicKey: PublicKey, payload: String)async throws  -> String {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_nip44_decrypt(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(payload)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_nip44_encrypt(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
     /**
      * Get public key
      */
@@ -7670,23 +7019,6 @@ open func secretKey() -> SecretKey {
     uniffi_nostr_sdk_ffi_fn_method_keys_secret_key(self.uniffiClonePointer(),$0
     )
 })
-}
-    
-open func signEvent(unsigned: UnsignedEvent)async throws  -> Event? {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_keys_sign_event(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeUnsignedEvent.lower(unsigned)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypeEvent.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
 }
     
     /**
@@ -8608,32 +7940,37 @@ public protocol NwcProtocol : AnyObject {
     /**
      * Get info
      */
-    func getInfo() async throws  -> GetInfoResponseResult
+    func getInfo() async throws  -> GetInfoResponse
     
     /**
      * List transactions
      */
-    func listTransactions(params: ListTransactionsRequestParams) async throws  -> [LookupInvoiceResponseResult]
+    func listTransactions(params: ListTransactionsRequest) async throws  -> [LookupInvoiceResponse]
     
     /**
      * Lookup invoice
      */
-    func lookupInvoice(params: LookupInvoiceRequestParams) async throws  -> LookupInvoiceResponseResult
+    func lookupInvoice(params: LookupInvoiceRequest) async throws  -> LookupInvoiceResponse
     
     /**
      * Create invoice
      */
-    func makeInvoice(params: MakeInvoiceRequestParams) async throws  -> MakeInvoiceResponseResult
+    func makeInvoice(params: MakeInvoiceRequest) async throws  -> MakeInvoiceResponse
     
     /**
      * Pay invoice
      */
-    func payInvoice(invoice: String) async throws  -> String
+    func payInvoice(params: PayInvoiceRequest) async throws  -> PayInvoiceResponse
     
     /**
      * Pay keysend
      */
-    func payKeysend(params: PayKeysendRequestParams) async throws  -> PayKeysendResponseResult
+    func payKeysend(params: PayKeysendRequest) async throws  -> PayKeysendResponse
+    
+    /**
+     * Get relay status
+     */
+    func status()  -> RelayStatus
     
 }
 
@@ -8727,7 +8064,7 @@ open func getBalance()async throws  -> UInt64 {
     /**
      * Get info
      */
-open func getInfo()async throws  -> GetInfoResponseResult {
+open func getInfo()async throws  -> GetInfoResponse {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -8739,7 +8076,7 @@ open func getInfo()async throws  -> GetInfoResponseResult {
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeGetInfoResponseResult.lift,
+            liftFunc: FfiConverterTypeGetInfoResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8747,19 +8084,19 @@ open func getInfo()async throws  -> GetInfoResponseResult {
     /**
      * List transactions
      */
-open func listTransactions(params: ListTransactionsRequestParams)async throws  -> [LookupInvoiceResponseResult] {
+open func listTransactions(params: ListTransactionsRequest)async throws  -> [LookupInvoiceResponse] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nwc_list_transactions(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeListTransactionsRequestParams.lower(params)
+                    FfiConverterTypeListTransactionsRequest.lower(params)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypeLookupInvoiceResponseResult.lift,
+            liftFunc: FfiConverterSequenceTypeLookupInvoiceResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8767,19 +8104,19 @@ open func listTransactions(params: ListTransactionsRequestParams)async throws  -
     /**
      * Lookup invoice
      */
-open func lookupInvoice(params: LookupInvoiceRequestParams)async throws  -> LookupInvoiceResponseResult {
+open func lookupInvoice(params: LookupInvoiceRequest)async throws  -> LookupInvoiceResponse {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nwc_lookup_invoice(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeLookupInvoiceRequestParams.lower(params)
+                    FfiConverterTypeLookupInvoiceRequest.lower(params)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeLookupInvoiceResponseResult.lift,
+            liftFunc: FfiConverterTypeLookupInvoiceResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8787,19 +8124,19 @@ open func lookupInvoice(params: LookupInvoiceRequestParams)async throws  -> Look
     /**
      * Create invoice
      */
-open func makeInvoice(params: MakeInvoiceRequestParams)async throws  -> MakeInvoiceResponseResult {
+open func makeInvoice(params: MakeInvoiceRequest)async throws  -> MakeInvoiceResponse {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nwc_make_invoice(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeMakeInvoiceRequestParams.lower(params)
+                    FfiConverterTypeMakeInvoiceRequest.lower(params)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeMakeInvoiceResponseResult.lift,
+            liftFunc: FfiConverterTypeMakeInvoiceResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8807,19 +8144,19 @@ open func makeInvoice(params: MakeInvoiceRequestParams)async throws  -> MakeInvo
     /**
      * Pay invoice
      */
-open func payInvoice(invoice: String)async throws  -> String {
+open func payInvoice(params: PayInvoiceRequest)async throws  -> PayInvoiceResponse {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nwc_pay_invoice(
                     self.uniffiClonePointer(),
-                    FfiConverterString.lower(invoice)
+                    FfiConverterTypePayInvoiceRequest.lower(params)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
+            liftFunc: FfiConverterTypePayInvoiceResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -8827,21 +8164,31 @@ open func payInvoice(invoice: String)async throws  -> String {
     /**
      * Pay keysend
      */
-open func payKeysend(params: PayKeysendRequestParams)async throws  -> PayKeysendResponseResult {
+open func payKeysend(params: PayKeysendRequest)async throws  -> PayKeysendResponse {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nwc_pay_keysend(
                     self.uniffiClonePointer(),
-                    FfiConverterTypePayKeysendRequestParams.lower(params)
+                    FfiConverterTypePayKeysendRequest.lower(params)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypePayKeysendResponseResult.lift,
+            liftFunc: FfiConverterTypePayKeysendResponse.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
+}
+    
+    /**
+     * Get relay status
+     */
+open func status() -> RelayStatus {
+    return try!  FfiConverterTypeRelayStatus.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nwc_status(self.uniffiClonePointer(),$0
+    )
+})
 }
     
 
@@ -9696,7 +9043,7 @@ public protocol NostrConnectProtocol : AnyObject {
      */
     func bunkerUri() async throws  -> NostrConnectUri
     
-    func getPublicKey() async throws  -> PublicKey?
+    func getPublicKey() async throws  -> PublicKey
     
     func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) async throws  -> String
     
@@ -9711,7 +9058,7 @@ public protocol NostrConnectProtocol : AnyObject {
      */
     func relays()  -> [String]
     
-    func signEvent(unsigned: UnsignedEvent) async throws  -> Event?
+    func signEvent(unsignedEvent: UnsignedEvent) async throws  -> Event
     
 }
 
@@ -9790,7 +9137,7 @@ open func bunkerUri()async throws  -> NostrConnectUri {
         )
 }
     
-open func getPublicKey()async throws  -> PublicKey? {
+open func getPublicKey()async throws  -> PublicKey {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -9799,10 +9146,10 @@ open func getPublicKey()async throws  -> PublicKey? {
                     
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypePublicKey.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypePublicKey.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -9885,19 +9232,19 @@ open func relays() -> [String] {
 })
 }
     
-open func signEvent(unsigned: UnsignedEvent)async throws  -> Event? {
+open func signEvent(unsignedEvent: UnsignedEvent)async throws  -> Event {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nostrconnect_sign_event(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUnsignedEvent.lower(unsigned)
+                    FfiConverterTypeUnsignedEvent.lower(unsignedEvent)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypeEvent.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -10158,12 +9505,12 @@ public protocol NostrConnectRemoteSignerProtocol : AnyObject {
     /**
      * Get `bunker` URI
      */
-    func bunkerUri() async  -> NostrConnectUri
+    func bunkerUri()  -> NostrConnectUri
     
     /**
      * Get signer relays
      */
-    func relays() async  -> [String]
+    func relays()  -> [String]
     
     /**
      * Serve signer
@@ -10207,7 +9554,18 @@ open class NostrConnectRemoteSigner:
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_nostr_sdk_ffi_fn_clone_nostrconnectremotesigner(self.pointer, $0) }
     }
-    // No primary constructor declared for this class.
+public convenience init(keys: NostrConnectKeys, relays: [String], secret: String? = nil, opts: RelayOptions? = nil)throws  {
+    let pointer =
+        try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_new(
+        FfiConverterTypeNostrConnectKeys.lower(keys),
+        FfiConverterSequenceString.lower(relays),
+        FfiConverterOptionString.lower(secret),
+        FfiConverterOptionTypeRelayOptions.lower(opts),$0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
 
     deinit {
         guard let pointer = pointer else {
@@ -10221,34 +9579,15 @@ open class NostrConnectRemoteSigner:
     /**
      * Construct remote signer from client URI (`nostrconnect://..`)
      */
-public static func fromUri(uri: NostrConnectUri, secretKey: SecretKey, secret: String? = nil, opts: RelayOptions? = nil)async throws  -> NostrConnectRemoteSigner {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_from_uri(FfiConverterTypeNostrConnectURI.lower(uri),FfiConverterTypeSecretKey.lower(secretKey),FfiConverterOptionString.lower(secret),FfiConverterOptionTypeRelayOptions.lower(opts)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeNostrConnectRemoteSigner.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-public static func `init`(secretKey: SecretKey, relays: [String], secret: String? = nil, opts: RelayOptions? = nil)async throws  -> NostrConnectRemoteSigner {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_init(FfiConverterTypeSecretKey.lower(secretKey),FfiConverterSequenceString.lower(relays),FfiConverterOptionString.lower(secret),FfiConverterOptionTypeRelayOptions.lower(opts)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeNostrConnectRemoteSigner.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
+public static func fromUri(uri: NostrConnectUri, keys: NostrConnectKeys, secret: String? = nil, opts: RelayOptions? = nil)throws  -> NostrConnectRemoteSigner {
+    return try  FfiConverterTypeNostrConnectRemoteSigner.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrconnectremotesigner_from_uri(
+        FfiConverterTypeNostrConnectURI.lower(uri),
+        FfiConverterTypeNostrConnectKeys.lower(keys),
+        FfiConverterOptionString.lower(secret),
+        FfiConverterOptionTypeRelayOptions.lower(opts),$0
+    )
+})
 }
     
 
@@ -10256,43 +9595,21 @@ public static func `init`(secretKey: SecretKey, relays: [String], secret: String
     /**
      * Get `bunker` URI
      */
-open func bunkerUri()async  -> NostrConnectUri {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_bunker_uri(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeNostrConnectURI.lift,
-            errorHandler: nil
-            
-        )
+open func bunkerUri() -> NostrConnectUri {
+    return try!  FfiConverterTypeNostrConnectURI.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_bunker_uri(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
      * Get signer relays
      */
-open func relays()async  -> [String] {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_relays(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: nil
-            
-        )
+open func relays() -> [String] {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnectremotesigner_relays(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -10522,12 +9839,11 @@ public func FfiConverterTypeNostrConnectSignerActions_lower(_ value: NostrConnec
 
 public protocol NostrConnectUriProtocol : AnyObject {
     
-    func asString()  -> String
-    
 }
 
 open class NostrConnectUri:
     CustomDebugStringConvertible,
+    CustomStringConvertible,
     Equatable,
     Hashable,
     NostrConnectUriProtocol {
@@ -10578,17 +9894,18 @@ public static func parse(uri: String)throws  -> NostrConnectUri {
     
 
     
-open func asString() -> String {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_as_string(self.uniffiClonePointer(),$0
-    )
-})
-}
-    
     open var debugDescription: String {
         return try!  FfiConverterString.lift(
             try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_uniffi_trait_debug(self.uniffiClonePointer(),$0
+    )
+}
+        )
+    }
+    open var description: String {
+        return try!  FfiConverterString.lift(
+            try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nostrconnecturi_uniffi_trait_display(self.uniffiClonePointer(),$0
     )
 }
         )
@@ -10678,9 +9995,9 @@ public protocol NostrDatabaseProtocol : AnyObject {
      */
     func eventSeenOnRelays(eventId: EventId) async throws  -> [String]?
     
-    func profile(publicKey: PublicKey) async throws  -> Profile
+    func metadata(publicKey: PublicKey) async throws  -> Metadata?
     
-    func query(filters: [Filter]) async throws  -> [Event]
+    func query(filters: [Filter]) async throws  -> Events
     
     /**
      * Save [`Event`] into store
@@ -10734,14 +10051,6 @@ open class NostrDatabase:
         try! rustCall { uniffi_nostr_sdk_ffi_fn_free_nostrdatabase(pointer, $0) }
     }
 
-    
-public static func custom(database: CustomNostrDatabase) -> NostrDatabase {
-    return try!  FfiConverterTypeNostrDatabase.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_constructor_nostrdatabase_custom(
-        FfiConverterTypeCustomNostrDatabase.lower(database),$0
-    )
-})
-}
     
     /**
      * LMDB backend
@@ -10833,24 +10142,24 @@ open func eventSeenOnRelays(eventId: EventId)async throws  -> [String]? {
         )
 }
     
-open func profile(publicKey: PublicKey)async throws  -> Profile {
+open func metadata(publicKey: PublicKey)async throws  -> Metadata? {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_profile(
+                uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_metadata(
                     self.uniffiClonePointer(),
                     FfiConverterTypePublicKey.lower(publicKey)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeProfile.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeMetadata.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
-open func query(filters: [Filter])async throws  -> [Event] {
+open func query(filters: [Filter])async throws  -> Events {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -10859,10 +10168,10 @@ open func query(filters: [Filter])async throws  -> [Event] {
                     FfiConverterSequenceTypeFilter.lower(filters)
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypeEvent.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvents.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
@@ -11066,42 +10375,26 @@ public func FfiConverterTypeNostrLibrary_lower(_ value: NostrLibrary) -> UnsafeM
 
 
 
-public protocol NostrSigner : AnyObject {
+public protocol NostrSignerProtocol : AnyObject {
     
-    /**
-     * Get signer public key
-     */
-    func getPublicKey() async throws  -> PublicKey?
+    func backend()  -> SignerBackend
     
-    /**
-     * Sign an unsigned event
-     */
-    func signEvent(unsigned: UnsignedEvent) async throws  -> Event?
+    func getPublicKey() async throws  -> PublicKey
     
-    /**
-     * NIP04 encrypt (deprecate and unsecure)
-     */
-    func nip04Encrypt(publicKey: PublicKey, content: String) async throws  -> String
-    
-    /**
-     * NIP04 decrypt
-     */
     func nip04Decrypt(publicKey: PublicKey, encryptedContent: String) async throws  -> String
     
-    /**
-     * NIP44 encrypt
-     */
+    func nip04Encrypt(publicKey: PublicKey, content: String) async throws  -> String
+    
+    func nip44Decrypt(publicKey: PublicKey, payload: String) async throws  -> String
+    
     func nip44Encrypt(publicKey: PublicKey, content: String) async throws  -> String
     
-    /**
-     * NIP44 decrypt
-     */
-    func nip44Decrypt(publicKey: PublicKey, payload: String) async throws  -> String
+    func signEvent(unsignedEvent: UnsignedEvent) async throws  -> Event
     
 }
 
-open class NostrSignerImpl:
-    NostrSigner {
+open class NostrSigner:
+    NostrSignerProtocol {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -11139,12 +10432,40 @@ open class NostrSignerImpl:
     }
 
     
+public static func custom(custom: CustomNostrSigner) -> NostrSigner {
+    return try!  FfiConverterTypeNostrSigner.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrsigner_custom(
+        FfiConverterTypeCustomNostrSigner.lower(custom),$0
+    )
+})
+}
+    
+public static func keys(keys: Keys) -> NostrSigner {
+    return try!  FfiConverterTypeNostrSigner.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrsigner_keys(
+        FfiConverterTypeKeys.lower(keys),$0
+    )
+})
+}
+    
+public static func nostrConnect(connect: NostrConnect) -> NostrSigner {
+    return try!  FfiConverterTypeNostrSigner.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_constructor_nostrsigner_nostr_connect(
+        FfiConverterTypeNostrConnect.lower(connect),$0
+    )
+})
+}
+    
 
     
-    /**
-     * Get signer public key
-     */
-open func getPublicKey()async throws  -> PublicKey? {
+open func backend() -> SignerBackend {
+    return try!  FfiConverterTypeSignerBackend.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_nostrsigner_backend(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func getPublicKey()async throws  -> PublicKey {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -11153,57 +10474,14 @@ open func getPublicKey()async throws  -> PublicKey? {
                     
                 )
             },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypePublicKey.lift,
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypePublicKey.lift,
             errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
-    /**
-     * Sign an unsigned event
-     */
-open func signEvent(unsigned: UnsignedEvent)async throws  -> Event? {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeUnsignedEvent.lower(unsigned)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionTypeEvent.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * NIP04 encrypt (deprecate and unsecure)
-     */
-open func nip04Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_encrypt(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
-}
-    
-    /**
-     * NIP04 decrypt
-     */
 open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
@@ -11221,14 +10499,11 @@ open func nip04Decrypt(publicKey: PublicKey, encryptedContent: String)async thro
         )
 }
     
-    /**
-     * NIP44 encrypt
-     */
-open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
+open func nip04Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_encrypt(
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip04_encrypt(
                     self.uniffiClonePointer(),
                     FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
                 )
@@ -11241,9 +10516,6 @@ open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> St
         )
 }
     
-    /**
-     * NIP44 decrypt
-     */
 open func nip44Decrypt(publicKey: PublicKey, payload: String)async throws  -> String {
     return
         try  await uniffiRustCallAsync(
@@ -11261,308 +10533,54 @@ open func nip44Decrypt(publicKey: PublicKey, payload: String)async throws  -> St
         )
 }
     
-
+open func nip44Encrypt(publicKey: PublicKey, content: String)async throws  -> String {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_nip44_encrypt(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypePublicKey.lower(publicKey),FfiConverterString.lower(content)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
-
-
-// Put the implementation in a struct so we don't pollute the top-level namespace
-fileprivate struct UniffiCallbackInterfaceNostrSigner {
-
-    // Create the VTable using a series of closures.
-    // Swift automatically converts these into C callback functions.
-    static var vtable: UniffiVTableCallbackInterfaceNostrSigner = UniffiVTableCallbackInterfaceNostrSigner(
-        getPublicKey: { (
-            uniffiHandle: UInt64,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> PublicKey? in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.getPublicKey(
+    
+open func signEvent(unsignedEvent: UnsignedEvent)async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_method_nostrsigner_sign_event(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeUnsignedEvent.lower(unsignedEvent)
                 )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: PublicKey?) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterOptionTypePublicKey.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        signEvent: { (
-            uniffiHandle: UInt64,
-            unsigned: UnsafeMutableRawPointer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> Event? in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.signEvent(
-                     unsigned: try FfiConverterTypeUnsignedEvent.lift(unsigned)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: Event?) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterOptionTypeEvent.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        nip04Encrypt: { (
-            uniffiHandle: UInt64,
-            publicKey: UnsafeMutableRawPointer,
-            content: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> String in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.nip04Encrypt(
-                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
-                     content: try FfiConverterString.lift(content)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: String) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterString.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        nip04Decrypt: { (
-            uniffiHandle: UInt64,
-            publicKey: UnsafeMutableRawPointer,
-            encryptedContent: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> String in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.nip04Decrypt(
-                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
-                     encryptedContent: try FfiConverterString.lift(encryptedContent)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: String) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterString.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        nip44Encrypt: { (
-            uniffiHandle: UInt64,
-            publicKey: UnsafeMutableRawPointer,
-            content: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> String in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.nip44Encrypt(
-                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
-                     content: try FfiConverterString.lift(content)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: String) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterString.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        nip44Decrypt: { (
-            uniffiHandle: UInt64,
-            publicKey: UnsafeMutableRawPointer,
-            payload: RustBuffer,
-            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
-            uniffiCallbackData: UInt64,
-            uniffiOutReturn: UnsafeMutablePointer<UniffiForeignFuture>
-        ) in
-            let makeCall = {
-                () async throws -> String in
-                guard let uniffiObj = try? FfiConverterTypeNostrSigner.handleMap.get(handle: uniffiHandle) else {
-                    throw UniffiInternalError.unexpectedStaleHandle
-                }
-                return try await uniffiObj.nip44Decrypt(
-                     publicKey: try FfiConverterTypePublicKey.lift(publicKey),
-                     payload: try FfiConverterString.lift(payload)
-                )
-            }
-
-            let uniffiHandleSuccess = { (returnValue: String) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: FfiConverterString.lower(returnValue),
-                        callStatus: RustCallStatus()
-                    )
-                )
-            }
-            let uniffiHandleError = { (statusCode, errorBuf) in
-                uniffiFutureCallback(
-                    uniffiCallbackData,
-                    UniffiForeignFutureStructRustBuffer(
-                        returnValue: RustBuffer.empty(),
-                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
-                    )
-                )
-            }
-            let uniffiForeignFuture = uniffiTraitInterfaceCallAsyncWithError(
-                makeCall: makeCall,
-                handleSuccess: uniffiHandleSuccess,
-                handleError: uniffiHandleError,
-                lowerError: FfiConverterTypeNostrSdkError.lower
-            )
-            uniffiOutReturn.pointee = uniffiForeignFuture
-        },
-        uniffiFree: { (uniffiHandle: UInt64) -> () in
-            let result = try? FfiConverterTypeNostrSigner.handleMap.remove(handle: uniffiHandle)
-            if result == nil {
-                print("Uniffi callback interface NostrSigner: handle missing in uniffiFree")
-            }
-        }
-    )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
+    
 
-private func uniffiCallbackInitNostrSigner() {
-    uniffi_nostr_sdk_ffi_fn_init_callback_vtable_nostrsigner(&UniffiCallbackInterfaceNostrSigner.vtable)
 }
 
 public struct FfiConverterTypeNostrSigner: FfiConverter {
-    fileprivate static var handleMap = UniffiHandleMap<NostrSigner>()
 
     typealias FfiType = UnsafeMutableRawPointer
     typealias SwiftType = NostrSigner
 
     public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> NostrSigner {
-        return NostrSignerImpl(unsafeFromRawPointer: pointer)
+        return NostrSigner(unsafeFromRawPointer: pointer)
     }
 
     public static func lower(_ value: NostrSigner) -> UnsafeMutableRawPointer {
-        guard let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: handleMap.insert(obj: value))) else {
-            fatalError("Cast to UnsafeMutableRawPointer failed")
-        }
-        return ptr
+        return value.uniffiClonePointer()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NostrSigner {
@@ -12066,13 +11084,6 @@ public protocol OptionsProtocol : AnyObject {
      */
     func connection(connection: Connection)  -> Options
     
-    /**
-     * Connection timeout (default: None)
-     *
-     * If set to `None`, the client will try to connect to the relays without waiting.
-     */
-    func connectionTimeout(timeout: TimeInterval?)  -> Options
-    
     func difficulty(difficulty: UInt8)  -> Options
     
     /**
@@ -12189,19 +11200,6 @@ open func connection(connection: Connection) -> Options {
     return try!  FfiConverterTypeOptions.lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_options_connection(self.uniffiClonePointer(),
         FfiConverterTypeConnection.lower(connection),$0
-    )
-})
-}
-    
-    /**
-     * Connection timeout (default: None)
-     *
-     * If set to `None`, the client will try to connect to the relays without waiting.
-     */
-open func connectionTimeout(timeout: TimeInterval?) -> Options {
-    return try!  FfiConverterTypeOptions.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_options_connection_timeout(self.uniffiClonePointer(),
-        FfiConverterOptionDuration.lower(timeout),$0
     )
 })
 }
@@ -12882,7 +11880,7 @@ public protocol RelayProtocol : AnyObject {
     /**
      * Send multiple `ClientMessage` at once
      */
-    func batchMsg(msgs: [ClientMessage]) async throws 
+    func batchMsg(msgs: [ClientMessage]) throws 
     
     /**
      * Connect to relay and keep alive connection
@@ -12936,7 +11934,7 @@ public protocol RelayProtocol : AnyObject {
     /**
      * Send msg to relay
      */
-    func sendMsg(msg: ClientMessage) async throws 
+    func sendMsg(msg: ClientMessage) throws 
     
     func stats()  -> RelayConnectionStats
     
@@ -12975,11 +11973,6 @@ public protocol RelayProtocol : AnyObject {
     func subscription(id: String) async  -> [Filter]?
     
     func subscriptions() async  -> [String: [Filter]]
-    
-    /**
-     * Check if relay support negentropy protocol
-     */
-    func supportNegentropy() async throws  -> Bool
     
     /**
      * Sync events with relays (negentropy reconciliation)
@@ -13108,21 +12101,11 @@ open func batchEvent(events: [Event])async throws  {
     /**
      * Send multiple `ClientMessage` at once
      */
-open func batchMsg(msgs: [ClientMessage])async throws  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relay_batch_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterSequenceTypeClientMessage.lower(msgs)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
+open func batchMsg(msgs: [ClientMessage])throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_relay_batch_msg(self.uniffiClonePointer(),
+        FfiConverterSequenceTypeClientMessage.lower(msgs),$0
+    )
+}
 }
     
     /**
@@ -13283,21 +12266,11 @@ open func sendEvent(event: Event)async throws  -> EventId {
     /**
      * Send msg to relay
      */
-open func sendMsg(msg: ClientMessage)async throws  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relay_send_msg(
-                    self.uniffiClonePointer(),
-                    FfiConverterTypeClientMessage.lower(msg)
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeNostrSdkError.lift
-        )
+open func sendMsg(msg: ClientMessage)throws  {try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
+    uniffi_nostr_sdk_ffi_fn_method_relay_send_msg(self.uniffiClonePointer(),
+        FfiConverterTypeClientMessage.lower(msg),$0
+    )
+}
 }
     
 open func stats() -> RelayConnectionStats {
@@ -13407,26 +12380,6 @@ open func subscriptions()async  -> [String: [Filter]] {
             liftFunc: FfiConverterDictionaryStringSequenceTypeFilter.lift,
             errorHandler: nil
             
-        )
-}
-    
-    /**
-     * Check if relay support negentropy protocol
-     */
-open func supportNegentropy()async throws  -> Bool {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relay_support_negentropy(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_i8,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_i8,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_i8,
-            liftFunc: FfiConverterBool.lift,
-            errorHandler: FfiConverterTypeNostrSdkError.lift
         )
 }
     
@@ -13595,7 +12548,7 @@ public protocol RelayConnectionStatsProtocol : AnyObject {
      */
     func firstConnectionTimestamp()  -> Timestamp
     
-    func latency() async  -> TimeInterval?
+    func latency()  -> TimeInterval?
     
     /**
      * The number of times a connection has been successfully established
@@ -13700,22 +12653,11 @@ open func firstConnectionTimestamp() -> Timestamp {
 })
 }
     
-open func latency()async  -> TimeInterval? {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_latency(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterOptionDuration.lift,
-            errorHandler: nil
-            
-        )
+open func latency() -> TimeInterval? {
+    return try!  FfiConverterOptionDuration.lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_relayconnectionstats_latency(self.uniffiClonePointer(),$0
+    )
+})
 }
     
     /**
@@ -14955,9 +13897,9 @@ public func FfiConverterTypeRelayMessage_lower(_ value: RelayMessage) -> UnsafeM
 public protocol RelayOptionsProtocol : AnyObject {
     
     /**
-     * Automatically adjust retry seconds based on success/attempts (default: true)
+     * Automatically adjust retry interval based on success/attempts (default: true)
      */
-    func adjustRetrySec(adjustRetrySec: Bool)  -> RelayOptions
+    func adjustRetryInterval(adjustRetryInterval: Bool)  -> RelayOptions
     
     /**
      * Set connection mode
@@ -15002,11 +13944,11 @@ public protocol RelayOptionsProtocol : AnyObject {
     func reconnect(reconnect: Bool)  -> RelayOptions
     
     /**
-     * Retry connection time (default: 10 sec)
+     * Retry interval (default: 10 sec)
      *
-     * Are allowed values `>=` 5 secs
+     * Minimum allowed value is `5 secs`
      */
-    func retrySec(retrySec: UInt64)  -> RelayOptions
+    func retryInterval(interval: TimeInterval)  -> RelayOptions
     
     /**
      * Update `pow` option
@@ -15075,12 +14017,12 @@ public convenience init() {
 
     
     /**
-     * Automatically adjust retry seconds based on success/attempts (default: true)
+     * Automatically adjust retry interval based on success/attempts (default: true)
      */
-open func adjustRetrySec(adjustRetrySec: Bool) -> RelayOptions {
+open func adjustRetryInterval(adjustRetryInterval: Bool) -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayoptions_adjust_retry_sec(self.uniffiClonePointer(),
-        FfiConverterBool.lower(adjustRetrySec),$0
+    uniffi_nostr_sdk_ffi_fn_method_relayoptions_adjust_retry_interval(self.uniffiClonePointer(),
+        FfiConverterBool.lower(adjustRetryInterval),$0
     )
 })
 }
@@ -15176,14 +14118,14 @@ open func reconnect(reconnect: Bool) -> RelayOptions {
 }
     
     /**
-     * Retry connection time (default: 10 sec)
+     * Retry interval (default: 10 sec)
      *
-     * Are allowed values `>=` 5 secs
+     * Minimum allowed value is `5 secs`
      */
-open func retrySec(retrySec: UInt64) -> RelayOptions {
+open func retryInterval(interval: TimeInterval) -> RelayOptions {
     return try!  FfiConverterTypeRelayOptions.lift(try! rustCall() {
-    uniffi_nostr_sdk_ffi_fn_method_relayoptions_retry_sec(self.uniffiClonePointer(),
-        FfiConverterUInt64.lower(retrySec),$0
+    uniffi_nostr_sdk_ffi_fn_method_relayoptions_retry_interval(self.uniffiClonePointer(),
+        FfiConverterDuration.lower(interval),$0
     )
 })
 }
@@ -15338,7 +14280,7 @@ public protocol RelayPoolProtocol : AnyObject {
     /**
      * Remove and disconnect relay
      *
-     * If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+     * If the relay has `GOSSIP` flag, it will not be removed from the pool and its
      * flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
      */
     func removeRelay(url: String) async throws 
@@ -15780,7 +14722,7 @@ open func relays()async  -> [String: Relay] {
     /**
      * Remove and disconnect relay
      *
-     * If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+     * If the relay has `GOSSIP` flag, it will not be removed from the pool and its
      * flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
      */
 open func removeRelay(url: String)async throws  {
@@ -17750,8 +16692,8 @@ public static func identifier(identifier: String) -> Tag {
     /**
      * Compose image tag
      */
-public static func image(url: String, dimensions: ImageDimensions? = nil) -> Tag {
-    return try!  FfiConverterTypeTag.lift(try! rustCall() {
+public static func image(url: String, dimensions: ImageDimensions? = nil)throws  -> Tag {
+    return try  FfiConverterTypeTag.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_constructor_tag_image(
         FfiConverterString.lower(url),
         FfiConverterOptionTypeImageDimensions.lower(dimensions),$0
@@ -20047,7 +18989,7 @@ public func FfiConverterTypeGenericTag_lower(_ value: GenericTag) -> RustBuffer 
 /**
  * NIP47 Response Result
  */
-public struct GetBalanceResponseResult {
+public struct GetBalanceResponse {
     /**
      * Balance amount in msats
      */
@@ -20065,8 +19007,8 @@ public struct GetBalanceResponseResult {
 
 
 
-extension GetBalanceResponseResult: Equatable, Hashable {
-    public static func ==(lhs: GetBalanceResponseResult, rhs: GetBalanceResponseResult) -> Bool {
+extension GetBalanceResponse: Equatable, Hashable {
+    public static func ==(lhs: GetBalanceResponse, rhs: GetBalanceResponse) -> Bool {
         if lhs.balance != rhs.balance {
             return false
         }
@@ -20079,33 +19021,33 @@ extension GetBalanceResponseResult: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeGetBalanceResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GetBalanceResponseResult {
+public struct FfiConverterTypeGetBalanceResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GetBalanceResponse {
         return
-            try GetBalanceResponseResult(
+            try GetBalanceResponse(
                 balance: FfiConverterUInt64.read(from: &buf)
         )
     }
 
-    public static func write(_ value: GetBalanceResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: GetBalanceResponse, into buf: inout [UInt8]) {
         FfiConverterUInt64.write(value.balance, into: &buf)
     }
 }
 
 
-public func FfiConverterTypeGetBalanceResponseResult_lift(_ buf: RustBuffer) throws -> GetBalanceResponseResult {
-    return try FfiConverterTypeGetBalanceResponseResult.lift(buf)
+public func FfiConverterTypeGetBalanceResponse_lift(_ buf: RustBuffer) throws -> GetBalanceResponse {
+    return try FfiConverterTypeGetBalanceResponse.lift(buf)
 }
 
-public func FfiConverterTypeGetBalanceResponseResult_lower(_ value: GetBalanceResponseResult) -> RustBuffer {
-    return FfiConverterTypeGetBalanceResponseResult.lower(value)
+public func FfiConverterTypeGetBalanceResponse_lower(_ value: GetBalanceResponse) -> RustBuffer {
+    return FfiConverterTypeGetBalanceResponse.lower(value)
 }
 
 
 /**
  * NIP47 Response Result
  */
-public struct GetInfoResponseResult {
+public struct GetInfoResponse {
     /**
      * The alias of the lightning node
      */
@@ -20171,8 +19113,8 @@ public struct GetInfoResponseResult {
 
 
 
-extension GetInfoResponseResult: Equatable, Hashable {
-    public static func ==(lhs: GetInfoResponseResult, rhs: GetInfoResponseResult) -> Bool {
+extension GetInfoResponse: Equatable, Hashable {
+    public static func ==(lhs: GetInfoResponse, rhs: GetInfoResponse) -> Bool {
         if lhs.alias != rhs.alias {
             return false
         }
@@ -20209,10 +19151,10 @@ extension GetInfoResponseResult: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeGetInfoResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GetInfoResponseResult {
+public struct FfiConverterTypeGetInfoResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GetInfoResponse {
         return
-            try GetInfoResponseResult(
+            try GetInfoResponse(
                 alias: FfiConverterString.read(from: &buf), 
                 color: FfiConverterString.read(from: &buf), 
                 pubkey: FfiConverterString.read(from: &buf), 
@@ -20223,7 +19165,7 @@ public struct FfiConverterTypeGetInfoResponseResult: FfiConverterRustBuffer {
         )
     }
 
-    public static func write(_ value: GetInfoResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: GetInfoResponse, into buf: inout [UInt8]) {
         FfiConverterString.write(value.alias, into: &buf)
         FfiConverterString.write(value.color, into: &buf)
         FfiConverterString.write(value.pubkey, into: &buf)
@@ -20235,12 +19177,12 @@ public struct FfiConverterTypeGetInfoResponseResult: FfiConverterRustBuffer {
 }
 
 
-public func FfiConverterTypeGetInfoResponseResult_lift(_ buf: RustBuffer) throws -> GetInfoResponseResult {
-    return try FfiConverterTypeGetInfoResponseResult.lift(buf)
+public func FfiConverterTypeGetInfoResponse_lift(_ buf: RustBuffer) throws -> GetInfoResponse {
+    return try FfiConverterTypeGetInfoResponse.lift(buf)
 }
 
-public func FfiConverterTypeGetInfoResponseResult_lower(_ value: GetInfoResponseResult) -> RustBuffer {
-    return FfiConverterTypeGetInfoResponseResult.lower(value)
+public func FfiConverterTypeGetInfoResponse_lower(_ value: GetInfoResponse) -> RustBuffer {
+    return FfiConverterTypeGetInfoResponse.lower(value)
 }
 
 
@@ -21077,9 +20019,9 @@ public func FfiConverterTypeLimitation_lower(_ value: Limitation) -> RustBuffer 
 
 
 /**
- * List Invoice Request Params
+ * List Invoice Request
  */
-public struct ListTransactionsRequestParams {
+public struct ListTransactionsRequest {
     /**
      * Starting timestamp in seconds since epoch
      */
@@ -21137,10 +20079,10 @@ public struct ListTransactionsRequestParams {
 
 
 
-public struct FfiConverterTypeListTransactionsRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ListTransactionsRequestParams {
+public struct FfiConverterTypeListTransactionsRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ListTransactionsRequest {
         return
-            try ListTransactionsRequestParams(
+            try ListTransactionsRequest(
                 from: FfiConverterOptionTypeTimestamp.read(from: &buf), 
                 until: FfiConverterOptionTypeTimestamp.read(from: &buf), 
                 limit: FfiConverterOptionUInt64.read(from: &buf), 
@@ -21150,7 +20092,7 @@ public struct FfiConverterTypeListTransactionsRequestParams: FfiConverterRustBuf
         )
     }
 
-    public static func write(_ value: ListTransactionsRequestParams, into buf: inout [UInt8]) {
+    public static func write(_ value: ListTransactionsRequest, into buf: inout [UInt8]) {
         FfiConverterOptionTypeTimestamp.write(value.from, into: &buf)
         FfiConverterOptionTypeTimestamp.write(value.until, into: &buf)
         FfiConverterOptionUInt64.write(value.limit, into: &buf)
@@ -21161,12 +20103,12 @@ public struct FfiConverterTypeListTransactionsRequestParams: FfiConverterRustBuf
 }
 
 
-public func FfiConverterTypeListTransactionsRequestParams_lift(_ buf: RustBuffer) throws -> ListTransactionsRequestParams {
-    return try FfiConverterTypeListTransactionsRequestParams.lift(buf)
+public func FfiConverterTypeListTransactionsRequest_lift(_ buf: RustBuffer) throws -> ListTransactionsRequest {
+    return try FfiConverterTypeListTransactionsRequest.lift(buf)
 }
 
-public func FfiConverterTypeListTransactionsRequestParams_lower(_ value: ListTransactionsRequestParams) -> RustBuffer {
-    return FfiConverterTypeListTransactionsRequestParams.lower(value)
+public func FfiConverterTypeListTransactionsRequest_lower(_ value: ListTransactionsRequest) -> RustBuffer {
+    return FfiConverterTypeListTransactionsRequest.lower(value)
 }
 
 
@@ -21309,9 +20251,9 @@ public func FfiConverterTypeLiveEventHost_lower(_ value: LiveEventHost) -> RustB
 
 
 /**
- * Lookup Invoice Request Params
+ * Lookup Invoice Request
  */
-public struct LookupInvoiceRequestParams {
+public struct LookupInvoiceRequest {
     /**
      * Payment hash of invoice
      */
@@ -21337,8 +20279,8 @@ public struct LookupInvoiceRequestParams {
 
 
 
-extension LookupInvoiceRequestParams: Equatable, Hashable {
-    public static func ==(lhs: LookupInvoiceRequestParams, rhs: LookupInvoiceRequestParams) -> Bool {
+extension LookupInvoiceRequest: Equatable, Hashable {
+    public static func ==(lhs: LookupInvoiceRequest, rhs: LookupInvoiceRequest) -> Bool {
         if lhs.paymentHash != rhs.paymentHash {
             return false
         }
@@ -21355,35 +20297,35 @@ extension LookupInvoiceRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeLookupInvoiceRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LookupInvoiceRequestParams {
+public struct FfiConverterTypeLookupInvoiceRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LookupInvoiceRequest {
         return
-            try LookupInvoiceRequestParams(
+            try LookupInvoiceRequest(
                 paymentHash: FfiConverterOptionString.read(from: &buf), 
                 invoice: FfiConverterOptionString.read(from: &buf)
         )
     }
 
-    public static func write(_ value: LookupInvoiceRequestParams, into buf: inout [UInt8]) {
+    public static func write(_ value: LookupInvoiceRequest, into buf: inout [UInt8]) {
         FfiConverterOptionString.write(value.paymentHash, into: &buf)
         FfiConverterOptionString.write(value.invoice, into: &buf)
     }
 }
 
 
-public func FfiConverterTypeLookupInvoiceRequestParams_lift(_ buf: RustBuffer) throws -> LookupInvoiceRequestParams {
-    return try FfiConverterTypeLookupInvoiceRequestParams.lift(buf)
+public func FfiConverterTypeLookupInvoiceRequest_lift(_ buf: RustBuffer) throws -> LookupInvoiceRequest {
+    return try FfiConverterTypeLookupInvoiceRequest.lift(buf)
 }
 
-public func FfiConverterTypeLookupInvoiceRequestParams_lower(_ value: LookupInvoiceRequestParams) -> RustBuffer {
-    return FfiConverterTypeLookupInvoiceRequestParams.lower(value)
+public func FfiConverterTypeLookupInvoiceRequest_lower(_ value: LookupInvoiceRequest) -> RustBuffer {
+    return FfiConverterTypeLookupInvoiceRequest.lower(value)
 }
 
 
 /**
  * NIP47 Response Result
  */
-public struct LookupInvoiceResponseResult {
+public struct LookupInvoiceResponse {
     /**
      * Transaction type
      */
@@ -21489,10 +20431,10 @@ public struct LookupInvoiceResponseResult {
 
 
 
-public struct FfiConverterTypeLookupInvoiceResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LookupInvoiceResponseResult {
+public struct FfiConverterTypeLookupInvoiceResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LookupInvoiceResponse {
         return
-            try LookupInvoiceResponseResult(
+            try LookupInvoiceResponse(
                 transactionType: FfiConverterOptionTypeTransactionType.read(from: &buf), 
                 invoice: FfiConverterOptionString.read(from: &buf), 
                 description: FfiConverterOptionString.read(from: &buf), 
@@ -21508,7 +20450,7 @@ public struct FfiConverterTypeLookupInvoiceResponseResult: FfiConverterRustBuffe
         )
     }
 
-    public static func write(_ value: LookupInvoiceResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: LookupInvoiceResponse, into buf: inout [UInt8]) {
         FfiConverterOptionTypeTransactionType.write(value.transactionType, into: &buf)
         FfiConverterOptionString.write(value.invoice, into: &buf)
         FfiConverterOptionString.write(value.description, into: &buf)
@@ -21525,19 +20467,19 @@ public struct FfiConverterTypeLookupInvoiceResponseResult: FfiConverterRustBuffe
 }
 
 
-public func FfiConverterTypeLookupInvoiceResponseResult_lift(_ buf: RustBuffer) throws -> LookupInvoiceResponseResult {
-    return try FfiConverterTypeLookupInvoiceResponseResult.lift(buf)
+public func FfiConverterTypeLookupInvoiceResponse_lift(_ buf: RustBuffer) throws -> LookupInvoiceResponse {
+    return try FfiConverterTypeLookupInvoiceResponse.lift(buf)
 }
 
-public func FfiConverterTypeLookupInvoiceResponseResult_lower(_ value: LookupInvoiceResponseResult) -> RustBuffer {
-    return FfiConverterTypeLookupInvoiceResponseResult.lower(value)
+public func FfiConverterTypeLookupInvoiceResponse_lower(_ value: LookupInvoiceResponse) -> RustBuffer {
+    return FfiConverterTypeLookupInvoiceResponse.lower(value)
 }
 
 
 /**
- * Make Invoice Request Params
+ * Make Invoice Request
  */
-public struct MakeInvoiceRequestParams {
+public struct MakeInvoiceRequest {
     /**
      * Amount in millisatoshis
      */
@@ -21579,8 +20521,8 @@ public struct MakeInvoiceRequestParams {
 
 
 
-extension MakeInvoiceRequestParams: Equatable, Hashable {
-    public static func ==(lhs: MakeInvoiceRequestParams, rhs: MakeInvoiceRequestParams) -> Bool {
+extension MakeInvoiceRequest: Equatable, Hashable {
+    public static func ==(lhs: MakeInvoiceRequest, rhs: MakeInvoiceRequest) -> Bool {
         if lhs.amount != rhs.amount {
             return false
         }
@@ -21605,10 +20547,10 @@ extension MakeInvoiceRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeMakeInvoiceRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MakeInvoiceRequestParams {
+public struct FfiConverterTypeMakeInvoiceRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MakeInvoiceRequest {
         return
-            try MakeInvoiceRequestParams(
+            try MakeInvoiceRequest(
                 amount: FfiConverterUInt64.read(from: &buf), 
                 description: FfiConverterOptionString.read(from: &buf), 
                 descriptionHash: FfiConverterOptionString.read(from: &buf), 
@@ -21616,7 +20558,7 @@ public struct FfiConverterTypeMakeInvoiceRequestParams: FfiConverterRustBuffer {
         )
     }
 
-    public static func write(_ value: MakeInvoiceRequestParams, into buf: inout [UInt8]) {
+    public static func write(_ value: MakeInvoiceRequest, into buf: inout [UInt8]) {
         FfiConverterUInt64.write(value.amount, into: &buf)
         FfiConverterOptionString.write(value.description, into: &buf)
         FfiConverterOptionString.write(value.descriptionHash, into: &buf)
@@ -21625,19 +20567,19 @@ public struct FfiConverterTypeMakeInvoiceRequestParams: FfiConverterRustBuffer {
 }
 
 
-public func FfiConverterTypeMakeInvoiceRequestParams_lift(_ buf: RustBuffer) throws -> MakeInvoiceRequestParams {
-    return try FfiConverterTypeMakeInvoiceRequestParams.lift(buf)
+public func FfiConverterTypeMakeInvoiceRequest_lift(_ buf: RustBuffer) throws -> MakeInvoiceRequest {
+    return try FfiConverterTypeMakeInvoiceRequest.lift(buf)
 }
 
-public func FfiConverterTypeMakeInvoiceRequestParams_lower(_ value: MakeInvoiceRequestParams) -> RustBuffer {
-    return FfiConverterTypeMakeInvoiceRequestParams.lower(value)
+public func FfiConverterTypeMakeInvoiceRequest_lower(_ value: MakeInvoiceRequest) -> RustBuffer {
+    return FfiConverterTypeMakeInvoiceRequest.lower(value)
 }
 
 
 /**
  * NIP47 Response Result
  */
-public struct MakeInvoiceResponseResult {
+public struct MakeInvoiceResponse {
     /**
      * Bolt 11 invoice
      */
@@ -21663,8 +20605,8 @@ public struct MakeInvoiceResponseResult {
 
 
 
-extension MakeInvoiceResponseResult: Equatable, Hashable {
-    public static func ==(lhs: MakeInvoiceResponseResult, rhs: MakeInvoiceResponseResult) -> Bool {
+extension MakeInvoiceResponse: Equatable, Hashable {
+    public static func ==(lhs: MakeInvoiceResponse, rhs: MakeInvoiceResponse) -> Bool {
         if lhs.invoice != rhs.invoice {
             return false
         }
@@ -21681,28 +20623,28 @@ extension MakeInvoiceResponseResult: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeMakeInvoiceResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MakeInvoiceResponseResult {
+public struct FfiConverterTypeMakeInvoiceResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MakeInvoiceResponse {
         return
-            try MakeInvoiceResponseResult(
+            try MakeInvoiceResponse(
                 invoice: FfiConverterString.read(from: &buf), 
                 paymentHash: FfiConverterString.read(from: &buf)
         )
     }
 
-    public static func write(_ value: MakeInvoiceResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: MakeInvoiceResponse, into buf: inout [UInt8]) {
         FfiConverterString.write(value.invoice, into: &buf)
         FfiConverterString.write(value.paymentHash, into: &buf)
     }
 }
 
 
-public func FfiConverterTypeMakeInvoiceResponseResult_lift(_ buf: RustBuffer) throws -> MakeInvoiceResponseResult {
-    return try FfiConverterTypeMakeInvoiceResponseResult.lift(buf)
+public func FfiConverterTypeMakeInvoiceResponse_lift(_ buf: RustBuffer) throws -> MakeInvoiceResponse {
+    return try FfiConverterTypeMakeInvoiceResponse.lift(buf)
 }
 
-public func FfiConverterTypeMakeInvoiceResponseResult_lower(_ value: MakeInvoiceResponseResult) -> RustBuffer {
-    return FfiConverterTypeMakeInvoiceResponseResult.lower(value)
+public func FfiConverterTypeMakeInvoiceResponse_lower(_ value: MakeInvoiceResponse) -> RustBuffer {
+    return FfiConverterTypeMakeInvoiceResponse.lower(value)
 }
 
 
@@ -21876,26 +20818,26 @@ public func FfiConverterTypeMetadataRecord_lower(_ value: MetadataRecord) -> Rus
 /**
  * Multi Pay Invoice Request Params
  */
-public struct MultiPayInvoiceRequestParams {
+public struct MultiPayInvoiceRequest {
     /**
      * Invoices to pay
      */
-    public var invoices: [PayInvoiceRequestParams]
+    public var invoices: [PayInvoiceRequest]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(
         /**
          * Invoices to pay
-         */invoices: [PayInvoiceRequestParams]) {
+         */invoices: [PayInvoiceRequest]) {
         self.invoices = invoices
     }
 }
 
 
 
-extension MultiPayInvoiceRequestParams: Equatable, Hashable {
-    public static func ==(lhs: MultiPayInvoiceRequestParams, rhs: MultiPayInvoiceRequestParams) -> Bool {
+extension MultiPayInvoiceRequest: Equatable, Hashable {
+    public static func ==(lhs: MultiPayInvoiceRequest, rhs: MultiPayInvoiceRequest) -> Bool {
         if lhs.invoices != rhs.invoices {
             return false
         }
@@ -21908,52 +20850,52 @@ extension MultiPayInvoiceRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeMultiPayInvoiceRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MultiPayInvoiceRequestParams {
+public struct FfiConverterTypeMultiPayInvoiceRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MultiPayInvoiceRequest {
         return
-            try MultiPayInvoiceRequestParams(
-                invoices: FfiConverterSequenceTypePayInvoiceRequestParams.read(from: &buf)
+            try MultiPayInvoiceRequest(
+                invoices: FfiConverterSequenceTypePayInvoiceRequest.read(from: &buf)
         )
     }
 
-    public static func write(_ value: MultiPayInvoiceRequestParams, into buf: inout [UInt8]) {
-        FfiConverterSequenceTypePayInvoiceRequestParams.write(value.invoices, into: &buf)
+    public static func write(_ value: MultiPayInvoiceRequest, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypePayInvoiceRequest.write(value.invoices, into: &buf)
     }
 }
 
 
-public func FfiConverterTypeMultiPayInvoiceRequestParams_lift(_ buf: RustBuffer) throws -> MultiPayInvoiceRequestParams {
-    return try FfiConverterTypeMultiPayInvoiceRequestParams.lift(buf)
+public func FfiConverterTypeMultiPayInvoiceRequest_lift(_ buf: RustBuffer) throws -> MultiPayInvoiceRequest {
+    return try FfiConverterTypeMultiPayInvoiceRequest.lift(buf)
 }
 
-public func FfiConverterTypeMultiPayInvoiceRequestParams_lower(_ value: MultiPayInvoiceRequestParams) -> RustBuffer {
-    return FfiConverterTypeMultiPayInvoiceRequestParams.lower(value)
+public func FfiConverterTypeMultiPayInvoiceRequest_lower(_ value: MultiPayInvoiceRequest) -> RustBuffer {
+    return FfiConverterTypeMultiPayInvoiceRequest.lower(value)
 }
 
 
 /**
- * Multi Pay Keysend Request Params
+ * Multi Pay Keysend Request
  */
-public struct MultiPayKeysendRequestParams {
+public struct MultiPayKeysendRequest {
     /**
      * Keysends
      */
-    public var keysends: [PayKeysendRequestParams]
+    public var keysends: [PayKeysendRequest]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(
         /**
          * Keysends
-         */keysends: [PayKeysendRequestParams]) {
+         */keysends: [PayKeysendRequest]) {
         self.keysends = keysends
     }
 }
 
 
 
-extension MultiPayKeysendRequestParams: Equatable, Hashable {
-    public static func ==(lhs: MultiPayKeysendRequestParams, rhs: MultiPayKeysendRequestParams) -> Bool {
+extension MultiPayKeysendRequest: Equatable, Hashable {
+    public static func ==(lhs: MultiPayKeysendRequest, rhs: MultiPayKeysendRequest) -> Bool {
         if lhs.keysends != rhs.keysends {
             return false
         }
@@ -21966,26 +20908,26 @@ extension MultiPayKeysendRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypeMultiPayKeysendRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MultiPayKeysendRequestParams {
+public struct FfiConverterTypeMultiPayKeysendRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MultiPayKeysendRequest {
         return
-            try MultiPayKeysendRequestParams(
-                keysends: FfiConverterSequenceTypePayKeysendRequestParams.read(from: &buf)
+            try MultiPayKeysendRequest(
+                keysends: FfiConverterSequenceTypePayKeysendRequest.read(from: &buf)
         )
     }
 
-    public static func write(_ value: MultiPayKeysendRequestParams, into buf: inout [UInt8]) {
-        FfiConverterSequenceTypePayKeysendRequestParams.write(value.keysends, into: &buf)
+    public static func write(_ value: MultiPayKeysendRequest, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypePayKeysendRequest.write(value.keysends, into: &buf)
     }
 }
 
 
-public func FfiConverterTypeMultiPayKeysendRequestParams_lift(_ buf: RustBuffer) throws -> MultiPayKeysendRequestParams {
-    return try FfiConverterTypeMultiPayKeysendRequestParams.lift(buf)
+public func FfiConverterTypeMultiPayKeysendRequest_lift(_ buf: RustBuffer) throws -> MultiPayKeysendRequest {
+    return try FfiConverterTypeMultiPayKeysendRequest.lift(buf)
 }
 
-public func FfiConverterTypeMultiPayKeysendRequestParams_lower(_ value: MultiPayKeysendRequestParams) -> RustBuffer {
-    return FfiConverterTypeMultiPayKeysendRequestParams.lower(value)
+public func FfiConverterTypeMultiPayKeysendRequest_lower(_ value: MultiPayKeysendRequest) -> RustBuffer {
+    return FfiConverterTypeMultiPayKeysendRequest.lower(value)
 }
 
 
@@ -22152,6 +21094,45 @@ public func FfiConverterTypeNegentropyItem_lower(_ value: NegentropyItem) -> Rus
 }
 
 
+public struct NostrConnectKeys {
+    public var signer: Keys
+    public var user: Keys
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(signer: Keys, user: Keys) {
+        self.signer = signer
+        self.user = user
+    }
+}
+
+
+
+public struct FfiConverterTypeNostrConnectKeys: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NostrConnectKeys {
+        return
+            try NostrConnectKeys(
+                signer: FfiConverterTypeKeys.read(from: &buf), 
+                user: FfiConverterTypeKeys.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NostrConnectKeys, into buf: inout [UInt8]) {
+        FfiConverterTypeKeys.write(value.signer, into: &buf)
+        FfiConverterTypeKeys.write(value.user, into: &buf)
+    }
+}
+
+
+public func FfiConverterTypeNostrConnectKeys_lift(_ buf: RustBuffer) throws -> NostrConnectKeys {
+    return try FfiConverterTypeNostrConnectKeys.lift(buf)
+}
+
+public func FfiConverterTypeNostrConnectKeys_lower(_ value: NostrConnectKeys) -> RustBuffer {
+    return FfiConverterTypeNostrConnectKeys.lower(value)
+}
+
+
 /**
  * Output
  *
@@ -22227,9 +21208,9 @@ public func FfiConverterTypeOutput_lower(_ value: Output) -> RustBuffer {
 
 
 /**
- * Pay Invoice Request Params
+ * Pay Invoice Request
  */
-public struct PayInvoiceRequestParams {
+public struct PayInvoiceRequest {
     /**
      * Optional id
      */
@@ -22263,8 +21244,8 @@ public struct PayInvoiceRequestParams {
 
 
 
-extension PayInvoiceRequestParams: Equatable, Hashable {
-    public static func ==(lhs: PayInvoiceRequestParams, rhs: PayInvoiceRequestParams) -> Bool {
+extension PayInvoiceRequest: Equatable, Hashable {
+    public static func ==(lhs: PayInvoiceRequest, rhs: PayInvoiceRequest) -> Bool {
         if lhs.id != rhs.id {
             return false
         }
@@ -22285,17 +21266,17 @@ extension PayInvoiceRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypePayInvoiceRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayInvoiceRequestParams {
+public struct FfiConverterTypePayInvoiceRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayInvoiceRequest {
         return
-            try PayInvoiceRequestParams(
+            try PayInvoiceRequest(
                 id: FfiConverterOptionString.read(from: &buf), 
                 invoice: FfiConverterString.read(from: &buf), 
                 amount: FfiConverterOptionUInt64.read(from: &buf)
         )
     }
 
-    public static func write(_ value: PayInvoiceRequestParams, into buf: inout [UInt8]) {
+    public static func write(_ value: PayInvoiceRequest, into buf: inout [UInt8]) {
         FfiConverterOptionString.write(value.id, into: &buf)
         FfiConverterString.write(value.invoice, into: &buf)
         FfiConverterOptionUInt64.write(value.amount, into: &buf)
@@ -22303,19 +21284,19 @@ public struct FfiConverterTypePayInvoiceRequestParams: FfiConverterRustBuffer {
 }
 
 
-public func FfiConverterTypePayInvoiceRequestParams_lift(_ buf: RustBuffer) throws -> PayInvoiceRequestParams {
-    return try FfiConverterTypePayInvoiceRequestParams.lift(buf)
+public func FfiConverterTypePayInvoiceRequest_lift(_ buf: RustBuffer) throws -> PayInvoiceRequest {
+    return try FfiConverterTypePayInvoiceRequest.lift(buf)
 }
 
-public func FfiConverterTypePayInvoiceRequestParams_lower(_ value: PayInvoiceRequestParams) -> RustBuffer {
-    return FfiConverterTypePayInvoiceRequestParams.lower(value)
+public func FfiConverterTypePayInvoiceRequest_lower(_ value: PayInvoiceRequest) -> RustBuffer {
+    return FfiConverterTypePayInvoiceRequest.lower(value)
 }
 
 
 /**
  * NIP47 Response Result
  */
-public struct PayInvoiceResponseResult {
+public struct PayInvoiceResponse {
     /**
      * Response preimage
      */
@@ -22333,8 +21314,8 @@ public struct PayInvoiceResponseResult {
 
 
 
-extension PayInvoiceResponseResult: Equatable, Hashable {
-    public static func ==(lhs: PayInvoiceResponseResult, rhs: PayInvoiceResponseResult) -> Bool {
+extension PayInvoiceResponse: Equatable, Hashable {
+    public static func ==(lhs: PayInvoiceResponse, rhs: PayInvoiceResponse) -> Bool {
         if lhs.preimage != rhs.preimage {
             return false
         }
@@ -22347,33 +21328,33 @@ extension PayInvoiceResponseResult: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypePayInvoiceResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayInvoiceResponseResult {
+public struct FfiConverterTypePayInvoiceResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayInvoiceResponse {
         return
-            try PayInvoiceResponseResult(
+            try PayInvoiceResponse(
                 preimage: FfiConverterString.read(from: &buf)
         )
     }
 
-    public static func write(_ value: PayInvoiceResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: PayInvoiceResponse, into buf: inout [UInt8]) {
         FfiConverterString.write(value.preimage, into: &buf)
     }
 }
 
 
-public func FfiConverterTypePayInvoiceResponseResult_lift(_ buf: RustBuffer) throws -> PayInvoiceResponseResult {
-    return try FfiConverterTypePayInvoiceResponseResult.lift(buf)
+public func FfiConverterTypePayInvoiceResponse_lift(_ buf: RustBuffer) throws -> PayInvoiceResponse {
+    return try FfiConverterTypePayInvoiceResponse.lift(buf)
 }
 
-public func FfiConverterTypePayInvoiceResponseResult_lower(_ value: PayInvoiceResponseResult) -> RustBuffer {
-    return FfiConverterTypePayInvoiceResponseResult.lower(value)
+public func FfiConverterTypePayInvoiceResponse_lower(_ value: PayInvoiceResponse) -> RustBuffer {
+    return FfiConverterTypePayInvoiceResponse.lower(value)
 }
 
 
 /**
- * Pay Invoice Request Params
+ * Pay Invoice Request
  */
-public struct PayKeysendRequestParams {
+public struct PayKeysendRequest {
     /**
      * Optional id
      */
@@ -22423,8 +21404,8 @@ public struct PayKeysendRequestParams {
 
 
 
-extension PayKeysendRequestParams: Equatable, Hashable {
-    public static func ==(lhs: PayKeysendRequestParams, rhs: PayKeysendRequestParams) -> Bool {
+extension PayKeysendRequest: Equatable, Hashable {
+    public static func ==(lhs: PayKeysendRequest, rhs: PayKeysendRequest) -> Bool {
         if lhs.id != rhs.id {
             return false
         }
@@ -22453,10 +21434,10 @@ extension PayKeysendRequestParams: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypePayKeysendRequestParams: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayKeysendRequestParams {
+public struct FfiConverterTypePayKeysendRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayKeysendRequest {
         return
-            try PayKeysendRequestParams(
+            try PayKeysendRequest(
                 id: FfiConverterOptionString.read(from: &buf), 
                 amount: FfiConverterUInt64.read(from: &buf), 
                 pubkey: FfiConverterString.read(from: &buf), 
@@ -22465,7 +21446,7 @@ public struct FfiConverterTypePayKeysendRequestParams: FfiConverterRustBuffer {
         )
     }
 
-    public static func write(_ value: PayKeysendRequestParams, into buf: inout [UInt8]) {
+    public static func write(_ value: PayKeysendRequest, into buf: inout [UInt8]) {
         FfiConverterOptionString.write(value.id, into: &buf)
         FfiConverterUInt64.write(value.amount, into: &buf)
         FfiConverterString.write(value.pubkey, into: &buf)
@@ -22475,19 +21456,19 @@ public struct FfiConverterTypePayKeysendRequestParams: FfiConverterRustBuffer {
 }
 
 
-public func FfiConverterTypePayKeysendRequestParams_lift(_ buf: RustBuffer) throws -> PayKeysendRequestParams {
-    return try FfiConverterTypePayKeysendRequestParams.lift(buf)
+public func FfiConverterTypePayKeysendRequest_lift(_ buf: RustBuffer) throws -> PayKeysendRequest {
+    return try FfiConverterTypePayKeysendRequest.lift(buf)
 }
 
-public func FfiConverterTypePayKeysendRequestParams_lower(_ value: PayKeysendRequestParams) -> RustBuffer {
-    return FfiConverterTypePayKeysendRequestParams.lower(value)
+public func FfiConverterTypePayKeysendRequest_lower(_ value: PayKeysendRequest) -> RustBuffer {
+    return FfiConverterTypePayKeysendRequest.lower(value)
 }
 
 
 /**
  * NIP47 Response Result
  */
-public struct PayKeysendResponseResult {
+public struct PayKeysendResponse {
     /**
      * Response preimage
      */
@@ -22505,8 +21486,8 @@ public struct PayKeysendResponseResult {
 
 
 
-extension PayKeysendResponseResult: Equatable, Hashable {
-    public static func ==(lhs: PayKeysendResponseResult, rhs: PayKeysendResponseResult) -> Bool {
+extension PayKeysendResponse: Equatable, Hashable {
+    public static func ==(lhs: PayKeysendResponse, rhs: PayKeysendResponse) -> Bool {
         if lhs.preimage != rhs.preimage {
             return false
         }
@@ -22519,26 +21500,26 @@ extension PayKeysendResponseResult: Equatable, Hashable {
 }
 
 
-public struct FfiConverterTypePayKeysendResponseResult: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayKeysendResponseResult {
+public struct FfiConverterTypePayKeysendResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PayKeysendResponse {
         return
-            try PayKeysendResponseResult(
+            try PayKeysendResponse(
                 preimage: FfiConverterString.read(from: &buf)
         )
     }
 
-    public static func write(_ value: PayKeysendResponseResult, into buf: inout [UInt8]) {
+    public static func write(_ value: PayKeysendResponse, into buf: inout [UInt8]) {
         FfiConverterString.write(value.preimage, into: &buf)
     }
 }
 
 
-public func FfiConverterTypePayKeysendResponseResult_lift(_ buf: RustBuffer) throws -> PayKeysendResponseResult {
-    return try FfiConverterTypePayKeysendResponseResult.lift(buf)
+public func FfiConverterTypePayKeysendResponse_lift(_ buf: RustBuffer) throws -> PayKeysendResponse {
+    return try FfiConverterTypePayKeysendResponse.lift(buf)
 }
 
-public func FfiConverterTypePayKeysendResponseResult_lower(_ value: PayKeysendResponseResult) -> RustBuffer {
-    return FfiConverterTypePayKeysendResponseResult.lower(value)
+public func FfiConverterTypePayKeysendResponse_lower(_ value: PayKeysendResponse) -> RustBuffer {
+    return FfiConverterTypePayKeysendResponse.lower(value)
 }
 
 
@@ -24146,68 +23127,6 @@ extension DataVendingMachineStatus: Equatable, Hashable {}
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
-
-public enum DatabaseEventStatus {
-    
-    case saved
-    case deleted
-    case notExistent
-}
-
-
-public struct FfiConverterTypeDatabaseEventStatus: FfiConverterRustBuffer {
-    typealias SwiftType = DatabaseEventStatus
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DatabaseEventStatus {
-        let variant: Int32 = try readInt(&buf)
-        switch variant {
-        
-        case 1: return .saved
-        
-        case 2: return .deleted
-        
-        case 3: return .notExistent
-        
-        default: throw UniffiInternalError.unexpectedEnumCase
-        }
-    }
-
-    public static func write(_ value: DatabaseEventStatus, into buf: inout [UInt8]) {
-        switch value {
-        
-        
-        case .saved:
-            writeInt(&buf, Int32(1))
-        
-        
-        case .deleted:
-            writeInt(&buf, Int32(2))
-        
-        
-        case .notExistent:
-            writeInt(&buf, Int32(3))
-        
-        }
-    }
-}
-
-
-public func FfiConverterTypeDatabaseEventStatus_lift(_ buf: RustBuffer) throws -> DatabaseEventStatus {
-    return try FfiConverterTypeDatabaseEventStatus.lift(buf)
-}
-
-public func FfiConverterTypeDatabaseEventStatus_lower(_ value: DatabaseEventStatus) -> RustBuffer {
-    return FfiConverterTypeDatabaseEventStatus.lower(value)
-}
-
-
-
-extension DatabaseEventStatus: Equatable, Hashable {}
-
-
-
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * Encrypted Secret Key version (NIP49)
  */
@@ -24398,6 +23317,167 @@ public func FfiConverterTypeErrorCode_lower(_ value: ErrorCode) -> RustBuffer {
 
 
 extension ErrorCode: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * External Content ID
+ */
+
+public enum ExternalContentId {
+    
+    /**
+     * URL
+     */
+    case url(String
+    )
+    /**
+     * Hashtag
+     */
+    case hashtag(String
+    )
+    /**
+     * Geohash
+     */
+    case geohash(String
+    )
+    /**
+     * Book
+     */
+    case book(String
+    )
+    /**
+     * Podcast Feed
+     */
+    case podcastFeed(String
+    )
+    /**
+     * Podcast Episode
+     */
+    case podcastEpisode(String
+    )
+    /**
+     * Podcast Publisher
+     */
+    case podcastPublisher(String
+    )
+    /**
+     * Movie
+     */
+    case movie(String
+    )
+    /**
+     * Paper
+     */
+    case paper(String
+    )
+}
+
+
+public struct FfiConverterTypeExternalContentId: FfiConverterRustBuffer {
+    typealias SwiftType = ExternalContentId
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ExternalContentId {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .url(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .hashtag(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .geohash(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 4: return .book(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 5: return .podcastFeed(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 6: return .podcastEpisode(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 7: return .podcastPublisher(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 8: return .movie(try FfiConverterString.read(from: &buf)
+        )
+        
+        case 9: return .paper(try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ExternalContentId, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .url(v1):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .hashtag(v1):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .geohash(v1):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .book(v1):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .podcastFeed(v1):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .podcastEpisode(v1):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .podcastPublisher(v1):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .movie(v1):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(v1, into: &buf)
+            
+        
+        case let .paper(v1):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(v1, into: &buf)
+            
+        }
+    }
+}
+
+
+public func FfiConverterTypeExternalContentId_lift(_ buf: RustBuffer) throws -> ExternalContentId {
+    return try FfiConverterTypeExternalContentId.lift(buf)
+}
+
+public func FfiConverterTypeExternalContentId_lower(_ value: ExternalContentId) -> RustBuffer {
+    return FfiConverterTypeExternalContentId.lower(value)
+}
+
+
+
+extension ExternalContentId: Equatable, Hashable {}
 
 
 
@@ -24971,6 +24051,10 @@ public enum KindEnum {
      */
     case genericRepost
     /**
+     * Comment (NIP22)
+     */
+    case comment
+    /**
      * Reaction (NIP25)
      */
     case reaction
@@ -25245,6 +24329,26 @@ public enum KindEnum {
      */
     case privateDirectMessage
     /**
+     * Inbox Relays (NIP17)
+     */
+    case inboxRelays
+    /**
+     * MLS Key Package Relays (NIP104)
+     */
+    case mlsKeyPackageRelays
+    /**
+     * MLS Key Package (NIP104)
+     */
+    case mlsKeyPackage
+    /**
+     * MLS Welcome (NIP104)
+     */
+    case mlsWelcome
+    /**
+     * MLS Group Message (NIP104)
+     */
+    case mlsGroupMessage
+    /**
      * Long-form Text Note (NIP23)
      */
     case longFormTextNote
@@ -25320,151 +24424,163 @@ public struct FfiConverterTypeKindEnum: FfiConverterRustBuffer {
         
         case 9: return .genericRepost
         
-        case 10: return .reaction
+        case 10: return .comment
         
-        case 11: return .badgeAward
+        case 11: return .reaction
         
-        case 12: return .channelCreation
+        case 12: return .badgeAward
         
-        case 13: return .channelMetadata
+        case 13: return .channelCreation
         
-        case 14: return .channelMessage
+        case 14: return .channelMetadata
         
-        case 15: return .channelHideMessage
+        case 15: return .channelMessage
         
-        case 16: return .channelMuteUser
+        case 16: return .channelHideMessage
         
-        case 17: return .publicChatReserved45
+        case 17: return .channelMuteUser
         
-        case 18: return .publicChatReserved46
+        case 18: return .publicChatReserved45
         
-        case 19: return .publicChatReserved47
+        case 19: return .publicChatReserved46
         
-        case 20: return .publicChatReserved48
+        case 20: return .publicChatReserved47
         
-        case 21: return .publicChatReserved49
+        case 21: return .publicChatReserved48
         
-        case 22: return .gitPatch
+        case 22: return .publicChatReserved49
         
-        case 23: return .gitIssue
+        case 23: return .gitPatch
         
-        case 24: return .gitReply
+        case 24: return .gitIssue
         
-        case 25: return .gitStatusOpen
+        case 25: return .gitReply
         
-        case 26: return .gitStatusApplied
+        case 26: return .gitStatusOpen
         
-        case 27: return .gitStatusClosed
+        case 27: return .gitStatusApplied
         
-        case 28: return .gitStatusDraft
+        case 28: return .gitStatusClosed
         
-        case 29: return .label
+        case 29: return .gitStatusDraft
         
-        case 30: return .walletConnectInfo
+        case 30: return .label
         
-        case 31: return .reporting
+        case 31: return .walletConnectInfo
         
-        case 32: return .zapPrivateMessage
+        case 32: return .reporting
         
-        case 33: return .zapRequest
+        case 33: return .zapPrivateMessage
         
-        case 34: return .zapReceipt
+        case 34: return .zapRequest
         
-        case 35: return .muteList
+        case 35: return .zapReceipt
         
-        case 36: return .pinList
+        case 36: return .muteList
         
-        case 37: return .bookmarks
+        case 37: return .pinList
         
-        case 38: return .communities
+        case 38: return .bookmarks
         
-        case 39: return .publicChats
+        case 39: return .communities
         
-        case 40: return .blockedRelays
+        case 40: return .publicChats
         
-        case 41: return .searchRelays
+        case 41: return .blockedRelays
         
-        case 42: return .simpleGroups
+        case 42: return .searchRelays
         
-        case 43: return .interests
+        case 43: return .simpleGroups
         
-        case 44: return .emojis
+        case 44: return .interests
         
-        case 45: return .followSet
+        case 45: return .emojis
         
-        case 46: return .relaySet
+        case 46: return .followSet
         
-        case 47: return .bookmarkSet
+        case 47: return .relaySet
         
-        case 48: return .articlesCurationSet
+        case 48: return .bookmarkSet
         
-        case 49: return .videosCurationSet
+        case 49: return .articlesCurationSet
         
-        case 50: return .interestSet
+        case 50: return .videosCurationSet
         
-        case 51: return .emojiSet
+        case 51: return .interestSet
         
-        case 52: return .releaseArtifactSet
+        case 52: return .emojiSet
         
-        case 53: return .relayList
+        case 53: return .releaseArtifactSet
         
-        case 54: return .authentication
+        case 54: return .relayList
         
-        case 55: return .walletConnectRequest
+        case 55: return .authentication
         
-        case 56: return .walletConnectResponse
+        case 56: return .walletConnectRequest
         
-        case 57: return .nostrConnect
+        case 57: return .walletConnectResponse
         
-        case 58: return .liveEvent
+        case 58: return .nostrConnect
         
-        case 59: return .liveEventMessage
+        case 59: return .liveEvent
         
-        case 60: return .profileBadges
+        case 60: return .liveEventMessage
         
-        case 61: return .badgeDefinition
+        case 61: return .profileBadges
         
-        case 62: return .seal
+        case 62: return .badgeDefinition
         
-        case 63: return .giftWrap
+        case 63: return .seal
         
-        case 64: return .privateDirectMessage
+        case 64: return .giftWrap
         
-        case 65: return .longFormTextNote
+        case 65: return .privateDirectMessage
         
-        case 66: return .gitRepoAnnouncement
+        case 66: return .inboxRelays
         
-        case 67: return .applicationSpecificData
+        case 67: return .mlsKeyPackageRelays
         
-        case 68: return .fileMetadata
+        case 68: return .mlsKeyPackage
         
-        case 69: return .httpAuth
+        case 69: return .mlsWelcome
         
-        case 70: return .setStall
+        case 70: return .mlsGroupMessage
         
-        case 71: return .setProduct
+        case 71: return .longFormTextNote
         
-        case 72: return .jobFeedback
+        case 72: return .gitRepoAnnouncement
         
-        case 73: return .jobRequest(kind: try FfiConverterUInt16.read(from: &buf)
+        case 73: return .applicationSpecificData
+        
+        case 74: return .fileMetadata
+        
+        case 75: return .httpAuth
+        
+        case 76: return .setStall
+        
+        case 77: return .setProduct
+        
+        case 78: return .jobFeedback
+        
+        case 79: return .jobRequest(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 74: return .jobResult(kind: try FfiConverterUInt16.read(from: &buf)
+        case 80: return .jobResult(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 75: return .regular(kind: try FfiConverterUInt16.read(from: &buf)
+        case 81: return .regular(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 76: return .replaceable(kind: try FfiConverterUInt16.read(from: &buf)
+        case 82: return .replaceable(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 77: return .ephemeral(kind: try FfiConverterUInt16.read(from: &buf)
+        case 83: return .ephemeral(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 78: return .parameterizedReplaceable(kind: try FfiConverterUInt16.read(from: &buf)
+        case 84: return .parameterizedReplaceable(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 79: return .custom(kind: try FfiConverterUInt16.read(from: &buf)
+        case 85: return .custom(kind: try FfiConverterUInt16.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -25511,290 +24627,314 @@ public struct FfiConverterTypeKindEnum: FfiConverterRustBuffer {
             writeInt(&buf, Int32(9))
         
         
-        case .reaction:
+        case .comment:
             writeInt(&buf, Int32(10))
         
         
-        case .badgeAward:
+        case .reaction:
             writeInt(&buf, Int32(11))
         
         
-        case .channelCreation:
+        case .badgeAward:
             writeInt(&buf, Int32(12))
         
         
-        case .channelMetadata:
+        case .channelCreation:
             writeInt(&buf, Int32(13))
         
         
-        case .channelMessage:
+        case .channelMetadata:
             writeInt(&buf, Int32(14))
         
         
-        case .channelHideMessage:
+        case .channelMessage:
             writeInt(&buf, Int32(15))
         
         
-        case .channelMuteUser:
+        case .channelHideMessage:
             writeInt(&buf, Int32(16))
         
         
-        case .publicChatReserved45:
+        case .channelMuteUser:
             writeInt(&buf, Int32(17))
         
         
-        case .publicChatReserved46:
+        case .publicChatReserved45:
             writeInt(&buf, Int32(18))
         
         
-        case .publicChatReserved47:
+        case .publicChatReserved46:
             writeInt(&buf, Int32(19))
         
         
-        case .publicChatReserved48:
+        case .publicChatReserved47:
             writeInt(&buf, Int32(20))
         
         
-        case .publicChatReserved49:
+        case .publicChatReserved48:
             writeInt(&buf, Int32(21))
         
         
-        case .gitPatch:
+        case .publicChatReserved49:
             writeInt(&buf, Int32(22))
         
         
-        case .gitIssue:
+        case .gitPatch:
             writeInt(&buf, Int32(23))
         
         
-        case .gitReply:
+        case .gitIssue:
             writeInt(&buf, Int32(24))
         
         
-        case .gitStatusOpen:
+        case .gitReply:
             writeInt(&buf, Int32(25))
         
         
-        case .gitStatusApplied:
+        case .gitStatusOpen:
             writeInt(&buf, Int32(26))
         
         
-        case .gitStatusClosed:
+        case .gitStatusApplied:
             writeInt(&buf, Int32(27))
         
         
-        case .gitStatusDraft:
+        case .gitStatusClosed:
             writeInt(&buf, Int32(28))
         
         
-        case .label:
+        case .gitStatusDraft:
             writeInt(&buf, Int32(29))
         
         
-        case .walletConnectInfo:
+        case .label:
             writeInt(&buf, Int32(30))
         
         
-        case .reporting:
+        case .walletConnectInfo:
             writeInt(&buf, Int32(31))
         
         
-        case .zapPrivateMessage:
+        case .reporting:
             writeInt(&buf, Int32(32))
         
         
-        case .zapRequest:
+        case .zapPrivateMessage:
             writeInt(&buf, Int32(33))
         
         
-        case .zapReceipt:
+        case .zapRequest:
             writeInt(&buf, Int32(34))
         
         
-        case .muteList:
+        case .zapReceipt:
             writeInt(&buf, Int32(35))
         
         
-        case .pinList:
+        case .muteList:
             writeInt(&buf, Int32(36))
         
         
-        case .bookmarks:
+        case .pinList:
             writeInt(&buf, Int32(37))
         
         
-        case .communities:
+        case .bookmarks:
             writeInt(&buf, Int32(38))
         
         
-        case .publicChats:
+        case .communities:
             writeInt(&buf, Int32(39))
         
         
-        case .blockedRelays:
+        case .publicChats:
             writeInt(&buf, Int32(40))
         
         
-        case .searchRelays:
+        case .blockedRelays:
             writeInt(&buf, Int32(41))
         
         
-        case .simpleGroups:
+        case .searchRelays:
             writeInt(&buf, Int32(42))
         
         
-        case .interests:
+        case .simpleGroups:
             writeInt(&buf, Int32(43))
         
         
-        case .emojis:
+        case .interests:
             writeInt(&buf, Int32(44))
         
         
-        case .followSet:
+        case .emojis:
             writeInt(&buf, Int32(45))
         
         
-        case .relaySet:
+        case .followSet:
             writeInt(&buf, Int32(46))
         
         
-        case .bookmarkSet:
+        case .relaySet:
             writeInt(&buf, Int32(47))
         
         
-        case .articlesCurationSet:
+        case .bookmarkSet:
             writeInt(&buf, Int32(48))
         
         
-        case .videosCurationSet:
+        case .articlesCurationSet:
             writeInt(&buf, Int32(49))
         
         
-        case .interestSet:
+        case .videosCurationSet:
             writeInt(&buf, Int32(50))
         
         
-        case .emojiSet:
+        case .interestSet:
             writeInt(&buf, Int32(51))
         
         
-        case .releaseArtifactSet:
+        case .emojiSet:
             writeInt(&buf, Int32(52))
         
         
-        case .relayList:
+        case .releaseArtifactSet:
             writeInt(&buf, Int32(53))
         
         
-        case .authentication:
+        case .relayList:
             writeInt(&buf, Int32(54))
         
         
-        case .walletConnectRequest:
+        case .authentication:
             writeInt(&buf, Int32(55))
         
         
-        case .walletConnectResponse:
+        case .walletConnectRequest:
             writeInt(&buf, Int32(56))
         
         
-        case .nostrConnect:
+        case .walletConnectResponse:
             writeInt(&buf, Int32(57))
         
         
-        case .liveEvent:
+        case .nostrConnect:
             writeInt(&buf, Int32(58))
         
         
-        case .liveEventMessage:
+        case .liveEvent:
             writeInt(&buf, Int32(59))
         
         
-        case .profileBadges:
+        case .liveEventMessage:
             writeInt(&buf, Int32(60))
         
         
-        case .badgeDefinition:
+        case .profileBadges:
             writeInt(&buf, Int32(61))
         
         
-        case .seal:
+        case .badgeDefinition:
             writeInt(&buf, Int32(62))
         
         
-        case .giftWrap:
+        case .seal:
             writeInt(&buf, Int32(63))
         
         
-        case .privateDirectMessage:
+        case .giftWrap:
             writeInt(&buf, Int32(64))
         
         
-        case .longFormTextNote:
+        case .privateDirectMessage:
             writeInt(&buf, Int32(65))
         
         
-        case .gitRepoAnnouncement:
+        case .inboxRelays:
             writeInt(&buf, Int32(66))
         
         
-        case .applicationSpecificData:
+        case .mlsKeyPackageRelays:
             writeInt(&buf, Int32(67))
         
         
-        case .fileMetadata:
+        case .mlsKeyPackage:
             writeInt(&buf, Int32(68))
         
         
-        case .httpAuth:
+        case .mlsWelcome:
             writeInt(&buf, Int32(69))
         
         
-        case .setStall:
+        case .mlsGroupMessage:
             writeInt(&buf, Int32(70))
         
         
-        case .setProduct:
+        case .longFormTextNote:
             writeInt(&buf, Int32(71))
         
         
-        case .jobFeedback:
+        case .gitRepoAnnouncement:
             writeInt(&buf, Int32(72))
         
         
-        case let .jobRequest(kind):
+        case .applicationSpecificData:
             writeInt(&buf, Int32(73))
+        
+        
+        case .fileMetadata:
+            writeInt(&buf, Int32(74))
+        
+        
+        case .httpAuth:
+            writeInt(&buf, Int32(75))
+        
+        
+        case .setStall:
+            writeInt(&buf, Int32(76))
+        
+        
+        case .setProduct:
+            writeInt(&buf, Int32(77))
+        
+        
+        case .jobFeedback:
+            writeInt(&buf, Int32(78))
+        
+        
+        case let .jobRequest(kind):
+            writeInt(&buf, Int32(79))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .jobResult(kind):
-            writeInt(&buf, Int32(74))
+            writeInt(&buf, Int32(80))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .regular(kind):
-            writeInt(&buf, Int32(75))
+            writeInt(&buf, Int32(81))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .replaceable(kind):
-            writeInt(&buf, Int32(76))
+            writeInt(&buf, Int32(82))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .ephemeral(kind):
-            writeInt(&buf, Int32(77))
+            writeInt(&buf, Int32(83))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .parameterizedReplaceable(kind):
-            writeInt(&buf, Int32(78))
+            writeInt(&buf, Int32(84))
             FfiConverterUInt16.write(kind, into: &buf)
             
         
         case let .custom(kind):
-            writeInt(&buf, Int32(79))
+            writeInt(&buf, Int32(85))
             FfiConverterUInt16.write(kind, into: &buf)
             
         }
@@ -26058,11 +25198,6 @@ public enum Marker {
      * Mention
      */
     case mention
-    /**
-     * Custom
-     */
-    case custom(custom: String
-    )
 }
 
 
@@ -26078,9 +25213,6 @@ public struct FfiConverterTypeMarker: FfiConverterRustBuffer {
         case 2: return .reply
         
         case 3: return .mention
-        
-        case 4: return .custom(custom: try FfiConverterString.read(from: &buf)
-        )
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -26101,11 +25233,6 @@ public struct FfiConverterTypeMarker: FfiConverterRustBuffer {
         case .mention:
             writeInt(&buf, Int32(3))
         
-        
-        case let .custom(custom):
-            writeInt(&buf, Int32(4))
-            FfiConverterString.write(custom, into: &buf)
-            
         }
     }
 }
@@ -26581,7 +25708,7 @@ public enum Nip46Request {
     /**
      * Sign [`UnsignedEvent`]
      */
-    case signEvent(unsigned: UnsignedEvent
+    case signEvent(unsignedEvent: UnsignedEvent
     )
     /**
      * Get relays
@@ -26650,7 +25777,7 @@ public struct FfiConverterTypeNip46Request: FfiConverterRustBuffer {
         
         case 2: return .getPublicKey
         
-        case 3: return .signEvent(unsigned: try FfiConverterTypeUnsignedEvent.read(from: &buf)
+        case 3: return .signEvent(unsignedEvent: try FfiConverterTypeUnsignedEvent.read(from: &buf)
         )
         
         case 4: return .getRelays
@@ -26687,9 +25814,9 @@ public struct FfiConverterTypeNip46Request: FfiConverterRustBuffer {
             writeInt(&buf, Int32(2))
         
         
-        case let .signEvent(unsigned):
+        case let .signEvent(unsignedEvent):
             writeInt(&buf, Int32(3))
-            FfiConverterTypeUnsignedEvent.write(unsigned, into: &buf)
+            FfiConverterTypeUnsignedEvent.write(unsignedEvent, into: &buf)
             
         
         case .getRelays:
@@ -27440,37 +26567,37 @@ public enum RequestParams {
     /**
      * Pay Invoice
      */
-    case payInvoice(payInvoice: PayInvoiceRequestParams
+    case payInvoice(payInvoice: PayInvoiceRequest
     )
     /**
      * Multi Pay Invoice
      */
-    case multiPayInvoice(multiPayInvoice: MultiPayInvoiceRequestParams
+    case multiPayInvoice(multiPayInvoice: MultiPayInvoiceRequest
     )
     /**
      * Pay Keysend
      */
-    case payKeysend(payKeysend: PayKeysendRequestParams
+    case payKeysend(payKeysend: PayKeysendRequest
     )
     /**
      * Multi Pay Keysend
      */
-    case multiPayKeysend(multiPayKeysend: MultiPayKeysendRequestParams
+    case multiPayKeysend(multiPayKeysend: MultiPayKeysendRequest
     )
     /**
      * Make Invoice
      */
-    case makeInvoice(makeInvoice: MakeInvoiceRequestParams
+    case makeInvoice(makeInvoice: MakeInvoiceRequest
     )
     /**
      * Lookup Invoice
      */
-    case lookupInvoice(lookupInvoice: LookupInvoiceRequestParams
+    case lookupInvoice(lookupInvoice: LookupInvoiceRequest
     )
     /**
      * List Transactions
      */
-    case listTransactions(listTransactions: ListTransactionsRequestParams
+    case listTransactions(listTransactions: ListTransactionsRequest
     )
     /**
      * Get Balance
@@ -27490,25 +26617,25 @@ public struct FfiConverterTypeRequestParams: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .payInvoice(payInvoice: try FfiConverterTypePayInvoiceRequestParams.read(from: &buf)
+        case 1: return .payInvoice(payInvoice: try FfiConverterTypePayInvoiceRequest.read(from: &buf)
         )
         
-        case 2: return .multiPayInvoice(multiPayInvoice: try FfiConverterTypeMultiPayInvoiceRequestParams.read(from: &buf)
+        case 2: return .multiPayInvoice(multiPayInvoice: try FfiConverterTypeMultiPayInvoiceRequest.read(from: &buf)
         )
         
-        case 3: return .payKeysend(payKeysend: try FfiConverterTypePayKeysendRequestParams.read(from: &buf)
+        case 3: return .payKeysend(payKeysend: try FfiConverterTypePayKeysendRequest.read(from: &buf)
         )
         
-        case 4: return .multiPayKeysend(multiPayKeysend: try FfiConverterTypeMultiPayKeysendRequestParams.read(from: &buf)
+        case 4: return .multiPayKeysend(multiPayKeysend: try FfiConverterTypeMultiPayKeysendRequest.read(from: &buf)
         )
         
-        case 5: return .makeInvoice(makeInvoice: try FfiConverterTypeMakeInvoiceRequestParams.read(from: &buf)
+        case 5: return .makeInvoice(makeInvoice: try FfiConverterTypeMakeInvoiceRequest.read(from: &buf)
         )
         
-        case 6: return .lookupInvoice(lookupInvoice: try FfiConverterTypeLookupInvoiceRequestParams.read(from: &buf)
+        case 6: return .lookupInvoice(lookupInvoice: try FfiConverterTypeLookupInvoiceRequest.read(from: &buf)
         )
         
-        case 7: return .listTransactions(listTransactions: try FfiConverterTypeListTransactionsRequestParams.read(from: &buf)
+        case 7: return .listTransactions(listTransactions: try FfiConverterTypeListTransactionsRequest.read(from: &buf)
         )
         
         case 8: return .getBalance
@@ -27525,37 +26652,37 @@ public struct FfiConverterTypeRequestParams: FfiConverterRustBuffer {
         
         case let .payInvoice(payInvoice):
             writeInt(&buf, Int32(1))
-            FfiConverterTypePayInvoiceRequestParams.write(payInvoice, into: &buf)
+            FfiConverterTypePayInvoiceRequest.write(payInvoice, into: &buf)
             
         
         case let .multiPayInvoice(multiPayInvoice):
             writeInt(&buf, Int32(2))
-            FfiConverterTypeMultiPayInvoiceRequestParams.write(multiPayInvoice, into: &buf)
+            FfiConverterTypeMultiPayInvoiceRequest.write(multiPayInvoice, into: &buf)
             
         
         case let .payKeysend(payKeysend):
             writeInt(&buf, Int32(3))
-            FfiConverterTypePayKeysendRequestParams.write(payKeysend, into: &buf)
+            FfiConverterTypePayKeysendRequest.write(payKeysend, into: &buf)
             
         
         case let .multiPayKeysend(multiPayKeysend):
             writeInt(&buf, Int32(4))
-            FfiConverterTypeMultiPayKeysendRequestParams.write(multiPayKeysend, into: &buf)
+            FfiConverterTypeMultiPayKeysendRequest.write(multiPayKeysend, into: &buf)
             
         
         case let .makeInvoice(makeInvoice):
             writeInt(&buf, Int32(5))
-            FfiConverterTypeMakeInvoiceRequestParams.write(makeInvoice, into: &buf)
+            FfiConverterTypeMakeInvoiceRequest.write(makeInvoice, into: &buf)
             
         
         case let .lookupInvoice(lookupInvoice):
             writeInt(&buf, Int32(6))
-            FfiConverterTypeLookupInvoiceRequestParams.write(lookupInvoice, into: &buf)
+            FfiConverterTypeLookupInvoiceRequest.write(lookupInvoice, into: &buf)
             
         
         case let .listTransactions(listTransactions):
             writeInt(&buf, Int32(7))
-            FfiConverterTypeListTransactionsRequestParams.write(listTransactions, into: &buf)
+            FfiConverterTypeListTransactionsRequest.write(listTransactions, into: &buf)
             
         
         case .getBalance:
@@ -27592,47 +26719,47 @@ public enum ResponseResult {
     /**
      * Pay Invoice
      */
-    case payInvoice(payInvoice: PayInvoiceResponseResult
+    case payInvoice(payInvoice: PayInvoiceResponse
     )
     /**
      * Multi Pay Invoice
      */
-    case multiPayInvoice(payInvoice: PayInvoiceResponseResult
+    case multiPayInvoice(payInvoice: PayInvoiceResponse
     )
     /**
      * Pay Keysend
      */
-    case payKeysend(payKeysend: PayKeysendResponseResult
+    case payKeysend(payKeysend: PayKeysendResponse
     )
     /**
      * Multi Pay Keysend
      */
-    case multiPayKeysend(payKeysend: PayKeysendResponseResult
+    case multiPayKeysend(payKeysend: PayKeysendResponse
     )
     /**
      * Make Invoice
      */
-    case makeInvoice(makeInvoice: MakeInvoiceResponseResult
+    case makeInvoice(makeInvoice: MakeInvoiceResponse
     )
     /**
      * Lookup Invoice
      */
-    case lookupInvoice(lookupInvoice: LookupInvoiceResponseResult
+    case lookupInvoice(lookupInvoice: LookupInvoiceResponse
     )
     /**
      * List Transactions
      */
-    case listTransactions(listTransactions: [LookupInvoiceResponseResult]
+    case listTransactions(listTransactions: [LookupInvoiceResponse]
     )
     /**
      * Get Balance
      */
-    case getBalance(getBalance: GetBalanceResponseResult
+    case getBalance(getBalance: GetBalanceResponse
     )
     /**
      * Get Info
      */
-    case getInfo(getInfo: GetInfoResponseResult
+    case getInfo(getInfo: GetInfoResponse
     )
 }
 
@@ -27644,31 +26771,31 @@ public struct FfiConverterTypeResponseResult: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .payInvoice(payInvoice: try FfiConverterTypePayInvoiceResponseResult.read(from: &buf)
+        case 1: return .payInvoice(payInvoice: try FfiConverterTypePayInvoiceResponse.read(from: &buf)
         )
         
-        case 2: return .multiPayInvoice(payInvoice: try FfiConverterTypePayInvoiceResponseResult.read(from: &buf)
+        case 2: return .multiPayInvoice(payInvoice: try FfiConverterTypePayInvoiceResponse.read(from: &buf)
         )
         
-        case 3: return .payKeysend(payKeysend: try FfiConverterTypePayKeysendResponseResult.read(from: &buf)
+        case 3: return .payKeysend(payKeysend: try FfiConverterTypePayKeysendResponse.read(from: &buf)
         )
         
-        case 4: return .multiPayKeysend(payKeysend: try FfiConverterTypePayKeysendResponseResult.read(from: &buf)
+        case 4: return .multiPayKeysend(payKeysend: try FfiConverterTypePayKeysendResponse.read(from: &buf)
         )
         
-        case 5: return .makeInvoice(makeInvoice: try FfiConverterTypeMakeInvoiceResponseResult.read(from: &buf)
+        case 5: return .makeInvoice(makeInvoice: try FfiConverterTypeMakeInvoiceResponse.read(from: &buf)
         )
         
-        case 6: return .lookupInvoice(lookupInvoice: try FfiConverterTypeLookupInvoiceResponseResult.read(from: &buf)
+        case 6: return .lookupInvoice(lookupInvoice: try FfiConverterTypeLookupInvoiceResponse.read(from: &buf)
         )
         
-        case 7: return .listTransactions(listTransactions: try FfiConverterSequenceTypeLookupInvoiceResponseResult.read(from: &buf)
+        case 7: return .listTransactions(listTransactions: try FfiConverterSequenceTypeLookupInvoiceResponse.read(from: &buf)
         )
         
-        case 8: return .getBalance(getBalance: try FfiConverterTypeGetBalanceResponseResult.read(from: &buf)
+        case 8: return .getBalance(getBalance: try FfiConverterTypeGetBalanceResponse.read(from: &buf)
         )
         
-        case 9: return .getInfo(getInfo: try FfiConverterTypeGetInfoResponseResult.read(from: &buf)
+        case 9: return .getInfo(getInfo: try FfiConverterTypeGetInfoResponse.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -27681,47 +26808,47 @@ public struct FfiConverterTypeResponseResult: FfiConverterRustBuffer {
         
         case let .payInvoice(payInvoice):
             writeInt(&buf, Int32(1))
-            FfiConverterTypePayInvoiceResponseResult.write(payInvoice, into: &buf)
+            FfiConverterTypePayInvoiceResponse.write(payInvoice, into: &buf)
             
         
         case let .multiPayInvoice(payInvoice):
             writeInt(&buf, Int32(2))
-            FfiConverterTypePayInvoiceResponseResult.write(payInvoice, into: &buf)
+            FfiConverterTypePayInvoiceResponse.write(payInvoice, into: &buf)
             
         
         case let .payKeysend(payKeysend):
             writeInt(&buf, Int32(3))
-            FfiConverterTypePayKeysendResponseResult.write(payKeysend, into: &buf)
+            FfiConverterTypePayKeysendResponse.write(payKeysend, into: &buf)
             
         
         case let .multiPayKeysend(payKeysend):
             writeInt(&buf, Int32(4))
-            FfiConverterTypePayKeysendResponseResult.write(payKeysend, into: &buf)
+            FfiConverterTypePayKeysendResponse.write(payKeysend, into: &buf)
             
         
         case let .makeInvoice(makeInvoice):
             writeInt(&buf, Int32(5))
-            FfiConverterTypeMakeInvoiceResponseResult.write(makeInvoice, into: &buf)
+            FfiConverterTypeMakeInvoiceResponse.write(makeInvoice, into: &buf)
             
         
         case let .lookupInvoice(lookupInvoice):
             writeInt(&buf, Int32(6))
-            FfiConverterTypeLookupInvoiceResponseResult.write(lookupInvoice, into: &buf)
+            FfiConverterTypeLookupInvoiceResponse.write(lookupInvoice, into: &buf)
             
         
         case let .listTransactions(listTransactions):
             writeInt(&buf, Int32(7))
-            FfiConverterSequenceTypeLookupInvoiceResponseResult.write(listTransactions, into: &buf)
+            FfiConverterSequenceTypeLookupInvoiceResponse.write(listTransactions, into: &buf)
             
         
         case let .getBalance(getBalance):
             writeInt(&buf, Int32(8))
-            FfiConverterTypeGetBalanceResponseResult.write(getBalance, into: &buf)
+            FfiConverterTypeGetBalanceResponse.write(getBalance, into: &buf)
             
         
         case let .getInfo(getInfo):
             writeInt(&buf, Int32(9))
-            FfiConverterTypeGetInfoResponseResult.write(getInfo, into: &buf)
+            FfiConverterTypeGetInfoResponse.write(getInfo, into: &buf)
             
         }
     }
@@ -27798,6 +26925,94 @@ public func FfiConverterTypeRetentionKind_lower(_ value: RetentionKind) -> RustB
 
 
 extension RetentionKind: Equatable, Hashable {}
+
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum SignerBackend {
+    
+    /**
+     * Secret key
+     */
+    case keys
+    /**
+     * Browser extension (NIP07)
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/07.md>
+     */
+    case browserExtension
+    /**
+     * Nostr Connect (NIP46)
+     *
+     * <https://github.com/nostr-protocol/nips/blob/master/46.md>
+     */
+    case nostrConnect
+    /**
+     * Custom
+     */
+    case custom(backend: String
+    )
+}
+
+
+public struct FfiConverterTypeSignerBackend: FfiConverterRustBuffer {
+    typealias SwiftType = SignerBackend
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SignerBackend {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .keys
+        
+        case 2: return .browserExtension
+        
+        case 3: return .nostrConnect
+        
+        case 4: return .custom(backend: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SignerBackend, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .keys:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .browserExtension:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .nostrConnect:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .custom(backend):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(backend, into: &buf)
+            
+        }
+    }
+}
+
+
+public func FfiConverterTypeSignerBackend_lift(_ buf: RustBuffer) throws -> SignerBackend {
+    return try FfiConverterTypeSignerBackend.lift(buf)
+}
+
+public func FfiConverterTypeSignerBackend_lower(_ value: SignerBackend) -> RustBuffer {
+    return FfiConverterTypeSignerBackend.lower(value)
+}
+
+
+
+extension SignerBackend: Equatable, Hashable {}
 
 
 
@@ -27972,6 +27187,18 @@ public enum TagKind {
      */
     case lnurl
     /**
+     * MLS Protocol Version (NIP104)
+     */
+    case mlsProtocolVersion
+    /**
+     * MLS Cipher Suite (NIP104)
+     */
+    case mlsCiphersuite
+    /**
+     * MLS Extensions (NIP104)
+     */
+    case mlsExtensions
+    /**
      * Name tag
      */
     case name
@@ -28108,53 +27335,59 @@ public struct FfiConverterTypeTagKind: FfiConverterRustBuffer {
         
         case 25: return .lnurl
         
-        case 26: return .name
+        case 26: return .mlsProtocolVersion
         
-        case 27: return .url
+        case 27: return .mlsCiphersuite
         
-        case 28: return .aes256Gcm
+        case 28: return .mlsExtensions
         
-        case 29: return .size
+        case 29: return .name
         
-        case 30: return .dim
+        case 30: return .url
         
-        case 31: return .magnet
+        case 31: return .aes256Gcm
         
-        case 32: return .blurhash
+        case 32: return .size
         
-        case 33: return .streaming
+        case 33: return .dim
         
-        case 34: return .recording
+        case 34: return .magnet
         
-        case 35: return .starts
+        case 35: return .blurhash
         
-        case 36: return .ends
+        case 36: return .streaming
         
-        case 37: return .status
+        case 37: return .recording
         
-        case 38: return .currentParticipants
+        case 38: return .starts
         
-        case 39: return .totalParticipants
+        case 39: return .ends
         
-        case 40: return .method
+        case 40: return .status
         
-        case 41: return .payload
+        case 41: return .currentParticipants
         
-        case 42: return .anon
+        case 42: return .totalParticipants
         
-        case 43: return .proxy
+        case 43: return .method
         
-        case 44: return .emoji
+        case 44: return .payload
         
-        case 45: return .encrypted
+        case 45: return .anon
         
-        case 46: return .request
+        case 46: return .proxy
         
-        case 47: return .web
+        case 47: return .emoji
         
-        case 48: return .word
+        case 48: return .encrypted
         
-        case 49: return .unknown(unknown: try FfiConverterString.read(from: &buf)
+        case 49: return .request
+        
+        case 50: return .web
+        
+        case 51: return .word
+        
+        case 52: return .unknown(unknown: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -28266,100 +27499,112 @@ public struct FfiConverterTypeTagKind: FfiConverterRustBuffer {
             writeInt(&buf, Int32(25))
         
         
-        case .name:
+        case .mlsProtocolVersion:
             writeInt(&buf, Int32(26))
         
         
-        case .url:
+        case .mlsCiphersuite:
             writeInt(&buf, Int32(27))
         
         
-        case .aes256Gcm:
+        case .mlsExtensions:
             writeInt(&buf, Int32(28))
         
         
-        case .size:
+        case .name:
             writeInt(&buf, Int32(29))
         
         
-        case .dim:
+        case .url:
             writeInt(&buf, Int32(30))
         
         
-        case .magnet:
+        case .aes256Gcm:
             writeInt(&buf, Int32(31))
         
         
-        case .blurhash:
+        case .size:
             writeInt(&buf, Int32(32))
         
         
-        case .streaming:
+        case .dim:
             writeInt(&buf, Int32(33))
         
         
-        case .recording:
+        case .magnet:
             writeInt(&buf, Int32(34))
         
         
-        case .starts:
+        case .blurhash:
             writeInt(&buf, Int32(35))
         
         
-        case .ends:
+        case .streaming:
             writeInt(&buf, Int32(36))
         
         
-        case .status:
+        case .recording:
             writeInt(&buf, Int32(37))
         
         
-        case .currentParticipants:
+        case .starts:
             writeInt(&buf, Int32(38))
         
         
-        case .totalParticipants:
+        case .ends:
             writeInt(&buf, Int32(39))
         
         
-        case .method:
+        case .status:
             writeInt(&buf, Int32(40))
         
         
-        case .payload:
+        case .currentParticipants:
             writeInt(&buf, Int32(41))
         
         
-        case .anon:
+        case .totalParticipants:
             writeInt(&buf, Int32(42))
         
         
-        case .proxy:
+        case .method:
             writeInt(&buf, Int32(43))
         
         
-        case .emoji:
+        case .payload:
             writeInt(&buf, Int32(44))
         
         
-        case .encrypted:
+        case .anon:
             writeInt(&buf, Int32(45))
         
         
-        case .request:
+        case .proxy:
             writeInt(&buf, Int32(46))
         
         
-        case .web:
+        case .emoji:
             writeInt(&buf, Int32(47))
         
         
-        case .word:
+        case .encrypted:
             writeInt(&buf, Int32(48))
         
         
-        case let .unknown(unknown):
+        case .request:
             writeInt(&buf, Int32(49))
+        
+        
+        case .web:
+            writeInt(&buf, Int32(50))
+        
+        
+        case .word:
+            writeInt(&buf, Int32(51))
+        
+        
+        case let .unknown(unknown):
+            writeInt(&buf, Int32(52))
             FfiConverterString.write(unknown, into: &buf)
             
         }
@@ -28387,6 +27632,14 @@ public func FfiConverterTypeTagKind_lower(_ value: TagKind) -> RustBuffer {
 public enum TagStandard {
     
     case eventTag(eventId: EventId, relayUrl: String?, marker: Marker?, 
+        /**
+         * Should be the public key of the author of the referenced event
+         */publicKey: PublicKey?, 
+        /**
+         * Whether the e tag is an uppercase E or not
+         */uppercase: Bool
+    )
+    case quote(eventId: EventId, relayUrl: String?, 
         /**
          * Should be the public key of the author of the referenced event
          */publicKey: PublicKey?
@@ -28440,11 +27693,22 @@ public enum TagStandard {
     )
     case identifier(identifier: String
     )
+    case externalContent(content: ExternalContentId, 
+        /**
+         * Hint URL
+         */hint: String?, uppercase: Bool
+    )
     case externalIdentity(identity: Identity
     )
-    case coordinateTag(coordinate: Coordinate, relayUrl: String?
+    case coordinateTag(coordinate: Coordinate, relayUrl: String?, 
+        /**
+         * Whether the a tag is an uppercase A or not
+         */uppercase: Bool
     )
-    case kind(kind: KindEnum
+    case kind(kind: KindEnum, 
+        /**
+         * Whether the k tag is an uppercase K or not
+         */uppercase: Bool
     )
     case relayUrl(relayUrl: String
     )
@@ -28565,200 +27829,206 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .eventTag(eventId: try FfiConverterTypeEventId.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), marker: try FfiConverterOptionTypeMarker.read(from: &buf), publicKey: try FfiConverterOptionTypePublicKey.read(from: &buf)
+        case 1: return .eventTag(eventId: try FfiConverterTypeEventId.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), marker: try FfiConverterOptionTypeMarker.read(from: &buf), publicKey: try FfiConverterOptionTypePublicKey.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 2: return .gitClone(urls: try FfiConverterSequenceString.read(from: &buf)
+        case 2: return .quote(eventId: try FfiConverterTypeEventId.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), publicKey: try FfiConverterOptionTypePublicKey.read(from: &buf)
         )
         
-        case 3: return .gitCommit(hash: try FfiConverterString.read(from: &buf)
+        case 3: return .gitClone(urls: try FfiConverterSequenceString.read(from: &buf)
         )
         
-        case 4: return .gitEarliestUniqueCommitId(commit: try FfiConverterString.read(from: &buf)
+        case 4: return .gitCommit(hash: try FfiConverterString.read(from: &buf)
         )
         
-        case 5: return .gitMaintainers(publicKeys: try FfiConverterSequenceTypePublicKey.read(from: &buf)
+        case 5: return .gitEarliestUniqueCommitId(commit: try FfiConverterString.read(from: &buf)
         )
         
-        case 6: return .publicKeyTag(publicKey: try FfiConverterTypePublicKey.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), alias: try FfiConverterOptionString.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
+        case 6: return .gitMaintainers(publicKeys: try FfiConverterSequenceTypePublicKey.read(from: &buf)
         )
         
-        case 7: return .eventReport(eventId: try FfiConverterTypeEventId.read(from: &buf), report: try FfiConverterTypeReport.read(from: &buf)
+        case 7: return .publicKeyTag(publicKey: try FfiConverterTypePublicKey.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), alias: try FfiConverterOptionString.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 8: return .pubKeyReport(publicKey: try FfiConverterTypePublicKey.read(from: &buf), report: try FfiConverterTypeReport.read(from: &buf)
+        case 8: return .eventReport(eventId: try FfiConverterTypeEventId.read(from: &buf), report: try FfiConverterTypeReport.read(from: &buf)
         )
         
-        case 9: return .publicKeyLiveEvent(publicKey: try FfiConverterTypePublicKey.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), marker: try FfiConverterTypeLiveEventMarker.read(from: &buf), proof: try FfiConverterOptionString.read(from: &buf)
+        case 9: return .pubKeyReport(publicKey: try FfiConverterTypePublicKey.read(from: &buf), report: try FfiConverterTypeReport.read(from: &buf)
         )
         
-        case 10: return .reference(reference: try FfiConverterString.read(from: &buf)
+        case 10: return .publicKeyLiveEvent(publicKey: try FfiConverterTypePublicKey.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), marker: try FfiConverterTypeLiveEventMarker.read(from: &buf), proof: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 11: return .relayMetadataTag(relayUrl: try FfiConverterString.read(from: &buf), rw: try FfiConverterOptionTypeRelayMetadata.read(from: &buf)
+        case 11: return .reference(reference: try FfiConverterString.read(from: &buf)
         )
         
-        case 12: return .hashtag(hashtag: try FfiConverterString.read(from: &buf)
+        case 12: return .relayMetadataTag(relayUrl: try FfiConverterString.read(from: &buf), rw: try FfiConverterOptionTypeRelayMetadata.read(from: &buf)
         )
         
-        case 13: return .geohash(geohash: try FfiConverterString.read(from: &buf)
+        case 13: return .hashtag(hashtag: try FfiConverterString.read(from: &buf)
         )
         
-        case 14: return .identifier(identifier: try FfiConverterString.read(from: &buf)
+        case 14: return .geohash(geohash: try FfiConverterString.read(from: &buf)
         )
         
-        case 15: return .externalIdentity(identity: try FfiConverterTypeIdentity.read(from: &buf)
+        case 15: return .identifier(identifier: try FfiConverterString.read(from: &buf)
         )
         
-        case 16: return .coordinateTag(coordinate: try FfiConverterTypeCoordinate.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf)
+        case 16: return .externalContent(content: try FfiConverterTypeExternalContentId.read(from: &buf), hint: try FfiConverterOptionString.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 17: return .kind(kind: try FfiConverterTypeKindEnum.read(from: &buf)
+        case 17: return .externalIdentity(identity: try FfiConverterTypeIdentity.read(from: &buf)
         )
         
-        case 18: return .relayUrl(relayUrl: try FfiConverterString.read(from: &buf)
+        case 18: return .coordinateTag(coordinate: try FfiConverterTypeCoordinate.read(from: &buf), relayUrl: try FfiConverterOptionString.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 19: return .pow(nonce: try FfiConverterString.read(from: &buf), difficulty: try FfiConverterUInt8.read(from: &buf)
+        case 19: return .kind(kind: try FfiConverterTypeKindEnum.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 20: return .delegation(delegator: try FfiConverterTypePublicKey.read(from: &buf), conditions: try FfiConverterString.read(from: &buf), sig: try FfiConverterString.read(from: &buf)
+        case 20: return .relayUrl(relayUrl: try FfiConverterString.read(from: &buf)
         )
         
-        case 21: return .contentWarning(reason: try FfiConverterOptionString.read(from: &buf)
+        case 21: return .pow(nonce: try FfiConverterString.read(from: &buf), difficulty: try FfiConverterUInt8.read(from: &buf)
         )
         
-        case 22: return .expiration(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
+        case 22: return .delegation(delegator: try FfiConverterTypePublicKey.read(from: &buf), conditions: try FfiConverterString.read(from: &buf), sig: try FfiConverterString.read(from: &buf)
         )
         
-        case 23: return .subject(subject: try FfiConverterString.read(from: &buf)
+        case 23: return .contentWarning(reason: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 24: return .challenge(challenge: try FfiConverterString.read(from: &buf)
+        case 24: return .expiration(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
         )
         
-        case 25: return .title(title: try FfiConverterString.read(from: &buf)
+        case 25: return .subject(subject: try FfiConverterString.read(from: &buf)
         )
         
-        case 26: return .image(url: try FfiConverterString.read(from: &buf), dimensions: try FfiConverterOptionTypeImageDimensions.read(from: &buf)
+        case 26: return .challenge(challenge: try FfiConverterString.read(from: &buf)
         )
         
-        case 27: return .thumb(url: try FfiConverterString.read(from: &buf), dimensions: try FfiConverterOptionTypeImageDimensions.read(from: &buf)
+        case 27: return .title(title: try FfiConverterString.read(from: &buf)
         )
         
-        case 28: return .summary(summary: try FfiConverterString.read(from: &buf)
+        case 28: return .image(url: try FfiConverterString.read(from: &buf), dimensions: try FfiConverterOptionTypeImageDimensions.read(from: &buf)
         )
         
-        case 29: return .description(desc: try FfiConverterString.read(from: &buf)
+        case 29: return .thumb(url: try FfiConverterString.read(from: &buf), dimensions: try FfiConverterOptionTypeImageDimensions.read(from: &buf)
         )
         
-        case 30: return .bolt11(bolt11: try FfiConverterString.read(from: &buf)
+        case 30: return .summary(summary: try FfiConverterString.read(from: &buf)
         )
         
-        case 31: return .preimage(preimage: try FfiConverterString.read(from: &buf)
+        case 31: return .description(desc: try FfiConverterString.read(from: &buf)
         )
         
-        case 32: return .relays(urls: try FfiConverterSequenceString.read(from: &buf)
+        case 32: return .bolt11(bolt11: try FfiConverterString.read(from: &buf)
         )
         
-        case 33: return .amount(millisats: try FfiConverterUInt64.read(from: &buf), bolt11: try FfiConverterOptionString.read(from: &buf)
+        case 33: return .preimage(preimage: try FfiConverterString.read(from: &buf)
         )
         
-        case 34: return .lnurl(lnurl: try FfiConverterString.read(from: &buf)
+        case 34: return .relays(urls: try FfiConverterSequenceString.read(from: &buf)
         )
         
-        case 35: return .name(name: try FfiConverterString.read(from: &buf)
+        case 35: return .amount(millisats: try FfiConverterUInt64.read(from: &buf), bolt11: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 36: return .publishedAt(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
+        case 36: return .lnurl(lnurl: try FfiConverterString.read(from: &buf)
         )
         
-        case 37: return .urlTag(url: try FfiConverterString.read(from: &buf)
+        case 37: return .name(name: try FfiConverterString.read(from: &buf)
         )
         
-        case 38: return .mimeType(mime: try FfiConverterString.read(from: &buf)
+        case 38: return .publishedAt(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
         )
         
-        case 39: return .aes256Gcm(key: try FfiConverterString.read(from: &buf), iv: try FfiConverterString.read(from: &buf)
+        case 39: return .urlTag(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 40: return .sha256(hash: try FfiConverterString.read(from: &buf)
+        case 40: return .mimeType(mime: try FfiConverterString.read(from: &buf)
         )
         
-        case 41: return .size(size: try FfiConverterUInt64.read(from: &buf)
+        case 41: return .aes256Gcm(key: try FfiConverterString.read(from: &buf), iv: try FfiConverterString.read(from: &buf)
         )
         
-        case 42: return .dim(dimensions: try FfiConverterTypeImageDimensions.read(from: &buf)
+        case 42: return .sha256(hash: try FfiConverterString.read(from: &buf)
         )
         
-        case 43: return .magnet(uri: try FfiConverterString.read(from: &buf)
+        case 43: return .size(size: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 44: return .blurhash(blurhash: try FfiConverterString.read(from: &buf)
+        case 44: return .dim(dimensions: try FfiConverterTypeImageDimensions.read(from: &buf)
         )
         
-        case 45: return .streaming(url: try FfiConverterString.read(from: &buf)
+        case 45: return .magnet(uri: try FfiConverterString.read(from: &buf)
         )
         
-        case 46: return .recording(url: try FfiConverterString.read(from: &buf)
+        case 46: return .blurhash(blurhash: try FfiConverterString.read(from: &buf)
         )
         
-        case 47: return .starts(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
+        case 47: return .streaming(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 48: return .ends(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
+        case 48: return .recording(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 49: return .liveEventStatusTag(status: try FfiConverterTypeLiveEventStatus.read(from: &buf)
+        case 49: return .starts(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
         )
         
-        case 50: return .currentParticipants(num: try FfiConverterUInt64.read(from: &buf)
+        case 50: return .ends(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
         )
         
-        case 51: return .totalParticipants(num: try FfiConverterUInt64.read(from: &buf)
+        case 51: return .liveEventStatusTag(status: try FfiConverterTypeLiveEventStatus.read(from: &buf)
         )
         
-        case 52: return .absoluteUrl(url: try FfiConverterString.read(from: &buf)
+        case 52: return .currentParticipants(num: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 53: return .method(method: try FfiConverterTypeHttpMethod.read(from: &buf)
+        case 53: return .totalParticipants(num: try FfiConverterUInt64.read(from: &buf)
         )
         
-        case 54: return .payload(hash: try FfiConverterString.read(from: &buf)
+        case 54: return .absoluteUrl(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 55: return .anon(msg: try FfiConverterOptionString.read(from: &buf)
+        case 55: return .method(method: try FfiConverterTypeHttpMethod.read(from: &buf)
         )
         
-        case 56: return .proxy(id: try FfiConverterString.read(from: &buf), protocol: try FfiConverterTypeProtocol.read(from: &buf)
+        case 56: return .payload(hash: try FfiConverterString.read(from: &buf)
         )
         
-        case 57: return .emoji(shortcode: try FfiConverterString.read(from: &buf), url: try FfiConverterString.read(from: &buf)
+        case 57: return .anon(msg: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 58: return .encrypted
-        
-        case 59: return .request(event: try FfiConverterTypeEvent.read(from: &buf)
+        case 58: return .proxy(id: try FfiConverterString.read(from: &buf), protocol: try FfiConverterTypeProtocol.read(from: &buf)
         )
         
-        case 60: return .dataVendingMachineStatusTag(status: try FfiConverterTypeDataVendingMachineStatus.read(from: &buf), extraInfo: try FfiConverterOptionString.read(from: &buf)
+        case 59: return .emoji(shortcode: try FfiConverterString.read(from: &buf), url: try FfiConverterString.read(from: &buf)
         )
         
-        case 61: return .labelNamespace(namespace: try FfiConverterString.read(from: &buf)
+        case 60: return .encrypted
+        
+        case 61: return .request(event: try FfiConverterTypeEvent.read(from: &buf)
         )
         
-        case 62: return .label(label: try FfiConverterSequenceString.read(from: &buf)
+        case 62: return .dataVendingMachineStatusTag(status: try FfiConverterTypeDataVendingMachineStatus.read(from: &buf), extraInfo: try FfiConverterOptionString.read(from: &buf)
         )
         
-        case 63: return .protected
-        
-        case 64: return .alt(summary: try FfiConverterString.read(from: &buf)
+        case 63: return .labelNamespace(namespace: try FfiConverterString.read(from: &buf)
         )
         
-        case 65: return .word(word: try FfiConverterString.read(from: &buf)
+        case 64: return .label(label: try FfiConverterSequenceString.read(from: &buf)
         )
         
-        case 66: return .web(urls: try FfiConverterSequenceString.read(from: &buf)
+        case 65: return .protected
+        
+        case 66: return .alt(summary: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 67: return .word(word: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 68: return .web(urls: try FfiConverterSequenceString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -28769,36 +28039,44 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .eventTag(eventId,relayUrl,marker,publicKey):
+        case let .eventTag(eventId,relayUrl,marker,publicKey,uppercase):
             writeInt(&buf, Int32(1))
             FfiConverterTypeEventId.write(eventId, into: &buf)
             FfiConverterOptionString.write(relayUrl, into: &buf)
             FfiConverterOptionTypeMarker.write(marker, into: &buf)
             FfiConverterOptionTypePublicKey.write(publicKey, into: &buf)
+            FfiConverterBool.write(uppercase, into: &buf)
+            
+        
+        case let .quote(eventId,relayUrl,publicKey):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeEventId.write(eventId, into: &buf)
+            FfiConverterOptionString.write(relayUrl, into: &buf)
+            FfiConverterOptionTypePublicKey.write(publicKey, into: &buf)
             
         
         case let .gitClone(urls):
-            writeInt(&buf, Int32(2))
+            writeInt(&buf, Int32(3))
             FfiConverterSequenceString.write(urls, into: &buf)
             
         
         case let .gitCommit(hash):
-            writeInt(&buf, Int32(3))
+            writeInt(&buf, Int32(4))
             FfiConverterString.write(hash, into: &buf)
             
         
         case let .gitEarliestUniqueCommitId(commit):
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(5))
             FfiConverterString.write(commit, into: &buf)
             
         
         case let .gitMaintainers(publicKeys):
-            writeInt(&buf, Int32(5))
+            writeInt(&buf, Int32(6))
             FfiConverterSequenceTypePublicKey.write(publicKeys, into: &buf)
             
         
         case let .publicKeyTag(publicKey,relayUrl,alias,uppercase):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterTypePublicKey.write(publicKey, into: &buf)
             FfiConverterOptionString.write(relayUrl, into: &buf)
             FfiConverterOptionString.write(alias, into: &buf)
@@ -28806,19 +28084,19 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             
         
         case let .eventReport(eventId,report):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
             FfiConverterTypeEventId.write(eventId, into: &buf)
             FfiConverterTypeReport.write(report, into: &buf)
             
         
         case let .pubKeyReport(publicKey,report):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterTypePublicKey.write(publicKey, into: &buf)
             FfiConverterTypeReport.write(report, into: &buf)
             
         
         case let .publicKeyLiveEvent(publicKey,relayUrl,marker,proof):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(10))
             FfiConverterTypePublicKey.write(publicKey, into: &buf)
             FfiConverterOptionString.write(relayUrl, into: &buf)
             FfiConverterTypeLiveEventMarker.write(marker, into: &buf)
@@ -28826,297 +28104,306 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             
         
         case let .reference(reference):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterString.write(reference, into: &buf)
             
         
         case let .relayMetadataTag(relayUrl,rw):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterString.write(relayUrl, into: &buf)
             FfiConverterOptionTypeRelayMetadata.write(rw, into: &buf)
             
         
         case let .hashtag(hashtag):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterString.write(hashtag, into: &buf)
             
         
         case let .geohash(geohash):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterString.write(geohash, into: &buf)
             
         
         case let .identifier(identifier):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterString.write(identifier, into: &buf)
             
         
+        case let .externalContent(content,hint,uppercase):
+            writeInt(&buf, Int32(16))
+            FfiConverterTypeExternalContentId.write(content, into: &buf)
+            FfiConverterOptionString.write(hint, into: &buf)
+            FfiConverterBool.write(uppercase, into: &buf)
+            
+        
         case let .externalIdentity(identity):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeIdentity.write(identity, into: &buf)
             
         
-        case let .coordinateTag(coordinate,relayUrl):
-            writeInt(&buf, Int32(16))
+        case let .coordinateTag(coordinate,relayUrl,uppercase):
+            writeInt(&buf, Int32(18))
             FfiConverterTypeCoordinate.write(coordinate, into: &buf)
             FfiConverterOptionString.write(relayUrl, into: &buf)
+            FfiConverterBool.write(uppercase, into: &buf)
             
         
-        case let .kind(kind):
-            writeInt(&buf, Int32(17))
+        case let .kind(kind,uppercase):
+            writeInt(&buf, Int32(19))
             FfiConverterTypeKindEnum.write(kind, into: &buf)
+            FfiConverterBool.write(uppercase, into: &buf)
             
         
         case let .relayUrl(relayUrl):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(20))
             FfiConverterString.write(relayUrl, into: &buf)
             
         
         case let .pow(nonce,difficulty):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(21))
             FfiConverterString.write(nonce, into: &buf)
             FfiConverterUInt8.write(difficulty, into: &buf)
             
         
         case let .delegation(delegator,conditions,sig):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(22))
             FfiConverterTypePublicKey.write(delegator, into: &buf)
             FfiConverterString.write(conditions, into: &buf)
             FfiConverterString.write(sig, into: &buf)
             
         
         case let .contentWarning(reason):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(23))
             FfiConverterOptionString.write(reason, into: &buf)
             
         
         case let .expiration(timestamp):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(24))
             FfiConverterTypeTimestamp.write(timestamp, into: &buf)
             
         
         case let .subject(subject):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(25))
             FfiConverterString.write(subject, into: &buf)
             
         
         case let .challenge(challenge):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(26))
             FfiConverterString.write(challenge, into: &buf)
             
         
         case let .title(title):
-            writeInt(&buf, Int32(25))
+            writeInt(&buf, Int32(27))
             FfiConverterString.write(title, into: &buf)
             
         
         case let .image(url,dimensions):
-            writeInt(&buf, Int32(26))
+            writeInt(&buf, Int32(28))
             FfiConverterString.write(url, into: &buf)
             FfiConverterOptionTypeImageDimensions.write(dimensions, into: &buf)
             
         
         case let .thumb(url,dimensions):
-            writeInt(&buf, Int32(27))
+            writeInt(&buf, Int32(29))
             FfiConverterString.write(url, into: &buf)
             FfiConverterOptionTypeImageDimensions.write(dimensions, into: &buf)
             
         
         case let .summary(summary):
-            writeInt(&buf, Int32(28))
+            writeInt(&buf, Int32(30))
             FfiConverterString.write(summary, into: &buf)
             
         
         case let .description(desc):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(31))
             FfiConverterString.write(desc, into: &buf)
             
         
         case let .bolt11(bolt11):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(32))
             FfiConverterString.write(bolt11, into: &buf)
             
         
         case let .preimage(preimage):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(33))
             FfiConverterString.write(preimage, into: &buf)
             
         
         case let .relays(urls):
-            writeInt(&buf, Int32(32))
+            writeInt(&buf, Int32(34))
             FfiConverterSequenceString.write(urls, into: &buf)
             
         
         case let .amount(millisats,bolt11):
-            writeInt(&buf, Int32(33))
+            writeInt(&buf, Int32(35))
             FfiConverterUInt64.write(millisats, into: &buf)
             FfiConverterOptionString.write(bolt11, into: &buf)
             
         
         case let .lnurl(lnurl):
-            writeInt(&buf, Int32(34))
+            writeInt(&buf, Int32(36))
             FfiConverterString.write(lnurl, into: &buf)
             
         
         case let .name(name):
-            writeInt(&buf, Int32(35))
+            writeInt(&buf, Int32(37))
             FfiConverterString.write(name, into: &buf)
             
         
         case let .publishedAt(timestamp):
-            writeInt(&buf, Int32(36))
+            writeInt(&buf, Int32(38))
             FfiConverterTypeTimestamp.write(timestamp, into: &buf)
             
         
         case let .urlTag(url):
-            writeInt(&buf, Int32(37))
+            writeInt(&buf, Int32(39))
             FfiConverterString.write(url, into: &buf)
             
         
         case let .mimeType(mime):
-            writeInt(&buf, Int32(38))
+            writeInt(&buf, Int32(40))
             FfiConverterString.write(mime, into: &buf)
             
         
         case let .aes256Gcm(key,iv):
-            writeInt(&buf, Int32(39))
+            writeInt(&buf, Int32(41))
             FfiConverterString.write(key, into: &buf)
             FfiConverterString.write(iv, into: &buf)
             
         
         case let .sha256(hash):
-            writeInt(&buf, Int32(40))
+            writeInt(&buf, Int32(42))
             FfiConverterString.write(hash, into: &buf)
             
         
         case let .size(size):
-            writeInt(&buf, Int32(41))
+            writeInt(&buf, Int32(43))
             FfiConverterUInt64.write(size, into: &buf)
             
         
         case let .dim(dimensions):
-            writeInt(&buf, Int32(42))
+            writeInt(&buf, Int32(44))
             FfiConverterTypeImageDimensions.write(dimensions, into: &buf)
             
         
         case let .magnet(uri):
-            writeInt(&buf, Int32(43))
+            writeInt(&buf, Int32(45))
             FfiConverterString.write(uri, into: &buf)
             
         
         case let .blurhash(blurhash):
-            writeInt(&buf, Int32(44))
+            writeInt(&buf, Int32(46))
             FfiConverterString.write(blurhash, into: &buf)
             
         
         case let .streaming(url):
-            writeInt(&buf, Int32(45))
+            writeInt(&buf, Int32(47))
             FfiConverterString.write(url, into: &buf)
             
         
         case let .recording(url):
-            writeInt(&buf, Int32(46))
+            writeInt(&buf, Int32(48))
             FfiConverterString.write(url, into: &buf)
             
         
         case let .starts(timestamp):
-            writeInt(&buf, Int32(47))
+            writeInt(&buf, Int32(49))
             FfiConverterTypeTimestamp.write(timestamp, into: &buf)
             
         
         case let .ends(timestamp):
-            writeInt(&buf, Int32(48))
+            writeInt(&buf, Int32(50))
             FfiConverterTypeTimestamp.write(timestamp, into: &buf)
             
         
         case let .liveEventStatusTag(status):
-            writeInt(&buf, Int32(49))
+            writeInt(&buf, Int32(51))
             FfiConverterTypeLiveEventStatus.write(status, into: &buf)
             
         
         case let .currentParticipants(num):
-            writeInt(&buf, Int32(50))
+            writeInt(&buf, Int32(52))
             FfiConverterUInt64.write(num, into: &buf)
             
         
         case let .totalParticipants(num):
-            writeInt(&buf, Int32(51))
+            writeInt(&buf, Int32(53))
             FfiConverterUInt64.write(num, into: &buf)
             
         
         case let .absoluteUrl(url):
-            writeInt(&buf, Int32(52))
+            writeInt(&buf, Int32(54))
             FfiConverterString.write(url, into: &buf)
             
         
         case let .method(method):
-            writeInt(&buf, Int32(53))
+            writeInt(&buf, Int32(55))
             FfiConverterTypeHttpMethod.write(method, into: &buf)
             
         
         case let .payload(hash):
-            writeInt(&buf, Int32(54))
+            writeInt(&buf, Int32(56))
             FfiConverterString.write(hash, into: &buf)
             
         
         case let .anon(msg):
-            writeInt(&buf, Int32(55))
+            writeInt(&buf, Int32(57))
             FfiConverterOptionString.write(msg, into: &buf)
             
         
         case let .proxy(id,`protocol`):
-            writeInt(&buf, Int32(56))
+            writeInt(&buf, Int32(58))
             FfiConverterString.write(id, into: &buf)
             FfiConverterTypeProtocol.write(`protocol`, into: &buf)
             
         
         case let .emoji(shortcode,url):
-            writeInt(&buf, Int32(57))
+            writeInt(&buf, Int32(59))
             FfiConverterString.write(shortcode, into: &buf)
             FfiConverterString.write(url, into: &buf)
             
         
         case .encrypted:
-            writeInt(&buf, Int32(58))
+            writeInt(&buf, Int32(60))
         
         
         case let .request(event):
-            writeInt(&buf, Int32(59))
+            writeInt(&buf, Int32(61))
             FfiConverterTypeEvent.write(event, into: &buf)
             
         
         case let .dataVendingMachineStatusTag(status,extraInfo):
-            writeInt(&buf, Int32(60))
+            writeInt(&buf, Int32(62))
             FfiConverterTypeDataVendingMachineStatus.write(status, into: &buf)
             FfiConverterOptionString.write(extraInfo, into: &buf)
             
         
         case let .labelNamespace(namespace):
-            writeInt(&buf, Int32(61))
+            writeInt(&buf, Int32(63))
             FfiConverterString.write(namespace, into: &buf)
             
         
         case let .label(label):
-            writeInt(&buf, Int32(62))
+            writeInt(&buf, Int32(64))
             FfiConverterSequenceString.write(label, into: &buf)
             
         
         case .protected:
-            writeInt(&buf, Int32(63))
+            writeInt(&buf, Int32(65))
         
         
         case let .alt(summary):
-            writeInt(&buf, Int32(64))
+            writeInt(&buf, Int32(66))
             FfiConverterString.write(summary, into: &buf)
             
         
         case let .word(word):
-            writeInt(&buf, Int32(65))
+            writeInt(&buf, Int32(67))
             FfiConverterString.write(word, into: &buf)
             
         
         case let .web(urls):
-            writeInt(&buf, Int32(66))
+            writeInt(&buf, Int32(68))
             FfiConverterSequenceString.write(urls, into: &buf)
             
         }
@@ -29517,6 +28804,27 @@ fileprivate struct FfiConverterOptionTypeKind: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeKind.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+fileprivate struct FfiConverterOptionTypeMetadata: FfiConverterRustBuffer {
+    typealias SwiftType = Metadata?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeMetadata.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeMetadata.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -30442,23 +29750,23 @@ fileprivate struct FfiConverterSequenceTypeKeysendTLVRecord: FfiConverterRustBuf
     }
 }
 
-fileprivate struct FfiConverterSequenceTypeLookupInvoiceResponseResult: FfiConverterRustBuffer {
-    typealias SwiftType = [LookupInvoiceResponseResult]
+fileprivate struct FfiConverterSequenceTypeLookupInvoiceResponse: FfiConverterRustBuffer {
+    typealias SwiftType = [LookupInvoiceResponse]
 
-    public static func write(_ value: [LookupInvoiceResponseResult], into buf: inout [UInt8]) {
+    public static func write(_ value: [LookupInvoiceResponse], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypeLookupInvoiceResponseResult.write(item, into: &buf)
+            FfiConverterTypeLookupInvoiceResponse.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LookupInvoiceResponseResult] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LookupInvoiceResponse] {
         let len: Int32 = try readInt(&buf)
-        var seq = [LookupInvoiceResponseResult]()
+        var seq = [LookupInvoiceResponse]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeLookupInvoiceResponseResult.read(from: &buf))
+            seq.append(try FfiConverterTypeLookupInvoiceResponse.read(from: &buf))
         }
         return seq
     }
@@ -30486,45 +29794,45 @@ fileprivate struct FfiConverterSequenceTypeNegentropyItem: FfiConverterRustBuffe
     }
 }
 
-fileprivate struct FfiConverterSequenceTypePayInvoiceRequestParams: FfiConverterRustBuffer {
-    typealias SwiftType = [PayInvoiceRequestParams]
+fileprivate struct FfiConverterSequenceTypePayInvoiceRequest: FfiConverterRustBuffer {
+    typealias SwiftType = [PayInvoiceRequest]
 
-    public static func write(_ value: [PayInvoiceRequestParams], into buf: inout [UInt8]) {
+    public static func write(_ value: [PayInvoiceRequest], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypePayInvoiceRequestParams.write(item, into: &buf)
+            FfiConverterTypePayInvoiceRequest.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PayInvoiceRequestParams] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PayInvoiceRequest] {
         let len: Int32 = try readInt(&buf)
-        var seq = [PayInvoiceRequestParams]()
+        var seq = [PayInvoiceRequest]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypePayInvoiceRequestParams.read(from: &buf))
+            seq.append(try FfiConverterTypePayInvoiceRequest.read(from: &buf))
         }
         return seq
     }
 }
 
-fileprivate struct FfiConverterSequenceTypePayKeysendRequestParams: FfiConverterRustBuffer {
-    typealias SwiftType = [PayKeysendRequestParams]
+fileprivate struct FfiConverterSequenceTypePayKeysendRequest: FfiConverterRustBuffer {
+    typealias SwiftType = [PayKeysendRequest]
 
-    public static func write(_ value: [PayKeysendRequestParams], into buf: inout [UInt8]) {
+    public static func write(_ value: [PayKeysendRequest], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypePayKeysendRequestParams.write(item, into: &buf)
+            FfiConverterTypePayKeysendRequest.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PayKeysendRequestParams] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PayKeysendRequest] {
         let len: Int32 = try readInt(&buf)
-        var seq = [PayKeysendRequestParams]()
+        var seq = [PayKeysendRequest]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypePayKeysendRequestParams.read(from: &buf))
+            seq.append(try FfiConverterTypePayKeysendRequest.read(from: &buf))
         }
         return seq
     }
@@ -30974,7 +30282,7 @@ private func uniffiForeignFutureFree(handle: UInt64) {
 }
 
 // For testing
-public func uniffiForeignFutureHandleCountNostrSdkFfi() -> Int {
+public func uniffiForeignFutureHandleCountNostrSdk() -> Int {
     UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
 }
 /**
@@ -31079,11 +30387,11 @@ public func getPrefixesForDifficulty(leadingZeroBits: UInt8) -> [String] {
  *
  * <https://github.com/nostr-protocol/nips/blob/master/59.md>
  */
-public func giftWrap(signer: NostrSigner, receiverPubkey: PublicKey, rumor: UnsignedEvent, expiration: Timestamp? = nil)async throws  -> Event {
+public func giftWrap(signer: NostrSigner, receiverPubkey: PublicKey, rumor: EventBuilder, extraTags: [Tag] = [])async throws  -> Event {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_func_gift_wrap(FfiConverterTypeNostrSigner.lower(signer),FfiConverterTypePublicKey.lower(receiverPubkey),FfiConverterTypeUnsignedEvent.lower(rumor),FfiConverterOptionTypeTimestamp.lower(expiration)
+                uniffi_nostr_sdk_ffi_fn_func_gift_wrap(FfiConverterTypeNostrSigner.lower(signer),FfiConverterTypePublicKey.lower(receiverPubkey),FfiConverterTypeEventBuilder.lower(rumor),FfiConverterSequenceTypeTag.lower(extraTags)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
@@ -31098,12 +30406,12 @@ public func giftWrap(signer: NostrSigner, receiverPubkey: PublicKey, rumor: Unsi
  *
  * <https://github.com/nostr-protocol/nips/blob/master/59.md>
  */
-public func giftWrapFromSeal(receiver: PublicKey, seal: Event, expiration: Timestamp? = nil)throws  -> Event {
+public func giftWrapFromSeal(receiver: PublicKey, seal: Event, extraTags: [Tag] = [])throws  -> Event {
     return try  FfiConverterTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
     uniffi_nostr_sdk_ffi_fn_func_gift_wrap_from_seal(
         FfiConverterTypePublicKey.lower(receiver),
         FfiConverterTypeEvent.lower(seal),
-        FfiConverterOptionTypeTimestamp.lower(expiration),$0
+        FfiConverterSequenceTypeTag.lower(extraTags),$0
     )
 })
 }
@@ -31112,6 +30420,25 @@ public func initLogger(level: LogLevel) {try! rustCall() {
         FfiConverterTypeLogLevel.lower(level),$0
     )
 }
+}
+/**
+ * Private Direct message
+ *
+ * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+ */
+public func makePrivateMsg(signer: NostrSigner, receiver: PublicKey, message: String, rumorExtraTags: [Tag] = [])async throws  -> Event {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_nostr_sdk_ffi_fn_func_make_private_msg(FfiConverterTypeNostrSigner.lower(signer),FfiConverterTypePublicKey.lower(receiver),FfiConverterString.lower(message),FfiConverterSequenceTypeTag.lower(rumorExtraTags)
+                )
+            },
+            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeEvent.lift,
+            errorHandler: FfiConverterTypeNostrSdkError.lift
+        )
 }
 public func nip04Decrypt(secretKey: SecretKey, publicKey: PublicKey, encryptedContent: String)throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrSdkError.lift) {
@@ -31264,2102 +30591,2728 @@ private var initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_create_delegation_tag() != 29447) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_decrypt_received_private_zap_message() != 55155) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_decrypt_sent_private_zap_message() != 30641) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_extract_relay_list() != 28052) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_generate_shared_key() != 49529) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_get_leading_zero_bits() != 2779) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_get_nip05_profile() != 25210) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_get_prefixes_for_difficulty() != 12958) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_gift_wrap() != 53743) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_gift_wrap_from_seal() != 56666) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_init_logger() != 38847) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip04_decrypt() != 23337) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip04_encrypt() != 29489) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip11_get_information_document() != 40832) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip44_decrypt() != 18954) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip44_encrypt() != 41114) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip57_anonymous_zap_request() != 19524) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip57_private_zap_request() != 33299) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_sign_delegation() != 44344) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_tag_kind_to_string() != 44698) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_validate_delegation_tag() != 34014) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_verify_delegation_signature() != 217) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_func_verify_nip05() != 56759) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_discovery_relay() != 57691) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_read_relay() != 52565) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 33779) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_add_write_relay() != 6818) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_automatic_authentication() != 51347) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 30312) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 31242) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_with_timeout() != 16188) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_database() != 35722) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect() != 21461) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect_relay() != 63825) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_dislike() != 35941) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_combined_events() != 19785) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_events() != 10686) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_events_from() != 31840) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_metadata() != 4319) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_file_metadata() != 37581) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_filtering() != 62979) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_force_remove_all_relays() != 47220) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_force_remove_relay() != 55839) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 15708) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap_to() != 8158) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 8916) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_like() != 42531) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_pool() != 3145) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_reaction() != 54952) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 53414) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 53935) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_all_relays() != 19209) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 20917) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_repost() != 13045) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 58506) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 23280) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 7719) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 49750) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 40734) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 21896) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg_to() != 47675) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 31801) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 16786) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_sign_event_builder() != 14074) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 7422) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 23176) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 53235) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 10098) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 32701) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscription() != 61140) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 34758) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_sync() != 10419) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 16499) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe_all() != 37740) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_unwrap_gift_wrap() != 24699) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 12551) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_update_min_pow_difficulty() != 58908) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 33763) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_build() != 61424) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_database() != 21061) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_opts() != 22620) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 32410) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_zapper() != 2114) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientmessage_as_enum() != 46388) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_clientmessage_as_json() != 4674) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_connection_addr() != 43068) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_connection_embedded_tor() != 51580) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_connection_mode() != 217) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_connection_target() != 61648) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_contact_alias() != 50777) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_contact_public_key() != 5517) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_contact_relay_url() != 20565) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_identifier() != 38994) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_kind() != 7837) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_public_key() != 29286) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_relays() != 65042) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_to_bech32() != 48482) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_to_nostr_uri() != 11324) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_backend() != 43310) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_save_event() != 26281) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_check_id() != 56541) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_has_coordinate_been_deleted() != 61278) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_id_seen() != 10356) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_seen_on_relays() != 6263) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_event_by_id() != 12347) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_count() != 2259) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_query() != 59045) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_delete() != 9984) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_customnostrdatabase_wipe() != 62100) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_key_security() != 9516) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_to_bech32() != 44747) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_to_secret_key() != 19935) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_version() != 19336) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_as_json() != 3171) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_as_pretty_json() != 15571) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_author() != 33777) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_content() != 63997) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_created_at() != 44671) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_id() != 10840) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_expired() != 16390) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_protected() != 60470) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_kind() != 37638) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_signature() != 24839) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_tags() != 32843) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_verify() != 3329) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_verify_id() != 50510) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_verify_signature() != 21120) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder__none() != 7372) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_add_tags() != 43751) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_build() != 46818) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_custom_created_at() != 20379) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_pow() != 47148) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign() != 11731) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign_with_keys() != 51348) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_as_bytes() != 22930) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_bech32() != 35036) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_hex() != 62987) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_nostr_uri() != 15047) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_contains() != 39963) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_first() != 11892) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_is_empty() != 16727) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_len() != 22082) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_merge() != 7543) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_to_vec() != 15668) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_aes_256_gcm() != 15419) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_blurhash() != 58338) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_dimensions() != 14373) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_magnet() != 49047) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_size() != 53216) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_as_json() != 6808) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_as_record() != 6560) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_author() != 30570) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_authors() != 55524) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinate() != 29286) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinates() != 2599) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_custom_tag() != 57794) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_event() != 9919) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_events() != 6127) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_hashtag() != 45839) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_hashtags() != 34615) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_id() != 61970) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_identifier() != 32910) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_identifiers() != 38883) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_ids() != 23011) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_is_empty() != 21971) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_kind() != 4634) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_kinds() != 4092) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_limit() != 14746) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_match_event() != 43992) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkey() != 17463) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkeys() != 13058) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_reference() != 5361) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_references() != 54226) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_authors() != 9364) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_coordinates() != 47805) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_custom_tag() != 23841) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_events() != 30094) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_hashtags() != 33949) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_identifiers() != 53765) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_ids() != 11079) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_kinds() != 55693) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_limit() != 45828) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_pubkeys() != 22880) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_references() != 62395) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_search() != 29028) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_since() != 30254) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_until() != 41736) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_search() != 36347) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_since() != 19595) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_until() != 6520) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 54779) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 45027) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_height() != 33923) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_width() != 56199) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_amount() != 2543) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_extra_info() != 21313) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_payload() != 45291) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_get_public_key() != 42528) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_nip04_decrypt() != 6601) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_nip04_encrypt() != 36755) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_nip44_decrypt() != 49619) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_nip44_encrypt() != 10513) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_public_key() != 21581) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_secret_key() != 60506) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_sign_event() != 407) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_keys_sign_schnorr() != 55396) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_as_enum() != 53020) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_as_u16() != 33899) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_ephemeral() != 12268) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_job_request() != 21807) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_job_result() != 3971) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_parameterized_replaceable() != 64232) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_regular() != 26650) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_replaceable() != 31494) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_json() != 2258) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_pretty_json() != 48195) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_record() != 2519) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_about() != 16385) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_banner() != 54057) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_custom_field() != 40823) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_display_name() != 44347) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud06() != 57088) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud16() != 19773) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_name() != 1699) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_nip05() != 17207) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_picture() != 20724) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_website() != 21850) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_about() != 24342) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_banner() != 23479) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_custom_field() != 38634) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_display_name() != 40186) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud06() != 19232) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud16() != 55868) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_name() != 56705) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_nip05() != 63892) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_picture() != 64626) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_website() != 57629) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay__none() != 40990) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_shutdown() != 1736) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_url() != 63169) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_balance() != 30742) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_info() != 12487) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_list_transactions() != 55036) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_lookup_invoice() != 52106) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_make_invoice() != 27495) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_invoice() != 28548) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_keysend() != 37172) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_nip46() != 13517) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_public_key() != 56263) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_relays() != 11122) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19_as_enum() != 62711) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_author() != 8504) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_event_id() != 9799) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_kind() != 12835) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_relays() != 14111) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_to_bech32() != 12367) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_to_nostr_uri() != 31723) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_public_key() != 32958) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_relays() != 62720) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_to_bech32() != 36717) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_to_nostr_uri() != 28973) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip21_as_enum() != 7140) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nip21_to_nostr_uri() != 28944) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_bunker_uri() != 57336) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_get_public_key() != 57844) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip04_decrypt() != 9737) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip04_encrypt() != 32405) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip44_decrypt() != 57892) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip44_encrypt() != 7459) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_relays() != 56157) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_sign_event() != 9571) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_as_json() != 14883) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_description() != 63846) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_icons() != 20500) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_url() != 5634) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_bunker_uri() != 13002) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_relays() != 20744) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_serve() != 40586) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectsigneractions_approve() != 25995) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnecturi_as_string() != 29212) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 59586) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_delete() != 57958) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 41668) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_seen_on_relays() != 3484) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_profile() != 57434) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_query() != 4975) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_save_event() != 61972) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_wipe() != 58001) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrlibrary_git_hash_version() != 51073) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_get_public_key() != 20977) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event() != 32777) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_encrypt() != 64672) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_decrypt() != 23855) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_encrypt() != 43861) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_decrypt() != 40415) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_connection_mode() != 29062) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_timeout() != 18259) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_lud16() != 20036) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_public_key() != 21325) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_relay_url() != 24957) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_secret() != 15591) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_autoconnect() != 15533) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_automatic_authentication() != 33238) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_connection() != 11615) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_connection_timeout() != 57708) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 20804) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_filtering_mode() != 33603) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_gossip() != 22162) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_max_avg_latency() != 34264) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_min_pow() != 54102) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_relay_limits() != 11682) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_req_filters_chunk_size() != 19808) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_options_timeout() != 10820) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_profile_metadata() != 19030) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_profile_name() != 10929) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_profile_public_key() != 25334) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_bech32() != 28181) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_hex() != 25698) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_nostr_uri() != 54491) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_rawevent_as_json() != 26468) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_rawevent_as_record() != 34500) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_event() != 56446) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 31336) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 15421) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_connection_mode() != 52002) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_count_events() != 53493) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_disconnect() != 44712) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 30968) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_fetch_events() != 18464) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_filtering() != 16293) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 18284) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_opts() != 21198) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 23174) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_event() != 30621) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_msg() != 4379) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_stats() != 58574) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_status() != 52365) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe() != 56789) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe_with_id() != 2519) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscription() != 47719) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscriptions() != 31310) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_support_negentropy() != 5020) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_sync() != 50084) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_sync_with_items() != 50768) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe() != 62991) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe_all() != 18626) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 1351) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 52060) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_received() != 157) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_sent() != 64970) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_connected_at() != 27772) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_first_connection_timestamp() != 32759) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_latency() != 43153) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success() != 52759) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success_rate() != 58744) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_ids() != 15436) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_public_keys() != 53012) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_clear() != 53904) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_id() != 7836) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_public_key() != 3775) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_mode() != 29749) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_overwrite_public_keys() != 43193) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_id() != 45476) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_ids() != 63350) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_key() != 5962) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_keys() != 47506) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_update_mode() != 20763) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_contact() != 33791) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_description() != 55506) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_fees() != 52643) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_icon() != 37182) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_language_tags() != 5241) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_limitation() != 63667) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_name() != 54729) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_payments_url() != 50516) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_posting_policy() != 57849) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_pubkey() != 52169) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_relay_countries() != 43620) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_retention() != 48273) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_software() != 34250) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_supported_nips() != 11144) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_tags() != 65245) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_version() != 38302) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags() != 29781) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags_per_kind() != 54489) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size() != 63930) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size_per_kind() != 30650) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_message_max_size() != 26726) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaymessage_as_enum() != 673) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaymessage_as_json() != 14562) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_adjust_retry_sec() != 36994) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_connection_mode() != 24699) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_filtering_mode() != 53101) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_limits() != 10405) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_max_avg_latency() != 58939) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_ping() != 51607) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_pow() != 37387) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_read() != 47081) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_reconnect() != 48820) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_retry_sec() != 58762) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_pow_difficulty() != 44137) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_write() != 45946) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_add_relay() != 60070) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 38268) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 4520) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 52407) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 31806) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect_relay() != 36418) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_database() != 4532) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 51163) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_fetch_events() != 62791) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_fetch_events_from() != 47378) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_filtering() != 46575) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_force_remove_relay() != 58819) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_handle_notifications() != 15285) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relay() != 11676) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 16476) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_relay() != 59636) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 50637) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 5135) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg_to() != 8959) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 24603) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 7394) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 24766) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 17112) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 28766) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscription() != 59111) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscriptions() != 37749) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_sync() != 28257) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe() != 35755) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe_all() != 47254) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_request_method() != 17520) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_request_params() != 39349) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_encrypt() != 49692) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_bech32() != 38599) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_hex() != 57941) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_get_shipping_cost() != 56592) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_name() != 13755) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_regions() != 233) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_singlelettertag_is_lowercase() != 53511) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_singlelettertag_is_uppercase() != 16786) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_as_json() != 14626) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_as_record() != 30522) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_currency() != 40639) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_description() != 50371) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_id() != 34671) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_name() != 15071) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_shipping() != 17698) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_subscribeautocloseoptions_filter() != 17195) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_subscribeautocloseoptions_timeout() != 36298) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_subscribeoptions_close_on() != 31672) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_direction() != 15360) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_dry_run() != 15725) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_initial_timeout() != 19180) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_standardized() != 39092) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_vec() != 22150) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_content() != 43772) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_protected() != 61999) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_reply() != 26678) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_root() != 42913) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind() != 28437) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind_str() != 21836) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_single_letter_tag() != 50942) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_coordinates() != 39150) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_event_ids() != 44166) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_expiration() != 15697) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_filter() != 6442) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_filter_standardized() != 23694) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_find() != 19756) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_find_standardized() != 61199) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_first() != 16571) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_get() != 2938) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_hashtags() != 50724) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_identifier() != 44864) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_is_empty() != 16467) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_last() != 22526) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_len() != 28453) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_public_keys() != 15566) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tags_to_vec() != 38520) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_as_secs() != 7797) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_to_human_datetime() != 24020) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_add_signature() != 33695) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_as_json() != 14388) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_as_pretty_json() != 3289) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_author() != 33632) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_content() != 61788) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_created_at() != 2838) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_id() != 26673) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_kind() != 24650) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_sign() != 39201) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_sign_with_keys() != 65226) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_tags() != 32482) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift__none() != 31106) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift_rumor() != 9051) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift_sender() != 65176) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_zapdetails_message() != 43166) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_amount() != 38837) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_event_id() != 60606) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_lnurl() != 11688) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_message() != 38998) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 12567) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_client_with_opts() != 2242) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 11332) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_auth() != 45144) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_close() != 12470) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_count() != 20126) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_event() != 35014) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_from_enum() != 42986) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_from_json() != 27860) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_req() != 26223) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_connection_new() != 32544) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_contact_new() != 37829) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_from_bech32() != 34870) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_from_nostr_uri() != 19072) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_new() != 9121) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_parse() != 59337) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_encryptedsecretkey_from_bech32() != 27546) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_encryptedsecretkey_new() != 35289) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_event_from_json() != 14737) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_articles_curation_set() != 36328) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_auth() != 58729) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_award_badge() != 41119) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_blocked_relays() != 57431) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_bookmarks() != 63306) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_bookmarks_set() != 23068) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel() != 21555) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel_metadata() != 54862) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel_msg() != 33615) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_communities() != 54557) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_contact_list() != 33837) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_define_badge() != 150) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_delete() != 64893) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_emoji_set() != 6114) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_emojis() != 43073) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_file_metadata() != 8053) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_follow_set() != 32344) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_issue() != 25162) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_patch() != 34800) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_repository_announcement() != 50248) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_hide_channel_msg() != 8353) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_http_auth() != 43005) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_interest_set() != 54183) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_interests() != 55071) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_feedback() != 11871) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_request() != 32544) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_result() != 48936) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_label() != 17217) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_live_event() != 62136) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_live_event_msg() != 36293) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_long_form_text_note() != 53445) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_metadata() != 34149) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_mute_channel_user() != 64300) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_mute_list() != 34705) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new() != 6197) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_nostr_connect() != 10416) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_pinned_notes() != 5335) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_private_msg_rumor() != 21742) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_product_data() != 57627) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_profile_badges() != 15894) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_public_chats() != 65509) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_public_zap_request() != 49461) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_reaction() != 35984) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_reaction_extended() != 29568) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_relay_list() != 56793) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_relay_set() != 4966) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_report() != 9803) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_repost() != 51863) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_seal() != 1892) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_search_relays() != 50345) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_stall_data() != 14247) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_text_note() != 46388) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_text_note_reply() != 54423) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_videos_curation_set() != 19505) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_zap_receipt() != 16189) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bech32() != 6693) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bytes() != 63077) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_hex() != 32526) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_nostr_uri() != 5143) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_new() != 12100) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_parse() != 39522) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_both() != 16599) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_both_with_specific_relays() != 59547) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_database() != 22588) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_relays() != 8271) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_eventsource_specific_relays() != 35301) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_filemetadata_new() != 27821) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_from_json() != 60806) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_from_record() != 32151) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_new() != 58026) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_imagedimensions_new() != 18202) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_jobfeedbackdata_new() != 39189) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_mnemonic() != 25690) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_generate() != 61718) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_new() != 46666) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_parse() != 27763) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_vanity() != 1797) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_kind_from_enum() != 56738) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_kind_new() != 53039) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_from_json() != 44036) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_from_record() != 29877) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_new() != 52664) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_mockrelay_run() != 52562) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 24213) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_with_opts() != 29036) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19_from_bech32() != 12847) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_from_bech32() != 48940) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_from_nostr_uri() != 20420) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_new() != 20553) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_from_bech32() != 56532) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_from_nostr_uri() != 54372) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_new() != 23364) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip21_parse() != 2093) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnect_new() != 60022) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectmetadata_new() != 55577) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_from_uri() != 64990) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_init() != 467) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnecturi_parse() != 36627) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_custom() != 63992) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_lmdb() != 21752) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrlibrary_new() != 23887) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnectoptions_new() != 35456) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnecturi_new() != 42105) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnecturi_parse() != 31940) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrzapper_nwc() != 65346) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_options_new() != 30503) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_new() != 41657) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bech32() != 3912) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bytes() != 38006) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_hex() != 38993) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_nostr_uri() != 34489) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_parse() != 50593) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_rawevent_from_json() != 2443) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_rawevent_from_record() != 36198) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 38370) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_new() != 3279) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_with_opts() != 9335) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_blacklist() != 16765) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_whitelist() != 49922) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayinformationdocument_new() != 44412) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_disable() != 39641) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_new() != 1364) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_auth() != 49391) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_closed() != 12776) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_count() != 38897) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_eose() != 61100) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_event() != 41233) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_from_enum() != 34939) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_from_json() != 52163) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_notice() != 17916) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_ok() != 56502) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relayoptions_new() != 32157) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaypool_new() != 50786) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_relaypool_with_database() != 59953) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_request_new() != 22154) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_request_parse() != 38336) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bech32() != 3401) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bytes() != 33002) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_hex() != 33199) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_generate() != 2297) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_parse() != 41672) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_shippingmethod_new() != 54442) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_singlelettertag_lowercase() != 25781) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_singlelettertag_uppercase() != 26245) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_from_json() != 26421) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_from_record() != 10070) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_new() != 11283) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_subscribeautocloseoptions_new() != 39595) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_subscribeoptions_new() != 56214) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_syncoptions_new() != 7169) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_alt() != 61627) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_coordinate() != 40153) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_custom() != 55533) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_description() != 31007) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event() != 3596) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event_report() != 12542) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_expiration() != 25703) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_from_standardized() != 10696) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_hashtag() != 35589) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_identifier() != 5344) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_image() != 43462) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_parse() != 63294) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_pow() != 46606) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_protected() != 21460) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key() != 4984) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key_report() != 44501) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_reference() != 43166) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_relay_metadata() != 64762) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_title() != 51619) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tags_new() != 15672) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_from_secs() != 64753) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_now() != 13059) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_unsignedevent_from_json() != 8735) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_unwrappedgift_from_gift_wrap() != 21564) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_zapdetails_new() != 6392) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_zapentity_event() != 34830) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_zapentity_public_key() != 33412) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_zaprequestdata_new() != 17704) {
-        return InitializationResult.apiChecksumMismatch
-    }
 
-    uniffiCallbackInitCustomNostrDatabase()
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_create_delegation_tag() != 29447) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_decrypt_received_private_zap_message() != 55155) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_decrypt_sent_private_zap_message() != 30641) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_extract_relay_list() != 28052) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_generate_shared_key() != 49529) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_get_leading_zero_bits() != 2779) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_get_nip05_profile() != 25210) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_get_prefixes_for_difficulty() != 12958) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_gift_wrap() != 18439) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_gift_wrap_from_seal() != 30742) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_init_logger() != 38847) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_make_private_msg() != 13683) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip04_decrypt() != 23337) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip04_encrypt() != 29489) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip11_get_information_document() != 40832) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip44_decrypt() != 18954) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip44_encrypt() != 41114) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip57_anonymous_zap_request() != 19524) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_nip57_private_zap_request() != 33299) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_sign_delegation() != 44344) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_tag_kind_to_string() != 44698) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_validate_delegation_tag() != 34014) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_verify_delegation_signature() != 217) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_func_verify_nip05() != 56759) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_add_discovery_relay() != 57691) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_add_read_relay() != 52565) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_add_relay() != 33779) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_add_write_relay() != 6818) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_automatic_authentication() != 51347) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_connect() != 30312) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_relay() != 31242) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_connect_with_timeout() != 16188) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_database() != 35722) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect() != 21461) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_disconnect_relay() != 63825) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_combined_events() != 19785) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_events() != 10686) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_events_from() != 31840) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_fetch_metadata() != 4319) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_filtering() != 62979) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_force_remove_all_relays() != 47220) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_force_remove_relay() != 55839) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap() != 16799) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_gift_wrap_to() != 16887) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_handle_notifications() != 8916) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_pool() != 3145) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 53414) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_relays() != 53935) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_all_relays() != 19209) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_remove_relay() != 36133) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event() != 58506) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder() != 23280) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_builder_to() != 7719) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_event_to() != 49750) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_msg_to() != 40734) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg() != 64645) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_send_private_msg_to() != 2996) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_set_metadata() != 31801) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_shutdown() != 16786) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_sign_event_builder() != 14074) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_signer() != 31951) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe() != 23176) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_to() != 53235) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id() != 10098) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscribe_with_id_to() != 32701) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscription() != 61140) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 34758) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_sync() != 10419) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe() != 16499) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_unsubscribe_all() != 37740) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_unwrap_gift_wrap() != 24699) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_update_difficulty() != 12551) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_update_min_pow_difficulty() != 58908) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_client_zap() != 33763) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_build() != 61424) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_database() != 21061) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_opts() != 22620) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_signer() != 30905) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientbuilder_zapper() != 2114) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientmessage_as_enum() != 46388) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_clientmessage_as_json() != 4674) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_connection_addr() != 43068) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_connection_embedded_tor() != 51580) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_connection_mode() != 217) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_connection_target() != 61648) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_contact_alias() != 50777) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_contact_public_key() != 5517) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_contact_relay_url() != 20565) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_identifier() != 38994) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_kind() != 7837) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_public_key() != 29286) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_relays() != 65042) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_to_bech32() != 48482) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_coordinate_to_nostr_uri() != 11324) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_backend() != 7020) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_get_public_key() != 1696) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_sign_event() != 35436) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_nip04_encrypt() != 382) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_nip04_decrypt() != 58024) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_nip44_encrypt() != 25563) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_customnostrsigner_nip44_decrypt() != 7340) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_key_security() != 9516) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_to_bech32() != 44747) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_to_secret_key() != 19935) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_encryptedsecretkey_version() != 19336) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_as_json() != 3171) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_as_pretty_json() != 15571) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_author() != 33777) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_content() != 63997) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_created_at() != 44671) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_id() != 10840) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_is_expired() != 16390) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_is_protected() != 60470) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_kind() != 37638) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_signature() != 24839) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_tags() != 32843) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_verify() != 3329) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_verify_id() != 50510) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_event_verify_signature() != 21120) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder__none() != 7372) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_build() != 46818) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_custom_created_at() != 20379) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_pow() != 47148) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign() != 18580) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign_with_keys() != 51348) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_tags() != 22610) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventid_as_bytes() != 22930) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_bech32() != 35036) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_hex() != 62987) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_eventid_to_nostr_uri() != 15047) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_contains() != 39963) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_first() != 11892) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_is_empty() != 16727) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_len() != 22082) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_merge() != 7543) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_events_to_vec() != 15668) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_aes_256_gcm() != 15419) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_blurhash() != 58338) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_dimensions() != 14373) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_magnet() != 49047) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_size() != 53216) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_as_json() != 6808) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_as_record() != 6560) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_author() != 30570) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_authors() != 55524) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinate() != 29286) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinates() != 2599) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_custom_tag() != 57794) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_event() != 9919) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_events() != 6127) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_hashtag() != 45839) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_hashtags() != 34615) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_id() != 61970) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_identifier() != 32910) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_identifiers() != 38883) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_ids() != 23011) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_is_empty() != 21971) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_kind() != 4634) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_kinds() != 4092) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_limit() != 14746) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_match_event() != 43992) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkey() != 17463) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_pubkeys() != 13058) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_reference() != 5361) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_references() != 54226) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_authors() != 9364) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_coordinates() != 47805) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_custom_tag() != 23841) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_events() != 30094) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_hashtags() != 33949) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_identifiers() != 53765) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_ids() != 11079) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_kinds() != 55693) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_limit() != 45828) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_pubkeys() != 22880) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_references() != 62395) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_search() != 29028) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_since() != 30254) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_until() != 41736) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_search() != 36347) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_since() != 19595) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_filter_until() != 6520) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle_msg() != 54779) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_handlenotification_handle() != 45027) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_height() != 33923) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_imagedimensions_width() != 56199) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_amount() != 2543) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_extra_info() != 21313) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_jobfeedbackdata_payload() != 45291) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_keys_public_key() != 21581) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_keys_secret_key() != 60506) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_keys_sign_schnorr() != 55396) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_as_enum() != 53020) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_as_u16() != 33899) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_ephemeral() != 12268) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_job_request() != 21807) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_job_result() != 3971) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_parameterized_replaceable() != 64232) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_regular() != 26650) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_replaceable() != 31494) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_json() != 2258) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_pretty_json() != 48195) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_as_record() != 2519) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_about() != 16385) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_banner() != 54057) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_custom_field() != 40823) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_display_name() != 44347) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud06() != 57088) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_lud16() != 19773) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_name() != 1699) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_nip05() != 17207) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_picture() != 20724) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_get_website() != 21850) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_about() != 24342) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_banner() != 23479) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_custom_field() != 38634) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_display_name() != 40186) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud06() != 19232) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_lud16() != 55868) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_name() != 56705) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_nip05() != 63892) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_picture() != 64626) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_metadata_set_website() != 57629) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay__none() != 40990) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_shutdown() != 1736) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_mockrelay_url() != 63169) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_balance() != 30742) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_get_info() != 19865) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_list_transactions() != 15654) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_lookup_invoice() != 28952) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_make_invoice() != 56020) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_invoice() != 842) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_pay_keysend() != 38155) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nwc_status() != 26896) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_nip46() != 13517) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_public_key() != 56263) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip05profile_relays() != 11122) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19_as_enum() != 62711) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_author() != 8504) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_event_id() != 9799) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_kind() != 12835) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_relays() != 14111) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_to_bech32() != 12367) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19event_to_nostr_uri() != 31723) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_public_key() != 32958) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_relays() != 62720) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_to_bech32() != 36717) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip19profile_to_nostr_uri() != 28973) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip21_as_enum() != 7140) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nip21_to_nostr_uri() != 28944) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_bunker_uri() != 57336) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_get_public_key() != 16592) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip04_decrypt() != 9737) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip04_encrypt() != 32405) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip44_decrypt() != 57892) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_nip44_encrypt() != 7459) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_relays() != 56157) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnect_sign_event() != 11201) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_as_json() != 14883) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_description() != 63846) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_icons() != 20500) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectmetadata_url() != 5634) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_bunker_uri() != 13864) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_relays() != 28989) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectremotesigner_serve() != 40586) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrconnectsigneractions_approve() != 25995) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 59586) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_delete() != 57958) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 41668) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_seen_on_relays() != 3484) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_metadata() != 5609) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_query() != 7809) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_save_event() != 61972) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_wipe() != 58001) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrlibrary_git_hash_version() != 51073) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_backend() != 42053) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_get_public_key() != 57508) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_decrypt() != 21362) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip04_encrypt() != 56434) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_decrypt() != 9052) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_nip44_encrypt() != 24375) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrsigner_sign_event() != 15564) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_connection_mode() != 29062) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnectoptions_timeout() != 18259) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_lud16() != 20036) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_public_key() != 21325) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_relay_url() != 24957) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_nostrwalletconnecturi_secret() != 15591) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_autoconnect() != 15533) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_automatic_authentication() != 33238) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_connection() != 11615) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_difficulty() != 20804) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_filtering_mode() != 33603) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_gossip() != 22162) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_max_avg_latency() != 34264) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_min_pow() != 54102) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_relay_limits() != 11682) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_req_filters_chunk_size() != 19808) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_options_timeout() != 10820) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_profile_metadata() != 19030) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_profile_name() != 10929) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_profile_public_key() != 25334) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_bech32() != 28181) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_hex() != 25698) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_publickey_to_nostr_uri() != 54491) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_rawevent_as_json() != 26468) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_rawevent_as_record() != 34500) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_event() != 56446) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_batch_msg() != 32031) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_connect() != 15421) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_connection_mode() != 52002) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_count_events() != 53493) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_disconnect() != 44712) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_document() != 30968) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_fetch_events() != 18464) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_filtering() != 16293) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_is_connected() != 18284) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_opts() != 21198) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_queue() != 23174) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_event() != 30621) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_send_msg() != 53871) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_stats() != 58574) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_status() != 52365) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe() != 56789) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscribe_with_id() != 2519) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscription() != 47719) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_subscriptions() != 31310) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_sync() != 50084) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_sync_with_items() != 50768) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe() != 62991) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_unsubscribe_all() != 18626) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relay_url() != 1351) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_attempts() != 52060) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_received() != 157) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_bytes_sent() != 64970) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_connected_at() != 27772) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_first_connection_timestamp() != 32759) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_latency() != 14031) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success() != 52759) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayconnectionstats_success_rate() != 58744) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_ids() != 15436) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_add_public_keys() != 53012) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_clear() != 53904) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_id() != 7836) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_has_public_key() != 3775) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_mode() != 29749) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_overwrite_public_keys() != 43193) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_id() != 45476) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_ids() != 63350) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_key() != 5962) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_remove_public_keys() != 47506) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayfiltering_update_mode() != 20763) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_contact() != 33791) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_description() != 55506) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_fees() != 52643) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_icon() != 37182) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_language_tags() != 5241) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_limitation() != 63667) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_name() != 54729) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_payments_url() != 50516) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_posting_policy() != 57849) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_pubkey() != 52169) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_relay_countries() != 43620) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_retention() != 48273) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_software() != 34250) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_supported_nips() != 11144) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_tags() != 65245) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_version() != 38302) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags() != 29781) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_num_tags_per_kind() != 54489) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size() != 63930) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_event_max_size_per_kind() != 30650) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaylimits_message_max_size() != 26726) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaymessage_as_enum() != 673) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaymessage_as_json() != 14562) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_adjust_retry_interval() != 25372) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_connection_mode() != 24699) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_filtering_mode() != 53101) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_limits() != 10405) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_max_avg_latency() != 58939) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_ping() != 51607) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_pow() != 37387) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_read() != 47081) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_reconnect() != 48820) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_retry_interval() != 30532) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_update_pow_difficulty() != 44137) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relayoptions_write() != 45946) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_add_relay() != 60070) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event() != 38268) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_event_to() != 4520) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_batch_msg_to() != 52407) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect() != 31806) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_connect_relay() != 36418) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_database() != 4532) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_disconnect() != 51163) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_fetch_events() != 62791) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_fetch_events_from() != 47378) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_filtering() != 46575) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_force_remove_relay() != 58819) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_handle_notifications() != 15285) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relay() != 11676) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_relays() != 16476) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_remove_relay() != 44871) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event() != 50637) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_event_to() != 5135) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_send_msg_to() != 8959) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_shutdown() != 24603) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe() != 7394) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_to() != 24766) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id() != 17112) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscribe_with_id_to() != 28766) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscription() != 59111) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_subscriptions() != 37749) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_sync() != 28257) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe() != 35755) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_relaypool_unsubscribe_all() != 47254) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_request_method() != 17520) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_request_params() != 39349) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_encrypt() != 49692) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_bech32() != 38599) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_secretkey_to_hex() != 57941) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_get_shipping_cost() != 56592) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_name() != 13755) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_shippingmethod_regions() != 233) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_singlelettertag_is_lowercase() != 53511) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_singlelettertag_is_uppercase() != 16786) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_as_json() != 14626) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_as_record() != 30522) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_currency() != 40639) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_description() != 50371) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_id() != 34671) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_name() != 15071) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_stalldata_shipping() != 17698) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_subscribeautocloseoptions_filter() != 17195) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_subscribeautocloseoptions_timeout() != 36298) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_subscribeoptions_close_on() != 31672) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_direction() != 15360) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_dry_run() != 15725) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_syncoptions_initial_timeout() != 19180) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_standardized() != 39092) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_as_vec() != 22150) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_content() != 43772) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_protected() != 61999) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_reply() != 26678) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_root() != 42913) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind() != 28437) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind_str() != 21836) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tag_single_letter_tag() != 50942) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_coordinates() != 39150) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_event_ids() != 44166) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_expiration() != 15697) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_filter() != 6442) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_filter_standardized() != 23694) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_find() != 19756) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_find_standardized() != 61199) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_first() != 16571) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_get() != 2938) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_hashtags() != 50724) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_identifier() != 44864) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_is_empty() != 16467) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_last() != 22526) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_len() != 28453) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_public_keys() != 15566) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_tags_to_vec() != 38520) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_as_secs() != 7797) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_timestamp_to_human_datetime() != 24020) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_add_signature() != 33695) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_as_json() != 14388) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_as_pretty_json() != 3289) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_author() != 33632) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_content() != 61788) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_created_at() != 2838) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_id() != 26673) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_kind() != 24650) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_sign() != 17648) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_sign_with_keys() != 65226) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unsignedevent_tags() != 32482) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift__none() != 31106) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift_rumor() != 9051) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_unwrappedgift_sender() != 65176) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_zapdetails_message() != 43166) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_amount() != 38837) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_event_id() != 60606) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_lnurl() != 11688) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_method_zaprequestdata_message() != 38998) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_client_new() != 54751) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientbuilder_new() != 11332) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_auth() != 45144) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_close() != 12470) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_count() != 20126) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_event() != 35014) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_from_enum() != 42986) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_from_json() != 27860) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_clientmessage_req() != 26223) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_connection_new() != 32544) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_contact_new() != 27819) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_from_bech32() != 34870) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_from_nostr_uri() != 19072) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_new() != 9121) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_coordinate_parse() != 59337) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_encryptedsecretkey_from_bech32() != 27546) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_encryptedsecretkey_new() != 35289) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_event_from_json() != 14737) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_articles_curation_set() != 36328) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_auth() != 58729) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_award_badge() != 41119) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_blocked_relays() != 57431) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_bookmarks() != 63306) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_bookmarks_set() != 23068) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel() != 21555) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel_metadata() != 54862) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_channel_msg() != 33615) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_comment() != 29074) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_communities() != 54557) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_contact_list() != 33837) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_define_badge() != 53210) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_delete() != 64893) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_emoji_set() != 6114) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_emojis() != 43073) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_file_metadata() != 8053) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_follow_set() != 32344) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_issue() != 25162) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_patch() != 34800) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_git_repository_announcement() != 50248) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_hide_channel_msg() != 8353) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_http_auth() != 42464) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_interest_set() != 54183) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_interests() != 55071) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_feedback() != 11871) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_request() != 14986) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_job_result() != 48936) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_label() != 17217) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_live_event() != 35589) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_live_event_msg() != 36293) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_long_form_text_note() != 4671) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_metadata() != 34149) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_mute_channel_user() != 64300) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_mute_list() != 34705) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_new() != 61972) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_nostr_connect() != 10416) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_pinned_notes() != 5335) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_private_msg_rumor() != 6901) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_product_data() != 57627) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_profile_badges() != 15894) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_public_chats() != 65509) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_public_zap_request() != 49461) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_reaction() != 35984) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_reaction_extended() != 29568) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_relay_list() != 56793) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_relay_set() != 4966) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_report() != 9803) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_repost() != 48340) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_seal() != 23615) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_search_relays() != 50345) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_stall_data() != 14247) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_text_note() != 19143) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_text_note_reply() != 19133) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_videos_curation_set() != 19505) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventbuilder_zap_receipt() != 16189) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bech32() != 6693) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_bytes() != 63077) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_hex() != 32526) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_from_nostr_uri() != 5143) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_new() != 12100) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_eventid_parse() != 39522) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_filemetadata_new() != 27821) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_from_json() != 60806) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_from_record() != 32151) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_filter_new() != 58026) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_imagedimensions_new() != 18202) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_jobfeedbackdata_new() != 39189) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_mnemonic() != 25690) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_generate() != 61718) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_new() != 46666) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_parse() != 27763) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_vanity() != 1797) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_kind_from_enum() != 56738) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_kind_new() != 53039) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_from_json() != 44036) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_from_record() != 29877) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_metadata_new() != 52664) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_mockrelay_run() != 52562) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_new() != 24213) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nwc_with_opts() != 29036) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19_from_bech32() != 12847) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_from_bech32() != 48940) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_from_nostr_uri() != 20420) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19event_new() != 20553) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_from_bech32() != 56532) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_from_nostr_uri() != 54372) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip19profile_new() != 23364) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nip21_parse() != 2093) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnect_new() != 60022) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectmetadata_new() != 55577) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_from_uri() != 21468) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnectremotesigner_new() != 6720) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrconnecturi_parse() != 36627) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrdatabase_lmdb() != 21752) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrlibrary_new() != 23887) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_custom() != 7081) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_keys() != 41683) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrsigner_nostr_connect() != 3051) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnectoptions_new() != 35456) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnecturi_new() != 42105) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrwalletconnecturi_parse() != 31940) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_nostrzapper_nwc() != 65346) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_options_new() != 30503) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_profile_new() != 41657) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bech32() != 3912) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bytes() != 38006) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_hex() != 38993) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_nostr_uri() != 34489) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_parse() != 50593) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_rawevent_from_json() != 2443) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_rawevent_from_record() != 36198) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_custom() != 38370) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_new() != 3279) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relay_with_opts() != 9335) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_blacklist() != 16765) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relayfiltering_whitelist() != 49922) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relayinformationdocument_new() != 44412) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_disable() != 39641) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaylimits_new() != 1364) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_auth() != 49391) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_closed() != 12776) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_count() != 38897) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_eose() != 61100) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_event() != 41233) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_from_enum() != 34939) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_from_json() != 52163) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_notice() != 17916) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaymessage_ok() != 56502) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relayoptions_new() != 32157) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaypool_new() != 50786) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_relaypool_with_database() != 59953) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_request_new() != 22154) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_request_parse() != 38336) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bech32() != 3401) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_bytes() != 33002) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_from_hex() != 33199) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_generate() != 2297) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_secretkey_parse() != 41672) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_shippingmethod_new() != 54442) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_singlelettertag_lowercase() != 25781) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_singlelettertag_uppercase() != 26245) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_from_json() != 26421) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_from_record() != 10070) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_stalldata_new() != 11283) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_subscribeautocloseoptions_new() != 39595) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_subscribeoptions_new() != 56214) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_syncoptions_new() != 7169) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_alt() != 61627) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_coordinate() != 40153) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_custom() != 55533) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_description() != 31007) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event() != 3596) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event_report() != 12542) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_expiration() != 25703) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_from_standardized() != 10696) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_hashtag() != 35589) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_identifier() != 5344) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_image() != 28435) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_parse() != 63294) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_pow() != 46606) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_protected() != 21460) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key() != 4984) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key_report() != 44501) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_reference() != 43166) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_relay_metadata() != 64762) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_title() != 51619) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_tags_new() != 15672) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_from_secs() != 64753) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_timestamp_now() != 13059) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_unsignedevent_from_json() != 8735) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_unwrappedgift_from_gift_wrap() != 4603) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_zapdetails_new() != 6392) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_zapentity_event() != 34830) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_zapentity_public_key() != 33412) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+    // if (uniffi_nostr_sdk_ffi_checksum_constructor_zaprequestdata_new() != 17704) {
+    //     return InitializationResult.apiChecksumMismatch
+    // }
+    //
+
+    uniffiCallbackInitCustomNostrSigner()
     uniffiCallbackInitHandleNotification()
     uniffiCallbackInitNostrConnectSignerActions()
-    uniffiCallbackInitNostrSigner()
     return InitializationResult.ok
 }()
 
