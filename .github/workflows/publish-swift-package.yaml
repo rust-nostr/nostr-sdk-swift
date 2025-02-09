@@ -58,7 +58,7 @@ jobs:
           git config user.email github-actions@github.com
           git add Package.swift
           git add Sources
-          git commit -m "Update Nostr SDK Swift bindings to version ${{ inputs.version }}"
+          git commit -m "Bump to ${{ inputs.version }}"
           git push
           git tag ${{ inputs.version }} -m "${{ inputs.version }}"
           git push --tags
