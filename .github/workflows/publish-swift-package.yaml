@@ -20,14 +20,14 @@ jobs:
       contents: write
     steps:
       - name: Checkout nostr repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/nostr
           path: build
           ref: ${{ inputs.ref }}
 
       - name: Checkout nostr-sdk-swift repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: dist
           ssh-key: ${{ secrets.NOSTR_SDK_SWIFT_DEPLOY_KEY }}
