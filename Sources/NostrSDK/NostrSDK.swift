@@ -4393,8 +4393,19 @@ public func FfiConverterTypeEvent_lower(_ value: Event) -> UnsafeMutableRawPoint
 
 public protocol EventBuilderProtocol: AnyObject {
     
-    func none() async 
+    /**
+     * Allow self-tagging
+     *
+     * When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
+     */
+    func allowSelfTagging()  -> EventBuilder
     
+    /**
+     * Build an unsigned event
+     *
+     * By default, this method removes any `p` tags that match the author's public key.
+     * To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
+     */
     func build(publicKey: PublicKey)  -> UnsignedEvent
     
     /**
@@ -4409,8 +4420,18 @@ public protocol EventBuilderProtocol: AnyObject {
      */
     func pow(difficulty: UInt8)  -> EventBuilder
     
+    /**
+     * Build, sign and return [`Event`]
+     *
+     * Check [`EventBuilder::build`] to learn more.
+     */
     func sign(signer: NostrSigner) async throws  -> Event
     
+    /**
+     * Build, sign and return [`Event`] using [`Keys`] signer
+     *
+     * Check [`EventBuilder::build`] to learn more.
+     */
     func signWithKeys(keys: Keys) throws  -> Event
     
     /**
@@ -5265,24 +5286,24 @@ public static func zapReceipt(bolt11: String, preimage: String?, zapRequest: Eve
     
 
     
-open func none()async   {
-    return
-        try!  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_nostr_sdk_ffi_fn_method_eventbuilder__none(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_nostr_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_nostr_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: nil
-            
-        )
+    /**
+     * Allow self-tagging
+     *
+     * When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
+     */
+open func allowSelfTagging() -> EventBuilder  {
+    return try!  FfiConverterTypeEventBuilder_lift(try! rustCall() {
+    uniffi_nostr_sdk_ffi_fn_method_eventbuilder_allow_self_tagging(self.uniffiClonePointer(),$0
+    )
+})
 }
     
+    /**
+     * Build an unsigned event
+     *
+     * By default, this method removes any `p` tags that match the author's public key.
+     * To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
+     */
 open func build(publicKey: PublicKey) -> UnsignedEvent  {
     return try!  FfiConverterTypeUnsignedEvent_lift(try! rustCall() {
     uniffi_nostr_sdk_ffi_fn_method_eventbuilder_build(self.uniffiClonePointer(),
@@ -5315,6 +5336,11 @@ open func pow(difficulty: UInt8) -> EventBuilder  {
 })
 }
     
+    /**
+     * Build, sign and return [`Event`]
+     *
+     * Check [`EventBuilder::build`] to learn more.
+     */
 open func sign(signer: NostrSigner)async throws  -> Event  {
     return
         try  await uniffiRustCallAsync(
@@ -5332,6 +5358,11 @@ open func sign(signer: NostrSigner)async throws  -> Event  {
         )
 }
     
+    /**
+     * Build, sign and return [`Event`] using [`Keys`] signer
+     *
+     * Check [`EventBuilder::build`] to learn more.
+     */
 open func signWithKeys(keys: Keys)throws  -> Event  {
     return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_eventbuilder_sign_with_keys(self.uniffiClonePointer(),
@@ -5673,16 +5704,20 @@ public protocol EventsProtocol: AnyObject {
     /**
      * Merge events collections into a single one.
      *
-     * Collection is converted to unbounded if one of the merge `Events` have a different hash.
-     * In other words, the filters limit is respected only if the `Events` are related to the same
+     * This method consumes the object, making it unavailable for further use.
+     *
+     * Collection is converted to unbounded if one of the merge `Events` has a different hash.
+     * In other words, the filter limit is respected only if the `Events` are related to the same
      * list of filters.
      */
-    func merge(other: Events)  -> Events
+    func merge(other: Events) throws  -> Events
     
     /**
-     * Convert collection to vector of events.
+     * Convert the collection to vector of events.
+     *
+     * This method consumes the object, making it unavailable for further use.
      */
-    func toVec()  -> [Event]
+    func toVec() throws  -> [Event]
     
 }
 
@@ -5782,12 +5817,14 @@ open func len() -> UInt64  {
     /**
      * Merge events collections into a single one.
      *
-     * Collection is converted to unbounded if one of the merge `Events` have a different hash.
-     * In other words, the filters limit is respected only if the `Events` are related to the same
+     * This method consumes the object, making it unavailable for further use.
+     *
+     * Collection is converted to unbounded if one of the merge `Events` has a different hash.
+     * In other words, the filter limit is respected only if the `Events` are related to the same
      * list of filters.
      */
-open func merge(other: Events) -> Events  {
-    return try!  FfiConverterTypeEvents_lift(try! rustCall() {
+open func merge(other: Events)throws  -> Events  {
+    return try  FfiConverterTypeEvents_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_events_merge(self.uniffiClonePointer(),
         FfiConverterTypeEvents_lower(other),$0
     )
@@ -5795,10 +5832,12 @@ open func merge(other: Events) -> Events  {
 }
     
     /**
-     * Convert collection to vector of events.
+     * Convert the collection to vector of events.
+     *
+     * This method consumes the object, making it unavailable for further use.
      */
-open func toVec() -> [Event]  {
-    return try!  FfiConverterSequenceTypeEvent.lift(try! rustCall() {
+open func toVec()throws  -> [Event]  {
+    return try  FfiConverterSequenceTypeEvent.lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_events_to_vec(self.uniffiClonePointer(),$0
     )
 })
@@ -32264,10 +32303,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_event_verify_signature() != 21120) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder__none() != 7372) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_allow_self_tagging() != 57727) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_build() != 46818) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_build() != 10100) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_custom_created_at() != 20379) {
@@ -32276,10 +32315,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_pow() != 47148) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign() != 18580) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign() != 24133) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign_with_keys() != 51348) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_sign_with_keys() != 46872) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_eventbuilder_tags() != 22610) {
@@ -32309,10 +32348,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_events_len() != 22082) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_merge() != 7543) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_events_merge() != 57155) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_events_to_vec() != 15668) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_events_to_vec() != 14351) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_filemetadata_aes_256_gcm() != 15419) {
