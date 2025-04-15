@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       ref:
-        description: 'Ref (branch, tag, commit) to checkout (from rust-nostr/nostr repo)'
+        description: 'Ref (branch, tag, commit) to checkout (from rust-nostr/nostr-sdk-ffi repo)'
         required: true
         type: string
         default: 'master'
