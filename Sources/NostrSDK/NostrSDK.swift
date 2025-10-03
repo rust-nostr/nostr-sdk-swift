@@ -28310,7 +28310,7 @@ public enum Nip19Enum {
     /**
      * Encrypted Secret Key
      */
-    case encryptedSecret(EncryptedSecretKey
+    case encryptedSecret(val: EncryptedSecretKey
     )
     /**
      * npub
@@ -28353,7 +28353,7 @@ public struct FfiConverterTypeNip19Enum: FfiConverterRustBuffer {
         case 1: return .secret(nsec: try FfiConverterTypeSecretKey.read(from: &buf)
         )
         
-        case 2: return .encryptedSecret(try FfiConverterTypeEncryptedSecretKey.read(from: &buf)
+        case 2: return .encryptedSecret(val: try FfiConverterTypeEncryptedSecretKey.read(from: &buf)
         )
         
         case 3: return .pubkey(npub: try FfiConverterTypePublicKey.read(from: &buf)
@@ -28384,9 +28384,9 @@ public struct FfiConverterTypeNip19Enum: FfiConverterRustBuffer {
             FfiConverterTypeSecretKey.write(nsec, into: &buf)
             
         
-        case let .encryptedSecret(v1):
+        case let .encryptedSecret(val):
             writeInt(&buf, Int32(2))
-            FfiConverterTypeEncryptedSecretKey.write(v1, into: &buf)
+            FfiConverterTypeEncryptedSecretKey.write(val, into: &buf)
             
         
         case let .pubkey(npub):
@@ -28882,24 +28882,24 @@ public enum NostrParserToken {
      *
      * <https://github.com/nostr-protocol/nips/blob/master/21.md>
      */
-    case nostr(Nip21Enum
+    case nostr(uri: Nip21Enum
     )
     /**
      * Url
      */
-    case url(String
+    case url(url: String
     )
     /**
      * Hashtag
      */
-    case hashtag(String
+    case hashtag(hashtag: String
     )
     /**
      * Other text
      *
      * Spaces at the beginning or end of a text are parsed as [`Token::Whitespace`].
      */
-    case text(String
+    case text(text: String
     )
     /**
      * Line break
@@ -28922,16 +28922,16 @@ public struct FfiConverterTypeNostrParserToken: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .nostr(try FfiConverterTypeNip21Enum.read(from: &buf)
+        case 1: return .nostr(uri: try FfiConverterTypeNip21Enum.read(from: &buf)
         )
         
-        case 2: return .url(try FfiConverterString.read(from: &buf)
+        case 2: return .url(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 3: return .hashtag(try FfiConverterString.read(from: &buf)
+        case 3: return .hashtag(hashtag: try FfiConverterString.read(from: &buf)
         )
         
-        case 4: return .text(try FfiConverterString.read(from: &buf)
+        case 4: return .text(text: try FfiConverterString.read(from: &buf)
         )
         
         case 5: return .lineBreak
@@ -28946,24 +28946,24 @@ public struct FfiConverterTypeNostrParserToken: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .nostr(v1):
+        case let .nostr(uri):
             writeInt(&buf, Int32(1))
-            FfiConverterTypeNip21Enum.write(v1, into: &buf)
+            FfiConverterTypeNip21Enum.write(uri, into: &buf)
             
         
-        case let .url(v1):
+        case let .url(url):
             writeInt(&buf, Int32(2))
-            FfiConverterString.write(v1, into: &buf)
+            FfiConverterString.write(url, into: &buf)
             
         
-        case let .hashtag(v1):
+        case let .hashtag(hashtag):
             writeInt(&buf, Int32(3))
-            FfiConverterString.write(v1, into: &buf)
+            FfiConverterString.write(hashtag, into: &buf)
             
         
-        case let .text(v1):
+        case let .text(text):
             writeInt(&buf, Int32(4))
-            FfiConverterString.write(v1, into: &buf)
+            FfiConverterString.write(text, into: &buf)
             
         
         case .lineBreak:
@@ -31224,7 +31224,7 @@ public enum TagStandard {
          * Whether the k tag is an uppercase K or not
          */uppercase: Bool
     )
-    case relay(RelayUrl
+    case relay(url: RelayUrl
     )
     /**
      * All relays tag
@@ -31258,7 +31258,7 @@ public enum TagStandard {
     )
     case preimage(preimage: String
     )
-    case relays([RelayUrl]
+    case relays(urls: [RelayUrl]
     )
     case amount(millisats: UInt64, bolt11: String?
     )
@@ -31305,7 +31305,7 @@ public enum TagStandard {
     )
     case absoluteUrl(url: String
     )
-    case method(HttpMethod
+    case method(method: HttpMethod
     )
     case payload(hash: String
     )
@@ -31376,13 +31376,13 @@ public enum TagStandard {
      */
     case repository(url: String
     )
-    case nip88PollEndsAt(Timestamp
+    case nip88PollEndsAt(timestamp: Timestamp
     )
-    case nip88PollOption(PollOption
+    case nip88PollOption(option: PollOption
     )
-    case nip88PollResponse(String
+    case nip88PollResponse(response: String
     )
-    case nip88PollType(PollType
+    case nip88PollType(pollType: PollType
     )
 }
 
@@ -31454,7 +31454,7 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         case 19: return .kindTag(kind: try FfiConverterTypeKind.read(from: &buf), uppercase: try FfiConverterBool.read(from: &buf)
         )
         
-        case 20: return .relay(try FfiConverterTypeRelayUrl.read(from: &buf)
+        case 20: return .relay(url: try FfiConverterTypeRelayUrl.read(from: &buf)
         )
         
         case 21: return .allRelays
@@ -31498,7 +31498,7 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         case 34: return .preimage(preimage: try FfiConverterString.read(from: &buf)
         )
         
-        case 35: return .relays(try FfiConverterSequenceTypeRelayUrl.read(from: &buf)
+        case 35: return .relays(urls: try FfiConverterSequenceTypeRelayUrl.read(from: &buf)
         )
         
         case 36: return .amount(millisats: try FfiConverterUInt64.read(from: &buf), bolt11: try FfiConverterOptionString.read(from: &buf)
@@ -31564,7 +31564,7 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         case 56: return .absoluteUrl(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 57: return .method(try FfiConverterTypeHttpMethod.read(from: &buf)
+        case 57: return .method(method: try FfiConverterTypeHttpMethod.read(from: &buf)
         )
         
         case 58: return .payload(hash: try FfiConverterString.read(from: &buf)
@@ -31619,16 +31619,16 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
         case 75: return .repository(url: try FfiConverterString.read(from: &buf)
         )
         
-        case 76: return .nip88PollEndsAt(try FfiConverterTypeTimestamp.read(from: &buf)
+        case 76: return .nip88PollEndsAt(timestamp: try FfiConverterTypeTimestamp.read(from: &buf)
         )
         
-        case 77: return .nip88PollOption(try FfiConverterTypePollOption.read(from: &buf)
+        case 77: return .nip88PollOption(option: try FfiConverterTypePollOption.read(from: &buf)
         )
         
-        case 78: return .nip88PollResponse(try FfiConverterString.read(from: &buf)
+        case 78: return .nip88PollResponse(response: try FfiConverterString.read(from: &buf)
         )
         
-        case 79: return .nip88PollType(try FfiConverterTypePollType.read(from: &buf)
+        case 79: return .nip88PollType(pollType: try FfiConverterTypePollType.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -31754,9 +31754,9 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             FfiConverterBool.write(uppercase, into: &buf)
             
         
-        case let .relay(v1):
+        case let .relay(url):
             writeInt(&buf, Int32(20))
-            FfiConverterTypeRelayUrl.write(v1, into: &buf)
+            FfiConverterTypeRelayUrl.write(url, into: &buf)
             
         
         case .allRelays:
@@ -31832,9 +31832,9 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             FfiConverterString.write(preimage, into: &buf)
             
         
-        case let .relays(v1):
+        case let .relays(urls):
             writeInt(&buf, Int32(35))
-            FfiConverterSequenceTypeRelayUrl.write(v1, into: &buf)
+            FfiConverterSequenceTypeRelayUrl.write(urls, into: &buf)
             
         
         case let .amount(millisats,bolt11):
@@ -31944,9 +31944,9 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             FfiConverterString.write(url, into: &buf)
             
         
-        case let .method(v1):
+        case let .method(method):
             writeInt(&buf, Int32(57))
-            FfiConverterTypeHttpMethod.write(v1, into: &buf)
+            FfiConverterTypeHttpMethod.write(method, into: &buf)
             
         
         case let .payload(hash):
@@ -32041,24 +32041,24 @@ public struct FfiConverterTypeTagStandard: FfiConverterRustBuffer {
             FfiConverterString.write(url, into: &buf)
             
         
-        case let .nip88PollEndsAt(v1):
+        case let .nip88PollEndsAt(timestamp):
             writeInt(&buf, Int32(76))
-            FfiConverterTypeTimestamp.write(v1, into: &buf)
+            FfiConverterTypeTimestamp.write(timestamp, into: &buf)
             
         
-        case let .nip88PollOption(v1):
+        case let .nip88PollOption(option):
             writeInt(&buf, Int32(77))
-            FfiConverterTypePollOption.write(v1, into: &buf)
+            FfiConverterTypePollOption.write(option, into: &buf)
             
         
-        case let .nip88PollResponse(v1):
+        case let .nip88PollResponse(response):
             writeInt(&buf, Int32(78))
-            FfiConverterString.write(v1, into: &buf)
+            FfiConverterString.write(response, into: &buf)
             
         
-        case let .nip88PollType(v1):
+        case let .nip88PollType(pollType):
             writeInt(&buf, Int32(79))
-            FfiConverterTypePollType.write(v1, into: &buf)
+            FfiConverterTypePollType.write(pollType, into: &buf)
             
         }
     }
