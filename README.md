@@ -1,9 +1,5 @@
 # Nostr SDK – Swift Package
 
-## 📄 Usage
-
-Check https://rust-nostr.org
-
 ## Information for Maintainers and Contributors
 
 This repository is used to publish a Swift package providing Swift bindings to the Nostr SDK's [underlying Rust implementation](https://github.com/rust-nostr/nostr). The Swift bindings are generated using [UniFFi](https://github.com/mozilla/uniffi-rs).
