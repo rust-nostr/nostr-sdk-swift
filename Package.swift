@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/nostrdevkit/nostr-sdk-swift/releases/download/0.44.6/nostr_sdkFFI.xcframework.zip", checksum: "3f1e0cb48be70677baf236c4c34041e77d84654e9f39f7ca6bbb215ceb3d9ef1"),
+        .binaryTarget(name: "nostr_sdkFFI", url: "https://github.com/nostrdevkit/nostr-sdk-swift/releases/download/0.45.0-alpha.7/nostr_sdkFFI.xcframework.zip", checksum: "d6d113768f8da0db90dd756e2fc30397f7dc23b650d46dc40d896fad798306d1"),
         .target(name: "NostrSDK", dependencies: ["nostr_sdkFFI"]),
     ]
 )
