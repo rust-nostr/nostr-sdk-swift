@@ -1860,7 +1860,7 @@ public protocol AsyncPowAdapter: AnyObject, Sendable {
      * Computes Proof of Work for an unsigned event to meet the target
      * difficulty.
      */
-    func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
+    func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
     
 }
 /**
@@ -1923,13 +1923,13 @@ open class AsyncPowAdapterImpl: AsyncPowAdapter, @unchecked Sendable {
      * Computes Proof of Work for an unsigned event to meet the target
      * difficulty.
      */
-open func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
+open func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_asyncpowadapter_compute_async(
                     self.uniffiCloneHandle(),
-                    FfiConverterTypeUnsignedEvent_lower(unsigned),FfiConverterUInt8.lower(difficulty)
+                    FfiConverterTypeUnsignedEvent_lower(unsignedEvent),FfiConverterUInt8.lower(difficulty)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -1970,7 +1970,7 @@ fileprivate struct UniffiCallbackInterfaceAsyncPowAdapter {
         },
         computeAsync: { (
             uniffiHandle: UInt64,
-            unsigned: UInt64,
+            unsignedEvent: UInt64,
             difficulty: UInt8,
             uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
             uniffiCallbackData: UInt64,
@@ -1982,7 +1982,7 @@ fileprivate struct UniffiCallbackInterfaceAsyncPowAdapter {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
                 return try await uniffiObj.computeAsync(
-                     unsigned: try FfiConverterTypeUnsignedEvent_lift(unsigned),
+                     unsignedEvent: try FfiConverterTypeUnsignedEvent_lift(unsignedEvent),
                      difficulty: try FfiConverterUInt8.lift(difficulty)
                 )
             }
@@ -2430,7 +2430,8 @@ public protocol ClientProtocol: AnyObject, Sendable {
      *
      * The stream terminates when the client shutdowns.
      *
-     * <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
+     * When you call this method, you subscribe to the notifications channel from that precise
+     * moment. Anything received by relays before that moment is not included in the channel.
      */
     func notifications()  -> ClientNotificationStream
     
@@ -2633,7 +2634,7 @@ public protocol ClientProtocol: AnyObject, Sendable {
      * # Reconciliation Semantics
      *
      * - Reconciliation is performed using NIP-77 negentropy
-     * (<https://github.com/nostr-protocol/nips/blob/master/77.md>).
+     * (https://github.com/nostr-protocol/nips/blob/master/77.md).
      * - Event transfer occurs **only** for events determined to be missing
      * on either side.
      *
@@ -2966,7 +2967,8 @@ open func monitor() -> Monitor?  {
      *
      * The stream terminates when the client shutdowns.
      *
-     * <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
+     * When you call this method, you subscribe to the notifications channel from that precise
+     * moment. Anything received by relays before that moment is not included in the channel.
      */
 open func notifications() -> ClientNotificationStream  {
     return try!  FfiConverterTypeClientNotificationStream_lift(try! rustCall() {
@@ -3314,7 +3316,7 @@ open func subscriptions()async  -> [String: [RelayUrl: [Filter]]]  {
      * # Reconciliation Semantics
      *
      * - Reconciliation is performed using NIP-77 negentropy
-     * (<https://github.com/nostr-protocol/nips/blob/master/77.md>).
+     * (https://github.com/nostr-protocol/nips/blob/master/77.md).
      * - Event transfer occurs **only** for events determined to be missing
      * on either side.
      *
@@ -5402,14 +5404,14 @@ public protocol EventProtocol: AnyObject, Sendable {
      * Returns `true` if the event has an expiration tag that is expired.
      * If an event has no expiration tag, then it will return `false`.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/40.md>
+     * https://github.com/nostr-protocol/nips/blob/master/40.md
      */
     func isExpired()  -> Bool
     
     /**
      * Check if it's a protected event
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     * https://github.com/nostr-protocol/nips/blob/master/70.md
      */
     func isProtected()  -> Bool
     
@@ -5551,7 +5553,7 @@ open func id() -> EventId  {
      * Returns `true` if the event has an expiration tag that is expired.
      * If an event has no expiration tag, then it will return `false`.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/40.md>
+     * https://github.com/nostr-protocol/nips/blob/master/40.md
      */
 open func isExpired() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -5564,7 +5566,7 @@ open func isExpired() -> Bool  {
     /**
      * Check if it's a protected event
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     * https://github.com/nostr-protocol/nips/blob/master/70.md
      */
 open func isProtected() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -6198,7 +6200,7 @@ public protocol FilterProtocol: AnyObject, Sendable {
      *
      * Query for `a` tag.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func coordinate(coordinate: Coordinate)  -> Filter
     
@@ -6207,7 +6209,7 @@ public protocol FilterProtocol: AnyObject, Sendable {
      *
      * Query for `a` tags.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func coordinates(coordinates: [Coordinate])  -> Filter
     
@@ -6271,7 +6273,7 @@ public protocol FilterProtocol: AnyObject, Sendable {
      *
      * Remove `a` tags.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func removeCoordinates(coordinates: [Coordinate])  -> Filter
     
@@ -6424,7 +6426,7 @@ open func authors(authors: [PublicKey]) -> Filter  {
      *
      * Query for `a` tag.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func coordinate(coordinate: Coordinate) -> Filter  {
     return try!  FfiConverterTypeFilter_lift(try! rustCall() {
@@ -6440,7 +6442,7 @@ open func coordinate(coordinate: Coordinate) -> Filter  {
      *
      * Query for `a` tags.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func coordinates(coordinates: [Coordinate]) -> Filter  {
     return try!  FfiConverterTypeFilter_lift(try! rustCall() {
@@ -6652,7 +6654,7 @@ open func removeAuthors(authors: [PublicKey]) -> Filter  {
      *
      * Remove `a` tags.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func removeCoordinates(coordinates: [Coordinate]) -> Filter  {
     return try!  FfiConverterTypeFilter_lift(try! rustCall() {
@@ -7651,7 +7653,7 @@ public static func parse(secretKey: String)throws  -> Keys  {
     /**
      * Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/06.md>
+     * https://github.com/nostr-protocol/nips/blob/master/06.md
      */
 public static func fromMnemonic(mnemonic: String, passphrase: String? = nil, account: UInt32? = nil, typ: UInt32? = nil, index: UInt32? = nil)throws  -> Keys  {
     return try  FfiConverterTypeKeys_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
@@ -7966,7 +7968,7 @@ public protocol KindProtocol: AnyObject, Sendable {
      * Addressable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
      * only the latest event MUST be stored by relays, older versions MAY be discarded.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func isAddressable()  -> Bool
     
@@ -7975,7 +7977,7 @@ public protocol KindProtocol: AnyObject, Sendable {
      *
      * Ephemeral means that event is not expected to be stored by relays.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func isEphemeral()  -> Bool
     
@@ -7984,7 +7986,7 @@ public protocol KindProtocol: AnyObject, Sendable {
      *
      * Regular means that event is expected to be stored by relays.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func isRegular()  -> Bool
     
@@ -7994,7 +7996,7 @@ public protocol KindProtocol: AnyObject, Sendable {
      * Replaceable means that, for each combination of `pubkey` and `kind`,
      * only the latest event MUST be stored by relays, older versions MAY be discarded.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
     func isReplaceable()  -> Bool
     
@@ -8096,7 +8098,7 @@ open func asU16() -> UInt16  {
      * Addressable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
      * only the latest event MUST be stored by relays, older versions MAY be discarded.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func isAddressable() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -8111,7 +8113,7 @@ open func isAddressable() -> Bool  {
      *
      * Ephemeral means that event is not expected to be stored by relays.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func isEphemeral() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -8126,7 +8128,7 @@ open func isEphemeral() -> Bool  {
      *
      * Regular means that event is expected to be stored by relays.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func isRegular() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -8142,7 +8144,7 @@ open func isRegular() -> Bool  {
      * Replaceable means that, for each combination of `pubkey` and `kind`,
      * only the latest event MUST be stored by relays, older versions MAY be discarded.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 open func isReplaceable() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -8515,7 +8517,7 @@ public protocol LocalRelayBuilderProtocol: AnyObject, Sendable {
     /**
      * Sets the minimum Proof of Work difficulty.
      *
-     * Only values `> 0` are accepted!
+     * Only values greater than zero are accepted!
      */
     func minPow(difficulty: UInt8)  -> LocalRelayBuilder
     
@@ -8711,7 +8713,7 @@ open func maxSubidLength(max: UInt64) -> LocalRelayBuilder  {
     /**
      * Sets the minimum Proof of Work difficulty.
      *
-     * Only values `> 0` are accepted!
+     * Only values greater than zero are accepted!
      */
 open func minPow(difficulty: UInt8) -> LocalRelayBuilder  {
     return try!  FfiConverterTypeLocalRelayBuilder_lift(try! rustCall() {
@@ -9241,9 +9243,9 @@ public func FfiConverterTypeMonitor_lower(_ value: Monitor) -> UInt64 {
  */
 public protocol MultiThreadPowProtocol: AnyObject, Sendable {
     
-    func compute(unsigned: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
+    func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
     
-    func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
+    func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
     
 }
 /**
@@ -9309,23 +9311,23 @@ public convenience init() {
     
 
     
-open func compute(unsigned: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
+open func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
     return try  FfiConverterTypeUnsignedEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_multithreadpow_compute(
             self.uniffiCloneHandle(),
-        FfiConverterTypeUnsignedEvent_lower(unsigned),
+        FfiConverterTypeUnsignedEvent_lower(unsignedEvent),
         FfiConverterUInt8.lower(difficulty),$0
     )
 })
 }
     
-open func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
+open func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_multithreadpow_compute_async(
                     self.uniffiCloneHandle(),
-                    FfiConverterTypeUnsignedEvent_lower(unsigned),FfiConverterUInt8.lower(difficulty)
+                    FfiConverterTypeUnsignedEvent_lower(unsignedEvent),FfiConverterUInt8.lower(difficulty)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -9676,7 +9678,7 @@ open class Nip05Profile: Nip05ProfileProtocol, @unchecked Sendable, Equatable, H
     /**
      * Extract a NIP-05 profile from raw JSON
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/05.md>
+     * https://github.com/nostr-protocol/nips/blob/master/05.md
      */
 public static func fromJson(address: Nip05Address, json: String)throws  -> Nip05Profile  {
     return try  FfiConverterTypeNip05Profile_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
@@ -11232,7 +11234,7 @@ public protocol NostrDatabase: AnyObject, Sendable {
      *
      * Use `Filter::new()` or `Filter::default()` to count all events.
      */
-    func count(filters: Filter) async throws  -> UInt64
+    func count(filter: Filter) async throws  -> UInt64
     
     /**
      * Query store with filter
@@ -11394,13 +11396,13 @@ open func eventById(eventId: EventId)async throws  -> Event?  {
      *
      * Use `Filter::new()` or `Filter::default()` to count all events.
      */
-open func count(filters: Filter)async throws  -> UInt64  {
+open func count(filter: Filter)async throws  -> UInt64  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_nostrdatabase_count(
                     self.uniffiCloneHandle(),
-                    FfiConverterTypeFilter_lower(filters)
+                    FfiConverterTypeFilter_lower(filter)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_u64,
@@ -11674,7 +11676,7 @@ fileprivate struct UniffiCallbackInterfaceNostrDatabase {
         },
         count: { (
             uniffiHandle: UInt64,
-            filters: UInt64,
+            filter: UInt64,
             uniffiFutureCallback: @escaping UniffiForeignFutureCompleteU64,
             uniffiCallbackData: UInt64,
             uniffiOutDroppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
@@ -11685,7 +11687,7 @@ fileprivate struct UniffiCallbackInterfaceNostrDatabase {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
                 return try await uniffiObj.count(
-                     filters: try FfiConverterTypeFilter_lift(filters)
+                     filter: try FfiConverterTypeFilter_lift(filter)
                 )
             }
 
@@ -13663,7 +13665,7 @@ public protocol PowAdapter: AnyObject, Sendable {
      * Computes Proof of Work for an unsigned event to meet the target
      * difficulty.
      */
-    func compute(unsigned: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
+    func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
     
 }
 /**
@@ -13726,11 +13728,11 @@ open class PowAdapterImpl: PowAdapter, @unchecked Sendable {
      * Computes Proof of Work for an unsigned event to meet the target
      * difficulty.
      */
-open func compute(unsigned: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
+open func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
     return try  FfiConverterTypeUnsignedEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_powadapter_compute(
             self.uniffiCloneHandle(),
-        FfiConverterTypeUnsignedEvent_lower(unsigned),
+        FfiConverterTypeUnsignedEvent_lower(unsignedEvent),
         FfiConverterUInt8.lower(difficulty),$0
     )
 })
@@ -13766,7 +13768,7 @@ fileprivate struct UniffiCallbackInterfacePowAdapter {
         },
         compute: { (
             uniffiHandle: UInt64,
-            unsigned: UInt64,
+            unsignedEvent: UInt64,
             difficulty: UInt8,
             uniffiOutReturn: UnsafeMutablePointer<UInt64>,
             uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
@@ -13777,7 +13779,7 @@ fileprivate struct UniffiCallbackInterfacePowAdapter {
                     throw UniffiInternalError.unexpectedStaleHandle
                 }
                 return try uniffiObj.compute(
-                     unsigned: try FfiConverterTypeUnsignedEvent_lift(unsigned),
+                     unsignedEvent: try FfiConverterTypeUnsignedEvent_lift(unsignedEvent),
                      difficulty: try FfiConverterUInt8.lift(difficulty)
                 )
             }
@@ -17628,15 +17630,6 @@ public func FfiConverterTypeSignerAuthenticator_lower(_ value: SignerAuthenticat
  * The inner byte is always an ASCII alphabetic character. This invariant is
  * maintained by keeping the field private and validating every public
  * constructor.
- *
- * # Ordering
- *
- * ```text
- * a < A < b < B < ... < z < Z
- * ```
- *
- * In other words, values are ordered alphabetically without regard to case,
- * with the lowercase variant before the uppercase variant of the same letter.
  */
 public protocol SingleLetterTagProtocol: AnyObject, Sendable {
     
@@ -17665,15 +17658,6 @@ public protocol SingleLetterTagProtocol: AnyObject, Sendable {
  * The inner byte is always an ASCII alphabetic character. This invariant is
  * maintained by keeping the field private and validating every public
  * constructor.
- *
- * # Ordering
- *
- * ```text
- * a < A < b < B < ... < z < Z
- * ```
- *
- * In other words, values are ordered alphabetically without regard to case,
- * with the lowercase variant before the uppercase variant of the same letter.
  */
 open class SingleLetterTag: SingleLetterTagProtocol, @unchecked Sendable, Equatable, Hashable, Comparable, CustomDebugStringConvertible, CustomStringConvertible {
     fileprivate let handle: UInt64
@@ -17880,9 +17864,9 @@ public func FfiConverterTypeSingleLetterTag_lower(_ value: SingleLetterTag) -> U
  */
 public protocol SingleThreadPowProtocol: AnyObject, Sendable {
     
-    func compute(unsigned: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
+    func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8) throws  -> UnsignedEvent
     
-    func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
+    func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8) async throws  -> UnsignedEvent?
     
 }
 /**
@@ -17948,23 +17932,23 @@ public convenience init() {
     
 
     
-open func compute(unsigned: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
+open func compute(unsignedEvent: UnsignedEvent, difficulty: UInt8)throws  -> UnsignedEvent  {
     return try  FfiConverterTypeUnsignedEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
     uniffi_nostr_sdk_ffi_fn_method_singlethreadpow_compute(
             self.uniffiCloneHandle(),
-        FfiConverterTypeUnsignedEvent_lower(unsigned),
+        FfiConverterTypeUnsignedEvent_lower(unsignedEvent),
         FfiConverterUInt8.lower(difficulty),$0
     )
 })
 }
     
-open func computeAsync(unsigned: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
+open func computeAsync(unsignedEvent: UnsignedEvent, difficulty: UInt8)async throws  -> UnsignedEvent?  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_nostr_sdk_ffi_fn_method_singlethreadpow_compute_async(
                     self.uniffiCloneHandle(),
-                    FfiConverterTypeUnsignedEvent_lower(unsigned),FfiConverterUInt8.lower(difficulty)
+                    FfiConverterTypeUnsignedEvent_lower(unsignedEvent),FfiConverterUInt8.lower(difficulty)
                 )
             },
             pollFunc: ffi_nostr_sdk_ffi_rust_future_poll_rust_buffer,
@@ -18581,7 +18565,7 @@ public protocol TagProtocol: AnyObject, Sendable {
     /**
      * Check if it's a protected event tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     * https://github.com/nostr-protocol/nips/blob/master/70.md
      */
     func isProtected()  -> Bool
     
@@ -18661,9 +18645,9 @@ open class Tag: TagProtocol, @unchecked Sendable, Equatable, Hashable, CustomDeb
 
     
     /**
-     * Construct `["client", "<name>"]` tag
+     * Construct `["client", "name"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/89.md>
+     * https://github.com/nostr-protocol/nips/blob/master/89.md
      */
 public static func client(name: String) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18674,9 +18658,9 @@ public static func client(name: String) -> Tag  {
 }
     
     /**
-     * Compose `["a", "<coordinate>"]` tag
+     * Compose `["a", "coordinate"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 public static func coordinate(coordinate: Coordinate, relayUrl: RelayUrl? = nil) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18689,8 +18673,6 @@ public static func coordinate(coordinate: Coordinate, relayUrl: RelayUrl? = nil)
     
     /**
      * Compose custom tag
-     *
-     * JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
      */
 public static func custom(kind: String, values: [String]) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18702,9 +18684,9 @@ public static func custom(kind: String, values: [String]) -> Tag  {
 }
     
     /**
-     * Compose `["e", "<event-id">]`
+     * Compose `["e", "event-id"]`
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 public static func event(eventId: EventId) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18715,9 +18697,9 @@ public static func event(eventId: EventId) -> Tag  {
 }
     
     /**
-     * Compose `["expiration", "<timestamp>"]` tag
+     * Compose `["expiration", "timestamp"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/40.md>
+     * https://github.com/nostr-protocol/nips/blob/master/40.md
      */
 public static func expiration(timestamp: Timestamp) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18728,7 +18710,7 @@ public static func expiration(timestamp: Timestamp) -> Tag  {
 }
     
     /**
-     * Compose `["t", "<hashtag>"]` tag
+     * Compose `["t", "hashtag"]` tag
      *
      * This will convert the hashtag to lowercase.
      */
@@ -18741,9 +18723,9 @@ public static func hashtag(hashtag: String) -> Tag  {
 }
     
     /**
-     * Compose `["d", "<identifier>"]` tag
+     * Compose `["d", "identifier"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 public static func identifier(identifier: String) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18767,9 +18749,9 @@ public static func parse(data: [String])throws  -> Tag  {
 }
     
     /**
-     * Compose `["nonce", "<nonce>", "<difficulty>"]` tag
+     * Compose `["nonce", "nonce", "difficulty"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/13.md>
+     * https://github.com/nostr-protocol/nips/blob/master/13.md
      */
 public static func pow(nonce: UInt64, difficulty: UInt8) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18785,7 +18767,7 @@ public static func pow(nonce: UInt64, difficulty: UInt8) -> Tag  {
      *
      * JSON: `["-"]`
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     * https://github.com/nostr-protocol/nips/blob/master/70.md
      */
 public static func protected() -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18795,9 +18777,9 @@ public static func protected() -> Tag  {
 }
     
     /**
-     * Compose `["p", "<public-key>"]` tag
+     * Compose `["p", "public-key"]` tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/01.md>
+     * https://github.com/nostr-protocol/nips/blob/master/01.md
      */
 public static func publicKey(publicKey: PublicKey) -> Tag  {
     return try!  FfiConverterTypeTag_lift(try! rustCall() {
@@ -18823,7 +18805,7 @@ open func content() -> String?  {
     /**
      * Check if it's a protected event tag
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/70.md>
+     * https://github.com/nostr-protocol/nips/blob/master/70.md
      */
 open func isProtected() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -19555,7 +19537,7 @@ public func FfiConverterTypeUnsignedEvent_lower(_ value: UnsignedEvent) -> UInt6
 /**
  * Unwrapped Gift Wrap
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 public protocol UnwrappedGiftProtocol: AnyObject, Sendable {
     
@@ -19575,7 +19557,7 @@ public protocol UnwrappedGiftProtocol: AnyObject, Sendable {
 /**
  * Unwrapped Gift Wrap
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 open class UnwrappedGift: UnwrappedGiftProtocol, @unchecked Sendable, Equatable, Hashable, CustomDebugStringConvertible {
     fileprivate let handle: UInt64
@@ -20969,7 +20951,7 @@ public struct FilterRecord {
     /**
      * It's a string describing a query in a human-readable form, i.e. "best nostr apps"
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/50.md>
+     * https://github.com/nostr-protocol/nips/blob/master/50.md
      */
     public var search: String?
     /**
@@ -20995,7 +20977,7 @@ public struct FilterRecord {
         /**
          * It's a string describing a query in a human-readable form, i.e. "best nostr apps"
          *
-         * <https://github.com/nostr-protocol/nips/blob/master/50.md>
+         * https://github.com/nostr-protocol/nips/blob/master/50.md
          */search: String?, 
         /**
          * An integer unix timestamp, events must be newer than this to pass
@@ -22588,19 +22570,19 @@ public struct NostrDatabaseFeatures: Equatable, Hashable {
      * When supported, the database will automatically exclude expired events
      * from query results and/or delete them.
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/40.md>
+     * https://github.com/nostr-protocol/nips/blob/master/40.md
      */
     public var eventExpiration: Bool
     /**
      * Whether the database supports full-text search (NIP-50)
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/50.md>
+     * https://github.com/nostr-protocol/nips/blob/master/50.md
      */
     public var fullTextSearch: Bool
     /**
      * Whether the database supports the request to vanish (NIP-62)
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/62.md>
+     * https://github.com/nostr-protocol/nips/blob/master/62.md
      */
     public var requestToVanish: Bool
 
@@ -22616,17 +22598,17 @@ public struct NostrDatabaseFeatures: Equatable, Hashable {
          * When supported, the database will automatically exclude expired events
          * from query results and/or delete them.
          *
-         * <https://github.com/nostr-protocol/nips/blob/master/40.md>
+         * https://github.com/nostr-protocol/nips/blob/master/40.md
          */eventExpiration: Bool, 
         /**
          * Whether the database supports full-text search (NIP-50)
          *
-         * <https://github.com/nostr-protocol/nips/blob/master/50.md>
+         * https://github.com/nostr-protocol/nips/blob/master/50.md
          */fullTextSearch: Bool, 
         /**
          * Whether the database supports the request to vanish (NIP-62)
          *
-         * <https://github.com/nostr-protocol/nips/blob/master/62.md>
+         * https://github.com/nostr-protocol/nips/blob/master/62.md
          */requestToVanish: Bool) {
         self.persistent = persistent
         self.eventExpiration = eventExpiration
@@ -24239,61 +24221,61 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Git Patch
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitPatch
     /**
      * Git Issue
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitIssue
     /**
      * Git Reply
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitReply
     /**
      * Open Status of Git Patch or Issue
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitStatusOpen
     /**
      * Applied / Merged Status of Git Patch or Resolved Status of Git Issue
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitStatusApplied
     /**
      * Closed Status of Git Patch or Issue
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitStatusClosed
     /**
      * Draft Status of Git Patch or Issue
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitStatusDraft
     /**
      * Torrent
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/35.md>
+     * https://github.com/nostr-protocol/nips/blob/master/35.md
      */
     case torrent
     /**
      * Torrent comment
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/35.md>
+     * https://github.com/nostr-protocol/nips/blob/master/35.md
      */
     case torrentComment
     /**
      * Label
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/32.md>
+     * https://github.com/nostr-protocol/nips/blob/master/32.md
      */
     case label
     /**
@@ -24327,109 +24309,109 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Mute List
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case muteList
     /**
      * Pin List
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case pinList
     /**
      * Bookmarks
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case bookmarks
     /**
      * Communities
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case communities
     /**
      * Public Chats
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case publicChats
     /**
      * Blocked Relays
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case blockedRelays
     /**
      * Search Relays
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case searchRelays
     /**
      * Simple Groups
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case simpleGroups
     /**
      * Interests
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case interests
     /**
      * Emojis
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case emojis
     /**
      * Follow Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case followSet
     /**
      * Relay Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case relaySet
     /**
      * Bookmark Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case bookmarkSet
     /**
      * Articles Curation Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case articlesCurationSet
     /**
      * Videos Curation Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case videosCurationSet
     /**
      * Interest Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case interestSet
     /**
      * Emoji Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case emojiSet
     /**
      * Release Artifact Set
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/51.md>
+     * https://github.com/nostr-protocol/nips/blob/master/51.md
      */
     case releaseArtifactSet
     /**
@@ -24439,13 +24421,13 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Peer-to-peer Order events
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/69.md>
+     * https://github.com/nostr-protocol/nips/blob/master/69.md
      */
     case peerToPeerOrder
     /**
      * Request to Vanish (NIP62)
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/62.md>
+     * https://github.com/nostr-protocol/nips/blob/master/62.md
      */
     case requestToVanish
     /**
@@ -24491,7 +24473,7 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Private Direct message
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+     * https://github.com/nostr-protocol/nips/blob/master/17.md
      */
     case privateDirectMessage
     /**
@@ -24521,7 +24503,7 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Git Repository Announcement
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/34.md>
+     * https://github.com/nostr-protocol/nips/blob/master/34.md
      */
     case gitRepoAnnouncement
     /**
@@ -24551,25 +24533,25 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * User Status
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/38.md>
+     * https://github.com/nostr-protocol/nips/blob/master/38.md
      */
     case userStatus
     /**
      * Cashu Wallet
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/60.md>
+     * https://github.com/nostr-protocol/nips/blob/master/60.md
      */
     case cashuWallet
     /**
      * Cashu Wallet Unspent Proof
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/60.md>
+     * https://github.com/nostr-protocol/nips/blob/master/60.md
      */
     case cashuWalletUnspentProof
     /**
      * Cashu Wallet Spending History
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/60.md>
+     * https://github.com/nostr-protocol/nips/blob/master/60.md
      */
     case cashuWalletSpendingHistory
     /**
@@ -24587,19 +24569,19 @@ public enum KindStandard: Equatable, Hashable {
     /**
      * Code Snippet
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+     * https://github.com/nostr-protocol/nips/blob/master/C0.md
      */
     case codeSnippet
     /**
      * Poll
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/88.md>
+     * https://github.com/nostr-protocol/nips/blob/master/88.md
      */
     case poll
     /**
      * Poll response
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/88.md>
+     * https://github.com/nostr-protocol/nips/blob/master/88.md
      */
     case pollResponse
     case repoState
@@ -25909,7 +25891,7 @@ public enum NostrParserToken {
     /**
      * Nostr URI
      *
-     * <https://github.com/nostr-protocol/nips/blob/master/21.md>
+     * https://github.com/nostr-protocol/nips/blob/master/21.md
      */
     case nostr(uri: Nip21Enum
     )
@@ -29442,7 +29424,7 @@ public func getPrefixesForDifficulty(leadingZeroBits: UInt8) -> [String]  {
 /**
  * Extracts the relay list
  *
- * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+ * https://github.com/nostr-protocol/nips/blob/master/17.md
  */
 public func nip17ExtractRelayList(event: Event) -> [RelayUrl]  {
     return try!  FfiConverterSequenceTypeRelayUrl.lift(try! rustCall() {
@@ -29459,7 +29441,7 @@ public func nip17ExtractRelayList(event: Event) -> [RelayUrl]  {
  * Choose a `duration` greater than the 2 days
  * or the event may be created in an expired state.
  *
- * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+ * https://github.com/nostr-protocol/nips/blob/master/17.md
  */
 public func nip17MakePrivateMsg(signer: NostrSigner, receiver: PublicKey, message: String, expiration: TimeInterval? = nil, rumorExtraTags: [Tag] = [])throws  -> Event  {
     return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
@@ -29480,7 +29462,7 @@ public func nip17MakePrivateMsg(signer: NostrSigner, receiver: PublicKey, messag
  * Choose a `duration` greater than the 2 days
  * or the event may be created in an expired state.
  *
- * <https://github.com/nostr-protocol/nips/blob/master/17.md>
+ * https://github.com/nostr-protocol/nips/blob/master/17.md
  */
 public func nip17MakePrivateMsgAsync(signer: AsyncNostrSigner, receiver: PublicKey, message: String, expiration: TimeInterval? = nil, rumorExtraTags: [Tag] = [])async throws  -> Event  {
     return
@@ -29523,7 +29505,7 @@ public func nip44Encrypt(secretKey: SecretKey, publicKey: PublicKey, content: St
  * `duration` should be greater than 2 days
  * or it may created in an expired state.
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 public func nip59MakeGiftWrap(signer: NostrSigner, receiverPubkey: PublicKey, rumor: UnsignedEvent, expiration: TimeInterval? = nil, extraTags: [Tag] = [])throws  -> Event  {
     return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
@@ -29544,7 +29526,7 @@ public func nip59MakeGiftWrap(signer: NostrSigner, receiverPubkey: PublicKey, ru
  * `duration` should be greater than 2 days
  * or it may created in an expired state.
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 public func nip59MakeGiftWrapAsync(signer: AsyncNostrSigner, receiverPubkey: PublicKey, rumor: UnsignedEvent, expiration: TimeInterval? = nil, extraTags: [Tag] = [])async throws  -> Event  {
     return
@@ -29563,7 +29545,7 @@ public func nip59MakeGiftWrapAsync(signer: AsyncNostrSigner, receiverPubkey: Pub
 /**
  * Seal
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 public func nip59MakeSeal(signer: NostrSigner, receiverPublicKey: PublicKey, rumor: UnsignedEvent)throws  -> Event  {
     return try  FfiConverterTypeEvent_lift(try rustCallWithError(FfiConverterTypeNostrSdkError_lift) {
@@ -29577,7 +29559,7 @@ public func nip59MakeSeal(signer: NostrSigner, receiverPublicKey: PublicKey, rum
 /**
  * Seal
  *
- * <https://github.com/nostr-protocol/nips/blob/master/59.md>
+ * https://github.com/nostr-protocol/nips/blob/master/59.md
  */
 public func nip59MakeSealAsync(signer: AsyncNostrSigner, receiverPublicKey: PublicKey, rumor: UnsignedEvent)async throws  -> Event  {
     return
@@ -29640,13 +29622,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_func_get_prefixes_for_difficulty() != 47166) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_extract_relay_list() != 34880) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_extract_relay_list() != 58048) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_make_private_msg() != 54613) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_make_private_msg() != 31968) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_make_private_msg_async() != 25350) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip17_make_private_msg_async() != 22172) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_func_nip44_decrypt() != 12538) {
@@ -29655,16 +29637,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_func_nip44_encrypt() != 1097) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_gift_wrap() != 61246) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_gift_wrap() != 182) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_gift_wrap_async() != 24902) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_gift_wrap_async() != 56856) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_seal() != 49129) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_seal() != 6039) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_seal_async() != 30039) {
+    if (uniffi_nostr_sdk_ffi_checksum_func_nip59_make_seal_async() != 24404) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_func_extract_relay_list() != 33264) {
@@ -29700,7 +29682,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_monitor() != 28074) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_notifications() != 63589) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_notifications() != 13608) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_relay() != 51003) {
@@ -29730,7 +29712,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_client_subscriptions() != 17880) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_client_sync() != 12636) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_client_sync() != 42457) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_client_try_connect() != 39166) {
@@ -29904,7 +29886,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_event_by_id() != 9248) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 49756) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_count() != 56554) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nostrdatabase_query() != 58898) {
@@ -29955,7 +29937,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_localrelaybuilder_max_subid_length() != 12267) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_localrelaybuilder_min_pow() != 22675) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_localrelaybuilder_min_pow() != 26929) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_localrelaybuilder_nip42() != 10230) {
@@ -30054,10 +30036,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_event_id() != 6718) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_expired() != 62552) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_expired() != 20099) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_protected() != 1370) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_event_is_protected() != 53032) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_event_kind() != 56188) {
@@ -30111,22 +30093,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_kind_as_u16() != 42754) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_addressable() != 63388) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_addressable() != 33847) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_ephemeral() != 48229) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_ephemeral() != 32573) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_regular() != 51680) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_regular() != 8803) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_replaceable() != 59201) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_kind_is_replaceable() != 47723) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_tag_content() != 22234) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_protected() != 50446) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_tag_is_protected() != 37953) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_tag_kind() != 55234) {
@@ -30195,10 +30177,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_filter_authors() != 55986) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinate() != 25958) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinate() != 20261) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinates() != 3452) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_coordinates() != 62957) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_filter_custom_tag() != 9000) {
@@ -30261,7 +30243,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_authors() != 62524) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_coordinates() != 30630) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_coordinates() != 37897) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_filter_remove_custom_tags() != 34281) {
@@ -30489,22 +30471,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_method_relayinformationdocument_version() != 12515) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_asyncpowadapter_compute_async() != 20037) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_asyncpowadapter_compute_async() != 54785) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_multithreadpow_compute() != 41938) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_multithreadpow_compute() != 26556) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_multithreadpow_compute_async() != 36116) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_multithreadpow_compute_async() != 7393) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_powadapter_compute() != 17822) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_powadapter_compute() != 39852) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_singlethreadpow_compute() != 40809) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_singlethreadpow_compute() != 41018) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_method_singlethreadpow_compute_async() != 64623) {
+    if (uniffi_nostr_sdk_ffi_checksum_method_singlethreadpow_compute_async() != 783) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_method_nip19_as_enum() != 31983) {
@@ -30918,37 +30900,37 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_kind_new() != 26287) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_client() != 18623) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_client() != 61976) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_coordinate() != 61150) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_coordinate() != 59344) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_custom() != 40361) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_custom() != 27151) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event() != 28626) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_event() != 20900) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_expiration() != 51459) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_expiration() != 37521) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_hashtag() != 29539) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_hashtag() != 62395) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_identifier() != 45758) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_identifier() != 35843) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_parse() != 21803) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_pow() != 32394) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_pow() != 7264) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_protected() != 51714) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_protected() != 2941) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key() != 27194) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_tag_public_key() != 5926) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_unsignedevent_from_json() != 45285) {
@@ -30975,7 +30957,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_parse() != 59355) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_mnemonic() != 52401) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_keys_from_mnemonic() != 9945) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_publickey_from_bytes() != 64654) {
@@ -31056,7 +31038,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_nostr_sdk_ffi_checksum_constructor_nip05address_parse() != 17725) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip05profile_from_json() != 6078) {
+    if (uniffi_nostr_sdk_ffi_checksum_constructor_nip05profile_from_json() != 60553) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nostr_sdk_ffi_checksum_constructor_relayinformationdocument_from_json() != 2309) {
